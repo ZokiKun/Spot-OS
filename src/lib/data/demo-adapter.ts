@@ -2,7 +2,7 @@
 
 import type { ActivityEntry, Change, Row, Snapshot, TableName, UUID } from "../types";
 import type { AuthUser, DataAdapter, UploadResult } from "./adapter";
-import { emptySnapshot } from "./adapter";
+import { normalizeSnapshot } from "./adapter";
 import { buildSeed } from "./seed";
 import { deriveActivity, shouldSkipEdit } from "./activity";
 import { nowISO, uid } from "../utils";
@@ -38,7 +38,7 @@ export class DemoAdapter implements DataAdapter {
   private read(): Snapshot {
     try {
       const raw = localStorage.getItem(DB_KEY);
-      if (raw) return { ...emptySnapshot(), ...(JSON.parse(raw) as Partial<Snapshot>) };
+      if (raw) return normalizeSnapshot(JSON.parse(raw) as Snapshot);
     } catch {
       /* fall through to seed */
     }

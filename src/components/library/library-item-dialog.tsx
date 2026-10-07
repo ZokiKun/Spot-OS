@@ -69,7 +69,7 @@ export function LibraryItemDialog({
       description: description.trim() || null,
     };
     if (item) await update("library_items", item.id, fields);
-    else await create("library_items", { ...fields, created_by: me?.id ?? null });
+    else await create("library_items", { ...fields, pinned: false, pinned_by: [], created_by: me?.id ?? null });
     onClose();
   };
 

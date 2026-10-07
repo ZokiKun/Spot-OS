@@ -9,7 +9,7 @@ import { cn, formatBytes, timeAgo } from "@/lib/utils";
 import { Button, IconButton } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/misc";
 
-type Owner = { note_id?: string; project_id?: string; review_id?: string };
+type Owner = { note_id?: string; project_id?: string; review_id?: string; kb_page_id?: string };
 
 export function useAttachmentUpload(owner: Owner, folder: string) {
   const { upload, create, me } = useWorkspace();
@@ -23,6 +23,7 @@ export function useAttachmentUpload(owner: Owner, folder: string) {
           note_id: owner.note_id ?? null,
           project_id: owner.project_id ?? null,
           review_id: owner.review_id ?? null,
+          kb_page_id: owner.kb_page_id ?? null,
           name: file.name,
           mime_type: file.type || "application/octet-stream",
           size: file.size,

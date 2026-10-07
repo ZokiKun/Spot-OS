@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Change, Row, Snapshot, TableName, UUID } from "../types";
 import { TABLE_NAMES } from "../types";
 import type { AuthUser, DataAdapter, UploadResult } from "./adapter";
-import { emptySnapshot } from "./adapter";
+import { emptySnapshot, normalizeSnapshot } from "./adapter";
 import { getSupabaseBrowserClient } from "../supabase/client";
 import { STORAGE_BUCKET } from "../supabase/env";
 import { uid } from "../utils";
@@ -35,12 +35,13 @@ export class SupabaseAdapter implements DataAdapter {
         let q = this.sb.from(table).select("*");
         if (table === "activity_log") q = q.order("created_at", { ascending: false }).limit(300);
         if (table === "finance_snapshots") q = q.order("fetched_at", { ascending: false }).limit(10);
+        if (table === "notifications") q = q.order("created_at", { ascending: false }).limit(200);
         const { data, error } = await q;
         if (error) throw new Error(`Loading ${table}: ${error.message}`);
         (snap[table] as unknown[]) = data ?? [];
       }),
     );
-    return snap;
+    return normalizeSnapshot(snap);
   }
 
   async insert<T extends TableName>(table: T, row: Row<T>): Promise<Row<T>> {

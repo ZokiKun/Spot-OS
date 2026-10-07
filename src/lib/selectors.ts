@@ -1,4 +1,4 @@
-import type { Profile, Project, Snapshot, Task, UUID } from "./types";
+import type { Profile, Project, ProjectStatus, Snapshot, Task, UUID } from "./types";
 import { ACTIVE_PROJECT_STATUSES, OPEN_TASK_STATUSES } from "./constants";
 import { addDaysISO, todayISO } from "./utils";
 
@@ -32,10 +32,13 @@ export function sortTasks(tasks: Task[]) {
   });
 }
 
+/** Always this order: active work first, then review, then finished and archived. */
+export const PROJECT_STATUS_ORDER: ProjectStatus[] = ["active", "blocked", "review", "backlog", "completed", "archived"];
+
 export function sortProjects(projects: Project[]) {
-  const order = { blocked: 0, active: 1, review: 2, backlog: 3, completed: 4, archived: 5 } as const;
+  const rank = (s: ProjectStatus) => PROJECT_STATUS_ORDER.indexOf(s);
   return projects.slice().sort((a, b) => {
-    if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+    if (a.status !== b.status) return rank(a.status) - rank(b.status);
     return (a.deadline ?? "9999").localeCompare(b.deadline ?? "9999");
   });
 }

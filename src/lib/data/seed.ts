@@ -40,6 +40,8 @@ export function buildSeed(): Snapshot {
     deadline: addDaysISO(t, 30),
     description: null,
     next_action: null,
+    note: null,
+    tags: [],
     notes_html: null,
     created_by: alex!.id,
     created_at: ago(40),
@@ -56,6 +58,8 @@ export function buildSeed(): Snapshot {
     start_date: addDaysISO(t, -45),
     description: "Full identity refresh: logo system, typography, colour, and launch toolkit.",
     next_action: "Present final logo lockups to Maya",
+    tags: ["branding", "retainer"],
+    note: "Maya wants the compass mark — keep the wordmark as backup.",
   });
   const kestrel = project("Kestrel Labs website", "🪶", "client", "blocked", {
     client: "Kestrel Labs",
@@ -64,6 +68,8 @@ export function buildSeed(): Snapshot {
     deadline: addDaysISO(t, 21),
     description: "Marketing site redesign and CMS migration.",
     next_action: "Get CMS access from Kestrel IT",
+    tags: ["web"],
+    note: "Blocked on IT since last week; escalate Friday if still stuck.",
   });
   const mora = project("Atelier Mora packaging", "🫙", "client", "review", {
     client: "Atelier Mora",
@@ -72,17 +78,20 @@ export function buildSeed(): Snapshot {
     deadline: addDaysISO(t, 4),
     description: "Packaging system for the autumn ceramics line.",
     next_action: "Collect client feedback on dielines",
+    tags: ["packaging", "print"],
   });
   const site = project("Studio Spot site v2", "🟠", "in_house", "active", {
     lead_id: jordan!.id,
     deadline: addDaysISO(t, 40),
     description: "New studio website with case studies.",
+    tags: ["web"],
     next_action: null,
   });
   const ops = project("Spot OS", "⚙️", "studio", "active", {
     lead_id: alex!.id,
     deadline: addDaysISO(t, 60),
     description: "Internal operating system for the studio.",
+    tags: ["internal"],
     next_action: "Connect finance sheet",
   });
   const fieldnotes = project("Field Notes campaign", "📓", "client", "backlog", {
@@ -91,13 +100,23 @@ export function buildSeed(): Snapshot {
     deadline: addDaysISO(t, 75),
     description: "Spring campaign concepts.",
   });
+  const archive = project("Lumen annual report", "📊", "client", "archived", {
+    client: "Lumen Foundation",
+    lead_id: alex!.id,
+    start_date: addDaysISO(t, -160),
+    deadline: addDaysISO(t, -95),
+    description: "2025 annual report design and print.",
+    tags: ["print"],
+    completed_at: ago(100),
+  });
   const typeface = project("Type specimen zine", "🔤", "personal", "completed", {
     lead_id: sam!.id,
     deadline: addDaysISO(t, -10),
     start_date: addDaysISO(t, -70),
     description: "Risograph zine of our custom display face.",
+    tags: ["print"],
   });
-  s.projects = [northwind, kestrel, mora, site, ops, fieldnotes, typeface];
+  s.projects = [northwind, kestrel, mora, site, ops, fieldnotes, typeface, archive];
 
   s.project_members = [
     [northwind, alex, "Creative director"],
@@ -182,6 +201,8 @@ export function buildSeed(): Snapshot {
     project_id: project_id as string | null,
     tags: tags as string[],
     description: description as string | null,
+    pinned: i === 0 || i === 1,
+    pinned_by: i === 7 ? [alex!.id] : [],
     created_by: [alex, sam, jordan][i % 3]!.id,
     created_at: ago(30 - i),
     updated_at: ago(10 - i),
@@ -292,6 +313,28 @@ export function buildSeed(): Snapshot {
 
   s.settings = [
     { id: uid(), key: "workspace", value: { name: "Studio Spot", currency: "EUR", week_starts_on: 1 }, ...stamp },
+    {
+      id: uid(),
+      key: "tags",
+      value: {
+        project: [
+          { name: "branding", color: "orange" },
+          { name: "web", color: "blue" },
+          { name: "packaging", color: "brown" },
+          { name: "print", color: "purple" },
+          { name: "retainer", color: "green" },
+          { name: "internal", color: "gray" },
+        ],
+        library: [
+          { name: "brand", color: "orange" },
+          { name: "template", color: "purple" },
+          { name: "finance", color: "green" },
+          { name: "legal", color: "red" },
+          { name: "client", color: "blue" },
+        ],
+      },
+      ...stamp,
+    },
   ];
   return s;
 }

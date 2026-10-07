@@ -7,6 +7,7 @@ import type { ProjectType } from "@/lib/types";
 import { PROJECT_TYPES } from "@/lib/constants";
 import { useWorkspace } from "@/lib/store";
 import { sortProjects } from "@/lib/selectors";
+import { useTags } from "@/lib/tags";
 import { cn } from "@/lib/utils";
 import { Page, PageTitle } from "@/components/shell/page";
 import { ViewTabs } from "@/components/ui/tabs";
@@ -28,7 +29,7 @@ export function ProjectsView() {
   const view = (params.get("view") as View) || "table";
   const [query, setQuery] = useState("");
   const [types, setTypes] = useState<ProjectType[]>([]);
-  const [showClosed, setShowClosed] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
   const [newOpen, setNewOpen] = useState(false);
   const { setAnchor: filterAnchorRef, ...filter } = usePopover();
 
@@ -42,16 +43,16 @@ export function ProjectsView() {
     return sortProjects(
       data.projects.filter(
         (p) =>
-          (showClosed || view === "board" || !["completed", "archived"].includes(p.status)) &&
-          (view !== "board" || p.status !== "archived") &&
           (!types.length || types.includes(p.type)) &&
-          (!q || [p.name, p.client, p.description].some((f) => f?.toLowerCase().includes(q))),
+          (!tags.length || tags.some((t) => p.tags.includes(t))) &&
+          (!q || [p.name, p.client, p.description, p.note, p.tags.join(" ")].some((f) => f?.toLowerCase().includes(q))),
       ),
     );
-  }, [data.projects, query, types, showClosed, view]);
+  }, [data.projects, query, types, tags]);
+  const tagDefs = useTags("project");
 
   const Icon = NAV_ICONS.projects!;
-  const activeFilters = types.length + (showClosed ? 1 : 0);
+  const activeFilters = types.length + tags.length;
 
   return (
     <Page
@@ -62,7 +63,7 @@ export function ProjectsView() {
         </Button>
       }
     >
-      <PageTitle title="Projects" description="Every studio project, its status, owner and next action." />
+      <PageTitle title="Projects" description="Every studio project, grouped by status: active first, then review, completed and archived." />
       <div className="mb-2 flex flex-wrap items-center gap-2 border-b border-line pb-1.5">
         <ViewTabs<View>
           value={view}
@@ -103,12 +104,20 @@ export function ProjectsView() {
                   <Tag color={t.color}>{t.label}</Tag>
                 </MenuItem>
               ))}
-              {view === "table" && (
+              {tagDefs.defs.length > 0 && (
                 <>
                   <MenuDivider />
-                  <MenuItem selected={showClosed} onSelect={() => setShowClosed((s) => !s)}>
-                    Show completed & archived
-                  </MenuItem>
+                  <MenuLabel>Tags</MenuLabel>
+                  {tagDefs.defs.map((t) => (
+                    <MenuItem
+                      key={t.name}
+                      selected={tags.includes(t.name)}
+                      hint={tagDefs.counts.get(t.name) ?? 0}
+                      onSelect={() => setTags((ts) => (ts.includes(t.name) ? ts.filter((x) => x !== t.name) : [...ts, t.name]))}
+                    >
+                      <Tag color={t.color}>{t.name}</Tag>
+                    </MenuItem>
+                  ))}
                 </>
               )}
               {activeFilters > 0 && (
@@ -117,7 +126,7 @@ export function ProjectsView() {
                   <MenuItem
                     onSelect={() => {
                       setTypes([]);
-                      setShowClosed(false);
+                      setTags([]);
                     }}
                   >
                     Clear filters

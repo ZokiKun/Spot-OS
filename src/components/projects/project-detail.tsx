@@ -15,7 +15,9 @@ import {
   Link2,
   Palette,
   Plus,
+  StickyNote,
   Tag as TagIcon,
+  Tags,
   Trash2,
   User,
   Users,
@@ -31,6 +33,7 @@ import { NAV_ICONS } from "@/components/shell/icons";
 import { EditableText, AutoTextarea } from "@/components/ui/input";
 import { DateField, OptionField, PersonField, PropertyRow } from "@/components/ui/fields";
 import { UnderlineTabs } from "@/components/ui/tabs";
+import { TagsField } from "@/components/ui/tags-field";
 import { Button, IconButton } from "@/components/ui/button";
 import { Popover, usePopover } from "@/components/ui/popover";
 import { MenuDivider, MenuItem, MenuList } from "@/components/ui/menu";
@@ -162,6 +165,12 @@ export function ProjectDetail({ id }: { id: string }) {
             </PropertyRow>
             <PropertyRow icon={<TagIcon className="size-4" />} label="Type">
               <OptionField variant="property" kind="select" options={PROJECT_TYPES} value={project.type} onChange={(type) => set({ type })} />
+            </PropertyRow>
+            <PropertyRow icon={<Tags className="size-4" />} label="Tags">
+              <TagsField variant="property" scope="project" value={project.tags} onChange={(tags) => set({ tags })} />
+            </PropertyRow>
+            <PropertyRow icon={<StickyNote className="size-4" />} label="Note">
+              <TextProperty value={project.note} onCommit={(note) => set({ note })} />
             </PropertyRow>
             <PropertyRow icon={<Building2 className="size-4" />} label="Client">
               <TextProperty value={project.client} onCommit={(client) => set({ client })} />

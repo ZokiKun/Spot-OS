@@ -48,6 +48,8 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
       deadline,
       description: null,
       next_action: nextAction.trim() || null,
+      note: null,
+      tags: [],
       notes_html: null,
       created_by: me?.id ?? null,
       completed_at: null,

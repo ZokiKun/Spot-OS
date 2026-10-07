@@ -45,5 +45,21 @@ export function emptySnapshot(): Snapshot {
     finance_sources: [],
     finance_snapshots: [],
     settings: [],
+    notifications: [],
+  };
+}
+
+/**
+ * Fill fields added after a row was stored (demo localStorage, old realtime payloads),
+ * so the UI can rely on them.
+ */
+export function normalizeSnapshot(s: Snapshot): Snapshot {
+  return {
+    ...emptySnapshot(),
+    ...s,
+    projects: s.projects.map((p) => ({ ...p, tags: p.tags ?? [], note: p.note ?? null })),
+    library_items: s.library_items.map((l) => ({ ...l, tags: l.tags ?? [], pinned: l.pinned ?? false, pinned_by: l.pinned_by ?? [] })),
+    attachments: s.attachments.map((a) => ({ ...a, kb_page_id: a.kb_page_id ?? null })),
+    notifications: s.notifications ?? [],
   };
 }

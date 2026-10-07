@@ -44,6 +44,10 @@ export interface Project {
   deadline: ISODate | null;
   description: string | null;
   next_action: string | null;
+  /** Short note shown in the projects table (supports @mentions). */
+  note: string | null;
+  /** Custom tags — names; colours live in the "tags" workspace setting. */
+  tags: string[];
   notes_html: string | null;
   created_by: UUID | null;
   created_at: ISODateTime;
@@ -92,6 +96,7 @@ export interface Attachment {
   note_id: UUID | null;
   project_id: UUID | null;
   review_id: UUID | null;
+  kb_page_id: UUID | null; // Spot Base brand assets (logo, files)
   name: string;
   mime_type: string;
   size: number;
@@ -111,6 +116,10 @@ export interface LibraryItem {
   project_id: UUID | null;
   tags: string[];
   description: string | null;
+  /** Pinned for everyone. */
+  pinned: boolean;
+  /** Members who pinned it for themselves. */
+  pinned_by: UUID[];
   created_by: UUID | null;
   created_at: ISODateTime;
   updated_at: ISODateTime;
@@ -145,6 +154,22 @@ export interface ActivityEntry {
   entity_label: string;
   project_id: UUID | null;
   meta: Record<string, unknown>;
+  created_at: ISODateTime;
+  updated_at: ISODateTime;
+}
+
+/** In-app notification, e.g. "Sam mentioned you in Northwind rebrand". */
+export interface Notification {
+  id: UUID;
+  recipient_id: UUID;
+  actor_id: UUID | null;
+  kind: "mention";
+  entity_type: "project" | "task" | "calendar_note" | "kb_page";
+  entity_id: UUID;
+  entity_label: string;
+  href: string;
+  excerpt: string;
+  read_at: ISODateTime | null;
   created_at: ISODateTime;
   updated_at: ISODateTime;
 }
@@ -234,6 +259,7 @@ export interface Tables {
   finance_sources: FinanceSource;
   finance_snapshots: FinanceSnapshot;
   settings: WorkspaceSettings;
+  notifications: Notification;
 }
 
 export type TableName = keyof Tables;
@@ -253,6 +279,7 @@ export const TABLE_NAMES: TableName[] = [
   "finance_sources",
   "finance_snapshots",
   "settings",
+  "notifications",
 ];
 
 export type Snapshot = { [K in TableName]: Tables[K][] };

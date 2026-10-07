@@ -36,8 +36,10 @@ export function Picker<V>({
     [items, query],
   );
 
+  // The popover is invisible until it has measured itself, so focus on the next frame.
   useEffect(() => {
-    inputRef.current?.focus();
+    const id = requestAnimationFrame(() => inputRef.current?.focus());
+    return () => cancelAnimationFrame(id);
   }, []);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
