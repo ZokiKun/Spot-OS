@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { TagColor } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-/** Notion select tag: muted fill, 3px radius, 20px tall. */
+/** Soft-tinted label with saturated text (Duolingo "WEEK 1" / "OCTOBER" badges). */
 export function Tag({
   color = "default",
   children,
@@ -16,7 +16,7 @@ export function Tag({
     <span
       className={cn(
         `tag-${color}`,
-        "inline-flex h-5 max-w-full shrink-0 items-center truncate rounded-[3px] px-1.5 text-[12.5px] leading-5 text-[var(--tag-text)]",
+        "inline-flex h-6 max-w-full shrink-0 items-center truncate rounded-lg px-2 text-[12.5px] font-bold leading-6",
         className,
       )}
     >
@@ -25,22 +25,21 @@ export function Tag({
   );
 }
 
-/** Notion status property: pill with a coloured dot. */
+/** Status pill: uppercase, bold, tinted — one colour per meaning. */
 export function StatusTag({ color = "default", children, className }: { color?: TagColor; children: ReactNode; className?: string }) {
   return (
     <span
       className={cn(
         `tag-${color}`,
-        "inline-flex h-5 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full pl-1.5 pr-2 text-[12.5px] leading-5 text-[var(--tag-text)]",
+        "label-caps inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full px-2.5 text-[11px] leading-6",
         className,
       )}
     >
-      <span className={cn(`dot-${color}`, "size-2 shrink-0 rounded-full")} />
       {children}
     </span>
   );
 }
 
 export function Dot({ color = "default", className }: { color?: TagColor; className?: string }) {
-  return <span className={cn(`dot-${color}`, "inline-block size-2 shrink-0 rounded-full", className)} />;
+  return <span className={cn(`dot-${color}`, "inline-block size-2.5 shrink-0 rounded-full", className)} />;
 }

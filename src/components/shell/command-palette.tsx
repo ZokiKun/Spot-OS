@@ -7,7 +7,7 @@ import { CalendarDays, CircleCheck, FileText, Link2, Search } from "lucide-react
 import { useWorkspace } from "@/lib/store";
 import { NAV_ITEMS } from "@/lib/constants";
 import { cn, formatDay } from "@/lib/utils";
-import { NAV_ICONS } from "./icons";
+import { NAV_ART } from "./icons";
 
 interface Result {
   id: string;
@@ -47,8 +47,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     const out: Result[] = [];
     if (!q)
       NAV_ITEMS.forEach((n) => {
-        const Icon = NAV_ICONS[n.icon]!;
-        out.push({ id: n.href, group: "Go to", label: n.label, icon: <Icon className="size-4" />, href: n.href });
+        const Art = NAV_ART[n.icon]!;
+        out.push({ id: n.href, group: "Go to", label: n.label, icon: <Art size={22} />, href: n.href });
       });
     data.projects
       .filter((p) => match(p.name, p.client, p.description))
@@ -102,15 +102,15 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   if (!open || typeof document === "undefined") return null;
   let lastGroup = "";
   return createPortal(
-    <div className="anim-fade fixed inset-0 z-50 flex items-start justify-center bg-[rgba(15,15,15,0.6)] px-4 pt-[14vh]" onMouseDown={onClose}>
+    <div className="anim-fade fixed inset-0 z-50 flex items-start justify-center bg-[rgba(0,0,0,0.5)] px-4 pt-[14vh]" onMouseDown={onClose}>
       <div
         role="dialog"
         aria-label="Search"
         onMouseDown={(e) => e.stopPropagation()}
-        className="anim-pop w-full max-w-[620px] overflow-hidden rounded-xl bg-elevated shadow-menu"
+        className="anim-bounce w-full max-w-[620px] overflow-hidden rounded-3xl border-2 border-line bg-bg"
       >
-        <div className="flex items-center gap-2.5 border-b border-line px-4">
-          <Search className="size-[18px] text-fg-3" />
+        <div className="flex items-center gap-3 border-b-2 border-line px-5">
+          <Search className="size-5 text-fg-3" strokeWidth={2.5} />
           <input
             ref={inputRef}
             value={query}
@@ -131,25 +131,25 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               } else if (e.key === "Escape") onClose();
             }}
             placeholder="Search projects, tasks, library, notes, Spot Base…"
-            className="h-12 flex-1 bg-transparent text-[16px] outline-none placeholder:text-fg-3"
+            className="h-14 flex-1 bg-transparent text-[17px] font-bold outline-none placeholder:font-semibold placeholder:text-fg-3"
           />
         </div>
-        <div ref={listRef} className="max-h-[52vh] overflow-y-auto p-1.5">
-          {results.length === 0 && <div className="px-3 py-8 text-center text-[14px] text-fg-3">No results for “{query}”</div>}
+        <div ref={listRef} className="max-h-[52vh] overflow-y-auto p-2">
+          {results.length === 0 && <div className="px-3 py-8 text-center text-[15px] font-bold text-fg-3">No results for “{query}”</div>}
           {results.map((r, i) => {
             const header = r.group !== lastGroup ? r.group : null;
             lastGroup = r.group;
             return (
               <div key={`${r.group}-${r.id}`}>
-                {header && <div className="px-2.5 pb-1 pt-2.5 text-[12px] font-medium text-fg-2">{header}</div>}
+                {header && <div className="label-caps px-3 pb-1 pt-3 text-[11px] text-fg-3">{header}</div>}
                 <button
                   type="button"
                   data-index={i}
                   onMouseMove={() => setActive(i)}
                   onClick={() => go(r)}
-                  className={cn("flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-[14px]", i === active && "bg-hover")}
+                  className={cn("flex h-11 w-full items-center gap-3 rounded-xl border-2 border-transparent px-3 text-left text-[15px] font-bold", i === active && "border-line-selected bg-selected text-blue")}
                 >
-                  <span className="flex size-5 shrink-0 items-center justify-center text-fg-2">{r.icon}</span>
+                  <span className="flex size-6 shrink-0 items-center justify-center text-fg-2">{r.icon}</span>
                   <span className="min-w-0 flex-1 truncate">{r.label}</span>
                   {r.hint && <span className="shrink-0 text-[12px] text-fg-3">{r.hint}</span>}
                   {i === active && <span className="shrink-0 text-[12px] text-fg-3">↵</span>}

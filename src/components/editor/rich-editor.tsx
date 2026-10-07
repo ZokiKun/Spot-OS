@@ -109,7 +109,7 @@ export function RichEditor({ value, onChange, placeholder = "Write something…"
     <div className="group/editor relative">
       {editable && <BlockToolbar editor={editor} onImage={onUploadImage ? () => fileRef.current?.click() : undefined} />}
       {editable && (
-        <BubbleMenu editor={editor} className="flex items-center gap-0.5 rounded-md bg-elevated p-0.5 shadow-menu">
+        <BubbleMenu editor={editor} className="flex items-center gap-0.5 rounded-xl bg-elevated p-1 shadow-menu">
           <MarkButtons editor={editor} />
         </BubbleMenu>
       )}
@@ -138,8 +138,8 @@ function ToolButton({ active, onClick, label, children }: { active?: boolean; on
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       className={cn(
-        "flex size-7 items-center justify-center rounded text-fg-2 transition-colors hover:bg-hover hover:text-fg",
-        active && "bg-active text-fg",
+        "flex size-8 items-center justify-center rounded-lg text-fg-2 transition-colors hover:bg-hover hover:text-fg",
+        active && "bg-blue-soft text-blue",
       )}
     >
       {children}
@@ -201,7 +201,7 @@ function MarkButtons({ editor }: { editor: Editor }) {
 function BlockToolbar({ editor, onImage }: { editor: Editor; onImage?: () => void }) {
   const a = useActive(editor);
   return (
-    <div className="no-print sticky top-11 z-10 -mx-1 mb-3 flex flex-wrap items-center gap-0.5 bg-bg/95 py-1 opacity-60 backdrop-blur-sm transition-opacity focus-within:opacity-100 group-hover/editor:opacity-100">
+    <div className="no-print z-10 -mx-1 mb-3 flex flex-wrap items-center gap-0.5 rounded-xl border-2 border-line bg-subtle p-1 opacity-70 transition-opacity focus-within:opacity-100 group-hover/editor:opacity-100">
       <ToolButton label="Heading 1" active={a.h1} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
         <Heading1 className="size-4" />
       </ToolButton>
@@ -211,9 +211,9 @@ function BlockToolbar({ editor, onImage }: { editor: Editor; onImage?: () => voi
       <ToolButton label="Heading 3" active={a.h3} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
         <Heading3 className="size-4" />
       </ToolButton>
-      <span className="mx-1 h-4 w-px bg-line-strong" />
+      <span className="mx-1 h-5 w-[2px] rounded bg-line" />
       <MarkButtons editor={editor} />
-      <span className="mx-1 h-4 w-px bg-line-strong" />
+      <span className="mx-1 h-5 w-[2px] rounded bg-line" />
       <ToolButton label="Bulleted list" active={a.bullet} onClick={() => editor.chain().focus().toggleBulletList().run()}>
         <List className="size-4" />
       </ToolButton>

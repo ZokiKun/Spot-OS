@@ -32,24 +32,24 @@ export function Dialog({
 
   if (!open || typeof document === "undefined") return null;
   return createPortal(
-    <div className="anim-fade fixed inset-0 z-40 flex items-start justify-center bg-[rgba(15,15,15,0.6)] px-4 pt-[12vh]" onMouseDown={onClose}>
+    <div className="anim-fade fixed inset-0 z-40 flex items-start justify-center bg-[rgba(0,0,0,0.5)] px-4 pt-[12vh]" onMouseDown={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         onMouseDown={(e) => e.stopPropagation()}
-        className={cn("anim-pop flex max-h-[76vh] w-full flex-col overflow-hidden rounded-xl bg-elevated shadow-menu", className)}
+        className={cn("anim-bounce flex max-h-[80vh] w-full flex-col overflow-hidden rounded-3xl border-2 border-line bg-bg", className)}
         style={{ maxWidth: width }}
       >
         {title && (
-          <div className="flex items-center justify-between px-5 pb-1 pt-4">
-            <h2 className="text-[16px] font-semibold">{title}</h2>
+          <div className="flex items-center justify-between px-6 pb-1 pt-5">
+            <h2 className="text-[22px] font-extrabold">{title}</h2>
             <IconButton label="Close" onClick={onClose}>
-              <X className="size-4" />
+              <X className="size-5" strokeWidth={2.5} />
             </IconButton>
           </div>
         )}
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">{children}</div>
-        {footer && <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3">{footer}</div>}
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">{children}</div>
+        {footer && <div className="flex items-center justify-end gap-3 border-t-2 border-line px-6 py-4">{footer}</div>}
       </div>
     </div>,
     document.body,

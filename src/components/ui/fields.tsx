@@ -34,7 +34,7 @@ function FieldButton({
       }}
       className={cn(
         "flex min-w-0 items-center text-left transition-colors duration-75 hover:bg-hover",
-        variant === "property" ? "min-h-[30px] w-full rounded-md px-1.5 py-1" : "h-full min-h-8 w-full px-2",
+        variant === "property" ? "min-h-9 w-full rounded-xl px-1.5 py-1 font-bold" : "h-full min-h-9 w-full rounded-lg px-2 font-bold",
         className,
       )}
     >
@@ -166,14 +166,14 @@ export function DateField({
           }}
         />
         {value && (
-          <div className="border-t border-line p-1">
+          <div className="border-t-2 border-line p-1.5">
             <button
               type="button"
               onClick={() => {
                 onChange(null);
                 pop.close();
               }}
-              className="flex h-7 w-full items-center rounded-md px-2 text-[14px] text-fg-2 hover:bg-hover"
+              className="flex h-10 w-full items-center rounded-xl px-2.5 text-[14px] font-bold text-fg-2 hover:bg-hover"
             >
               Clear date
             </button>
@@ -230,15 +230,15 @@ export function ProjectField({
   );
 }
 
-/** Notion page property row: icon + muted label on the left, editable value on the right. */
-export function PropertyRow({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
+/** Labelled fact: small uppercase label above an editable value, inside a soft tile. */
+export function PropertyRow({ icon, label, children }: { icon?: ReactNode; label: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-[34px] items-start gap-1">
-      <div className="flex h-[30px] w-40 shrink-0 items-center gap-1.5 px-1.5 text-[14px] text-fg-2 max-sm:w-32">
-        <span className="flex size-4 items-center justify-center text-fg-3">{icon}</span>
+    <div className="min-w-0 rounded-2xl border-2 border-line px-1.5 pb-1 pt-2">
+      <div className="label-caps flex items-center gap-1.5 px-1.5 text-[11px] text-fg-3">
+        {icon && <span className="flex size-3.5 items-center justify-center">{icon}</span>}
         <span className="truncate">{label}</span>
       </div>
-      <div className="min-w-0 flex-1 text-[14px]">{children}</div>
+      <div className="min-w-0 text-[15px]">{children}</div>
     </div>
   );
 }

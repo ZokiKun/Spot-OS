@@ -79,6 +79,7 @@ export const NAV_ITEMS = [
   { href: "/", label: "Home", icon: "home" },
   { href: "/calendar", label: "Calendar", icon: "calendar" },
   { href: "/projects", label: "Projects", icon: "projects" },
+  { href: "/studio", label: "Studio", icon: "studio" },
   { href: "/library", label: "Library", icon: "library" },
   { href: "/reviews", label: "Reviews", icon: "reviews" },
   { href: "/spot-base", label: "Spot Base", icon: "spotbase" },

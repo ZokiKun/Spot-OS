@@ -34,22 +34,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       {mounted &&
         createPortal(
-          <div className="fixed bottom-4 left-1/2 z-[100] flex -translate-x-1/2 flex-col items-center gap-2" role="status" aria-live="polite">
+          <div className="fixed bottom-24 left-1/2 md:bottom-6 z-[100] flex -translate-x-1/2 flex-col items-center gap-2" role="status" aria-live="polite">
             {toasts.map((t) => (
               <div
                 key={t.id}
-                className="anim-pop flex max-w-[420px] items-start gap-2.5 rounded-lg bg-[#2f2f2f] px-3.5 py-2.5 text-[13px] text-white shadow-menu"
+                className="anim-bounce flex max-w-[420px] items-start gap-3 rounded-2xl border-2 border-b-4 border-line bg-bg px-4 py-3 text-[14px] text-fg shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
               >
                 {t.tone === "error" ? (
-                  <CircleAlert className="mt-px size-4 shrink-0 text-[#ff7369]" />
+                  <CircleAlert className="mt-px size-5 shrink-0 text-red" strokeWidth={2.5} />
                 ) : t.tone === "success" ? (
-                  <CircleCheck className="mt-px size-4 shrink-0 text-[#6fcf97]" />
+                  <CircleCheck className="mt-px size-5 shrink-0 text-green" strokeWidth={2.5} />
                 ) : null}
                 <div className="min-w-0">
-                  <div className="font-medium">{t.title}</div>
-                  {t.description && <div className={cn("mt-0.5 text-white/65")}>{t.description}</div>}
+                  <div className="font-extrabold">{t.title}</div>
+                  {t.description && <div className={cn("mt-0.5 font-semibold text-fg-2")}>{t.description}</div>}
                 </div>
-                <button onClick={() => dismiss(t.id)} className="ml-1 rounded p-0.5 text-white/60 hover:bg-white/10" aria-label="Dismiss">
+                <button onClick={() => dismiss(t.id)} className="ml-1 rounded-lg p-0.5 text-fg-3 hover:bg-hover" aria-label="Dismiss">
                   <X className="size-3.5" />
                 </button>
               </div>

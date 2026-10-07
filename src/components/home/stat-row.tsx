@@ -6,31 +6,37 @@ export interface Stat {
   value: ReactNode;
   sub?: ReactNode;
   tone?: "default" | "danger" | "good";
+  icon?: ReactNode;
 }
 
-/** Hairline-divided figures — calmer than cards, reads at a glance. */
-export function StatRow({ stats, className }: { stats: Stat[]; className?: string }) {
+/** Duolingo "Statistics" tiles: icon, big number, small label. */
+export function StatRow({ stats, className, columns }: { stats: Stat[]; className?: string; columns?: 2 | 3 | 4 }) {
+  const cols = columns ?? (stats.length >= 4 ? 4 : stats.length === 3 ? 3 : 2);
   return (
     <div
       className={cn(
-        "grid gap-px overflow-hidden rounded-lg bg-line shadow-[0_0_0_1px_var(--border)]",
-        stats.length >= 4 ? "grid-cols-2 lg:grid-cols-4" : stats.length === 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2",
+        "grid grid-cols-2 gap-3",
+        cols === 4 && "lg:grid-cols-4",
+        cols === 3 && "sm:grid-cols-3",
         className,
       )}
     >
       {stats.map((s) => (
-        <div key={s.label} className="bg-bg px-4 py-3.5">
-          <div className="text-[12px] text-fg-2">{s.label}</div>
-          <div
-            className={cn(
-              "mt-1 text-[22px] font-semibold leading-tight tabular tracking-[-0.01em]",
-              s.tone === "danger" && "text-danger",
-              s.tone === "good" && "text-[var(--success)]",
-            )}
-          >
-            {s.value}
+        <div key={s.label} className="flex min-w-0 items-start gap-2.5 rounded-2xl border-2 border-line px-3.5 py-3">
+          {s.icon && <span className="mt-0.5 shrink-0 text-[22px] leading-none">{s.icon}</span>}
+          <div className="min-w-0">
+            <div
+              className={cn(
+                "truncate text-[20px] font-black leading-tight tabular",
+                s.tone === "danger" && "text-red",
+                s.tone === "good" && "text-green-edge",
+              )}
+            >
+              {s.value}
+            </div>
+            <div className="text-[13px] font-bold leading-snug text-fg-2">{s.label}</div>
+            {s.sub && <div className="mt-0.5 truncate text-[12px] font-semibold text-fg-3">{s.sub}</div>}
           </div>
-          {s.sub && <div className="mt-1 text-[12px] text-fg-3">{s.sub}</div>}
         </div>
       ))}
     </div>

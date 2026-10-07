@@ -1,40 +1,38 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Library as LibraryIconLucide, Plus, Search, X } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import type { LibraryItemType } from "@/lib/types";
 import { LIBRARY_TYPES } from "@/lib/constants";
 import { useWorkspace } from "@/lib/store";
-import { cn } from "@/lib/utils";
 import { Page, PageTitle } from "@/components/shell/page";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/misc";
-import { ProjectField } from "@/components/ui/fields";
+import { Card, EmptyState } from "@/components/ui/misc";
+import { ViewTabs } from "@/components/ui/tabs";
+import { Mascot } from "@/components/ui/mascot";
+import { RailCard } from "@/components/home/rail-cards";
 import { LibraryRow } from "./library-row";
 import { LibraryItemDialog } from "./library-item-dialog";
 import { LibraryIcon } from "./library-meta";
 
+/** One search box and a row of type chips — that's the whole Library. */
 export function LibraryView() {
   const { data } = useWorkspace();
   const [query, setQuery] = useState("");
-  const [type, setType] = useState<LibraryItemType | null>(null);
-  const [tag, setTag] = useState<string | null>(null);
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const [type, setType] = useState<LibraryItemType | "all">("all");
   const [adding, setAdding] = useState(false);
 
-  const allTags = useMemo(() => [...new Set(data.library_items.flatMap((i) => i.tags))].sort(), [data.library_items]);
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const projectName = (id: string | null) => (id ? (data.projects.find((p) => p.id === id)?.name ?? "") : "");
     return data.library_items
       .filter(
         (i) =>
-          (!type || i.type === type) &&
-          (!tag || i.tags.includes(tag)) &&
-          (!projectId || i.project_id === projectId) &&
-          (!q || [i.name, i.description, i.url, i.tags.join(" ")].some((f) => f?.toLowerCase().includes(q))),
+          (type === "all" || i.type === type) &&
+          (!q || [i.name, i.description, i.url, i.tags.join(" "), projectName(i.project_id)].some((f) => f?.toLowerCase().includes(q))),
       )
       .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
-  }, [data.library_items, query, type, tag, projectId]);
+  }, [data.library_items, data.projects, query, type]);
 
   const typeCounts = useMemo(() => {
     const m = new Map<LibraryItemType, number>();
@@ -42,94 +40,80 @@ export function LibraryView() {
     return m;
   }, [data.library_items]);
 
-  const filtered = Boolean(query || type || tag || projectId);
-
   return (
     <Page
-      crumbs={[{ label: "Library", icon: <LibraryIconLucide className="size-4" /> }]}
-      actions={
-        <Button variant="primary" onClick={() => setAdding(true)}>
-          <Plus className="size-3.5" /> Add
-        </Button>
+      crumbs={[{ label: "Library" }]}
+      aside={
+        <RailCard title="How Library works">
+          <div className="flex items-start gap-3 pt-1">
+            <Mascot mood="happy" size={56} />
+            <p className="text-[14px] font-semibold leading-snug text-fg-2">
+              Library is a list of <b className="text-fg">links</b> — docs, sheets, Drive folders, templates. The files themselves stay in Google Drive.
+            </p>
+          </div>
+        </RailCard>
       }
     >
-      <PageTitle title="Library" description="An index of the studio’s docs, sheets, Drive folders, templates and links. Files stay in Google Drive." />
-
-      <div className="mb-4 flex flex-col gap-3">
-        <label className="flex h-9 items-center gap-2 rounded-md bg-input px-3 shadow-[inset_0_0_0_1px_var(--border)] focus-within:shadow-[inset_0_0_0_1px_var(--accent)]">
-          <Search className="size-4 text-fg-3" />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name, tag or URL" className="flex-1 bg-transparent text-[14px] outline-none placeholder:text-fg-3" />
-          {query && (
-            <button type="button" onClick={() => setQuery("")} className="text-fg-3 hover:text-fg" aria-label="Clear search">
-              <X className="size-4" />
-            </button>
-          )}
-        </label>
-        <div className="flex flex-wrap items-center gap-1">
-          <Chip active={!type} onClick={() => setType(null)}>
-            All <span className="text-fg-3">{data.library_items.length}</span>
-          </Chip>
-          {LIBRARY_TYPES.filter((t) => typeCounts.get(t.value)).map((t) => (
-            <Chip key={t.value} active={type === t.value} onClick={() => setType(type === t.value ? null : t.value)}>
-              <LibraryIcon type={t.value} className="size-3.5" /> {t.label}
-              <span className="text-fg-3">{typeCounts.get(t.value)}</span>
-            </Chip>
-          ))}
-          <div className="ml-auto w-52">
-            <ProjectField projects={data.projects} value={projectId} onChange={setProjectId} variant="property" placeholder="Any project" />
-          </div>
-        </div>
-        {allTags.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1">
-            {allTags.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTag(tag === t ? null : t)}
-                className={cn("rounded-[3px] px-1.5 text-[12.5px] leading-5 transition-colors", tag === t ? "bg-accent text-white" : "tag-default text-[var(--tag-text)] hover:opacity-80")}
-              >
-                #{t}
-              </button>
-            ))}
-          </div>
-        )}
+      <div className="flex items-start justify-between gap-4">
+        <PageTitle title="Library" description="The studio’s docs, sheets, folders and templates — in one place." />
+        <Button variant="primary" size="md" className="mt-1 shrink-0" onClick={() => setAdding(true)}>
+          <Plus className="size-4" strokeWidth={3.5} /> Add
+        </Button>
       </div>
 
-      <div className="border-t border-line pt-1">
-        {items.map((i) => (
-          <LibraryRow key={i.id} item={i} />
-        ))}
-        {items.length === 0 &&
-          (filtered ? (
-            <EmptyState title="Nothing matches" description="Try another search or clear the filters." />
+      <label className="mb-3 flex h-12 items-center gap-3 rounded-2xl border-2 border-line bg-input px-4 focus-within:border-blue">
+        <Search className="size-5 text-fg-3" strokeWidth={3} />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by name, tag, project or link"
+          className="min-w-0 flex-1 bg-transparent text-[15.5px] font-bold outline-none placeholder:font-semibold placeholder:text-fg-3"
+        />
+        {query && (
+          <button type="button" onClick={() => setQuery("")} className="text-fg-3 hover:text-fg" aria-label="Clear search">
+            <X className="size-5" strokeWidth={3} />
+          </button>
+        )}
+      </label>
+      <ViewTabs<LibraryItemType | "all">
+        className="mb-6"
+        value={type}
+        onChange={setType}
+        items={[
+          { value: "all", label: "All", count: data.library_items.length },
+          ...LIBRARY_TYPES.filter((t) => typeCounts.get(t.value)).map((t) => ({
+            value: t.value,
+            label: t.label,
+            icon: <LibraryIcon type={t.value} className="size-[18px]" />,
+          })),
+        ]}
+      />
+
+      {items.length === 0 ? (
+        <Card>
+          {query || type !== "all" ? (
+            <EmptyState mood="think" title="Nothing matches" description="Try another word, or pick “All”." />
           ) : (
             <EmptyState
+              mood="sleepy"
               title="Library is empty"
-              description="Paste a Google Doc, Sheet, Drive folder or any URL to index it here."
+              description="Paste a Google Doc, Sheet, Drive folder or any link to keep it here."
               action={
-                <Button onClick={() => setAdding(true)}>
-                  <Plus className="size-3.5" /> Add the first resource
+                <Button variant="primary" size="md" onClick={() => setAdding(true)}>
+                  Add the first link
                 </Button>
               }
             />
+          )}
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {items.map((i) => (
+            <LibraryRow key={i.id} item={i} />
           ))}
-      </div>
-      <LibraryItemDialog open={adding} onClose={() => setAdding(false)} defaults={projectId ? { project_id: projectId } : undefined} />
-    </Page>
-  );
-}
-
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[13px] transition-colors",
-        active ? "bg-active font-medium text-fg" : "text-fg-2 hover:bg-hover",
+        </div>
       )}
-    >
-      {children}
-    </button>
+      <LibraryItemDialog open={adding} onClose={() => setAdding(false)} />
+    </Page>
   );
 }

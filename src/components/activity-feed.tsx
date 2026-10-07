@@ -61,7 +61,7 @@ export function ActivityFeed({ entries, limit = 12, compact = false }: { entries
   const people = useProfiles();
   const { data } = useWorkspace();
   const names = (id: string) => firstName(people.get(id)?.full_name) || "someone";
-  if (!entries.length) return <EmptyState title="No activity yet" description="Changes to projects, tasks and notes show up here." />;
+  if (!entries.length) return <EmptyState mood="sleepy" title="Nothing yet" description="Changes to projects, tasks and notes show up here." className="py-6" />;
   const sorted = entries.slice().sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, limit);
   return (
     <ol className="relative">
@@ -69,17 +69,17 @@ export function ActivityFeed({ entries, limit = 12, compact = false }: { entries
         const actor = people.get(e.actor_id);
         const project = e.entity_type !== "project" && e.project_id ? data.projects.find((p) => p.id === e.project_id) : undefined;
         return (
-          <li key={e.id} className="flex gap-2.5 rounded-md px-2 py-1.5 hover:bg-hover">
-            <Avatar profile={actor} size={20} className="mt-px" />
-            <div className="min-w-0 flex-1 text-[14px] leading-[22px]">
-              <span className="font-medium">{actor ? firstName(actor.full_name) : "Someone"}</span>{" "}
+          <li key={e.id} className="flex gap-3 rounded-xl px-2 py-2 hover:bg-hover">
+            <Avatar profile={actor} size={28} className="mt-px" />
+            <div className="min-w-0 flex-1 text-[14px] font-semibold leading-[20px]">
+              <span className="font-extrabold">{actor ? firstName(actor.full_name) : "Someone"}</span>{" "}
               <span className="text-fg-2">{describe(e, names)}</span>{" "}
-              <Link href={hrefFor(e)} className="font-medium underline decoration-fg-3 underline-offset-2 hover:decoration-fg">
+              <Link href={hrefFor(e)} className="font-extrabold text-blue hover:underline">
                 {e.entity_type === "review" ? "review" : e.entity_label}
               </Link>
               {project && !compact && <span className="text-fg-3"> in {project.name}</span>}
+              <div className="mt-0.5 text-[12px] font-bold text-fg-3">{timeAgo(e.created_at)}</div>
             </div>
-            <span className="shrink-0 pt-0.5 text-[12px] text-fg-3">{timeAgo(e.created_at)}</span>
           </li>
         );
       })}

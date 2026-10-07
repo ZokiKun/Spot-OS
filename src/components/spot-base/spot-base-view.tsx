@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, Check, Copy, Download, Ellipsis, FileCode2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, Copy, Download, Ellipsis, Pencil, Plus, Trash2 } from "lucide-react";
 import type { KbPage } from "@/lib/types";
 import { useProfiles, useWorkspace } from "@/lib/store";
 import { renderMarkdown } from "@/lib/markdown";
@@ -16,7 +16,10 @@ import { Button, IconButton } from "@/components/ui/button";
 import { AutoTextarea, EditableText } from "@/components/ui/input";
 import { Popover, usePopover } from "@/components/ui/popover";
 import { MenuItem, MenuList } from "@/components/ui/menu";
-import { EmptyState } from "@/components/ui/misc";
+import { ActionLink, Card, EmptyState, IconTile } from "@/components/ui/misc";
+import { Banner } from "@/components/ui/banner";
+import { NAV_ART } from "@/components/shell/icons";
+import { RailCard } from "@/components/home/rail-cards";
 
 const SPOT_MD = "spot-md";
 
@@ -24,7 +27,7 @@ export function SpotBaseView({ slug }: { slug?: string }) {
   const { data, create, me } = useWorkspace();
   const router = useRouter();
   const pages = useMemo(() => data.kb_pages.slice().sort((a, b) => a.sort_order - b.sort_order), [data.kb_pages]);
-  const current = slug === SPOT_MD ? null : (pages.find((p) => p.slug === slug) ?? (slug ? undefined : pages[0]));
+  const current = slug === SPOT_MD ? null : slug ? pages.find((p) => p.slug === slug) : null;
   const workspaceName = (data.settings.find((s) => s.key === "workspace")?.value.name as string) ?? "Studio Spot";
 
   const addPage = async () => {
@@ -43,69 +46,120 @@ export function SpotBaseView({ slug }: { slug?: string }) {
     router.push(`/spot-base/${page.slug}?edit=1`);
   };
 
-  return (
-    <Page width="full" className="max-w-[1180px]" crumbs={[{ label: "Spot Base", href: "/spot-base", icon: <BookOpen className="size-4" /> }, ...(slug === SPOT_MD ? [{ label: "SPOT.md" }] : current ? [{ label: current.title, icon: <span>{current.icon}</span> }] : [])]}>
-      <div className="grid grid-cols-1 gap-10 md:grid-cols-[200px_minmax(0,1fr)]">
-        <aside className="md:sticky md:top-16 md:self-start">
-          <div className="mb-1 px-2 text-[12px] font-medium text-fg-2">Pages</div>
-          <nav className="flex gap-0.5 overflow-x-auto md:flex-col">
-            {pages.map((p) => (
-              <Link
-                key={p.id}
-                href={`/spot-base/${p.slug}`}
-                className={cn(
-                  "flex h-[30px] shrink-0 items-center gap-2 rounded-md px-2 text-[14px] transition-colors",
-                  current?.id === p.id ? "bg-active font-medium text-fg" : "text-fg-2 hover:bg-hover",
-                )}
-              >
-                <span className="w-5 text-center">{p.icon}</span>
-                <span className="truncate">{p.title}</span>
-              </Link>
-            ))}
-            <button type="button" onClick={() => void addPage()} className="flex h-[30px] shrink-0 items-center gap-2 rounded-md px-2 text-[14px] text-fg-3 hover:bg-hover hover:text-fg-2">
-              <Plus className="size-4" /> Add page
-            </button>
-          </nav>
-          <div className="mt-4 border-t border-line pt-3">
-            <Link
-              href={`/spot-base/${SPOT_MD}`}
-              className={cn(
-                "flex h-[30px] items-center gap-2 rounded-md px-2 text-[14px]",
-                slug === SPOT_MD ? "bg-active font-medium" : "text-fg-2 hover:bg-hover",
-              )}
-            >
-              <FileCode2 className="size-4" /> SPOT.md
-            </Link>
-          </div>
-        </aside>
-        <div className="min-w-0">
-          {pages.length === 0 && slug !== SPOT_MD ? (
+  const crumbs = [{ label: "Spot Base", href: "/spot-base" }, ...(slug === SPOT_MD ? [{ label: "SPOT.md" }] : current ? [{ label: current.title }] : slug ? [{ label: "Not found" }] : [])];
+
+  // Index: the guidebook's table of contents.
+  if (!slug)
+    return (
+      <Page crumbs={crumbs} aside={<SpotMdCard />}>
+        <Banner tone="green" overline={`${workspaceName} guidebook`} title="Spot Base" art={<NAV_ART.spotbase size={84} />}>
+          Who we are, how we work, and where things live. Start anywhere — every page is short.
+        </Banner>
+        {pages.length === 0 ? (
+          <Card className="mt-8">
             <EmptyState
+              mood="think"
               title="Spot Base is empty"
-              description="Start with the suggested structure: who we are, positioning, brand, methodology, team, services, tools and file conventions."
+              description="Start with the suggested pages: who we are, positioning, brand, methodology, team, services, tools and file conventions."
               action={
                 <Button
                   variant="primary"
-                  onClick={() =>
-                    DEFAULT_KB_PAGES.forEach((p, i) =>
-                      void create("kb_pages", { ...p, sort_order: i, updated_by: me?.id ?? null }),
-                    )
-                  }
+                  size="md"
+                  onClick={() => DEFAULT_KB_PAGES.forEach((p, i) => void create("kb_pages", { ...p, sort_order: i, updated_by: me?.id ?? null }))}
                 >
                   Add starter pages
                 </Button>
               }
             />
-          ) : slug === SPOT_MD ? (
-            <SpotMdPanel md={buildSpotMd(pages, workspaceName)} />
-          ) : current ? (
-            <KbPageEditor key={current.id} page={current} />
-          ) : (
-            <EmptyState title="Page not found" action={<Link href="/spot-base" className="text-accent">Back to Spot Base</Link>} />
-          )}
-        </div>
-      </div>
+          </Card>
+        ) : (
+          <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {pages.map((p) => (
+              <Link key={p.id} href={`/spot-base/${p.slug}`} className="card-press flex items-start gap-3.5 rounded-2xl bg-bg p-4">
+                <IconTile tone="green" size={48}>
+                  {p.icon ?? "📄"}
+                </IconTile>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[16px] font-extrabold">{p.title}</div>
+                  <div className="mt-0.5 line-clamp-2 text-[13px] font-semibold leading-snug text-fg-2">{preview(p.content_md) || "Empty page"}</div>
+                </div>
+              </Link>
+            ))}
+            <button
+              type="button"
+              onClick={() => void addPage()}
+              className="label-caps flex min-h-20 items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line-strong text-[13px] text-fg-3 hover:border-blue hover:bg-blue-soft hover:text-blue"
+            >
+              <Plus className="size-4" strokeWidth={3} /> Add page
+            </button>
+          </div>
+        )}
+      </Page>
+    );
+
+  return (
+    <Page crumbs={crumbs} aside={<PagesCard pages={pages} currentId={current?.id} onAdd={() => void addPage()} />}>
+      {slug === SPOT_MD ? (
+        <SpotMdPanel md={buildSpotMd(pages, workspaceName)} />
+      ) : current ? (
+        <KbPageEditor key={current.id} page={current} />
+      ) : (
+        <Card>
+          <EmptyState mood="worried" title="Page not found" action={<ActionLink href="/spot-base">Back to Spot Base</ActionLink>} />
+        </Card>
+      )}
     </Page>
+  );
+}
+
+/** First real sentence of a page: skip headings, tables and code; fall back to the first list item. */
+function preview(md: string) {
+  const lines = md.split("\n").map((l) => l.trim()).filter(Boolean);
+  const para = lines.find((l) => !/^(#|\||[-*+]\s|\d+\.|>|```)/.test(l));
+  const item = lines.find((l) => /^([-*+]\s|\d+\.)/.test(l));
+  return (para ?? item ?? "")
+    .replace(/^([-*+]\s|\d+\.\s*)/, "")
+    .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+    .replace(/[*_`]/g, "")
+    .slice(0, 140);
+}
+
+function PagesCard({ pages, currentId, onAdd }: { pages: KbPage[]; currentId?: string; onAdd: () => void }) {
+  return (
+    <>
+      <RailCard title="Pages" action={<ActionLink onClick={onAdd}>+ Add</ActionLink>}>
+        <nav className="-mx-2 flex flex-col gap-0.5">
+          {pages.map((p) => (
+            <Link
+              key={p.id}
+              href={`/spot-base/${p.slug}`}
+              className={cn(
+                "flex h-11 items-center gap-2.5 rounded-xl border-2 px-2 text-[14.5px] font-bold",
+                currentId === p.id ? "border-line-selected bg-selected text-blue" : "border-transparent text-fg-2 hover:bg-hover",
+              )}
+            >
+              <span className="w-6 text-center text-[17px]">{p.icon}</span>
+              <span className="truncate">{p.title}</span>
+            </Link>
+          ))}
+        </nav>
+      </RailCard>
+      <SpotMdCard />
+    </>
+  );
+}
+
+function SpotMdCard() {
+  return (
+    <Link href={`/spot-base/${SPOT_MD}`} className="card-press flex items-center gap-4 rounded-2xl bg-bg px-5 py-4">
+      <IconTile tone="purple" size={44}>
+        🧠
+      </IconTile>
+      <div className="min-w-0 flex-1">
+        <div className="text-[16px] font-extrabold">SPOT.md</div>
+        <div className="text-[13px] font-semibold text-fg-2">Every page in one file, ready for an AI assistant.</div>
+      </div>
+    </Link>
   );
 }
 
@@ -132,13 +186,13 @@ function KbPageEditor({ page }: { page: KbPage }) {
   return (
     <article>
       <div className="flex items-start justify-between gap-2">
-        <button ref={iconPopAnchorRef} type="button" onClick={iconPop.toggle} className="-ml-1 flex size-16 items-center justify-center rounded-lg text-[48px] leading-none hover:bg-hover">
+        <button ref={iconPopAnchorRef} type="button" onClick={iconPop.toggle} className="flex size-[72px] items-center justify-center rounded-2xl bg-green-soft text-[42px] leading-none hover:brightness-95">
           {page.icon ?? "📄"}
         </button>
         <Popover open={iconPop.open} onClose={iconPop.close} anchor={iconPop.anchor} width={300}>
           <div className="grid grid-cols-8 gap-0.5 p-2">
             {icons.map((i) => (
-              <button key={i} type="button" onClick={() => (void update("kb_pages", page.id, { icon: i }), iconPop.close())} className="flex size-8 items-center justify-center rounded-md text-[18px] hover:bg-hover">
+              <button key={i} type="button" onClick={() => (void update("kb_pages", page.id, { icon: i }), iconPop.close())} className="flex size-9 items-center justify-center rounded-xl text-[19px] hover:bg-hover">
                 {i}
               </button>
             ))}
@@ -147,16 +201,17 @@ function KbPageEditor({ page }: { page: KbPage }) {
         <div className="flex items-center gap-1">
           <Button
             variant={editing ? "primary" : "secondary"}
+            size="md"
             onClick={() => {
               if (editing) flush();
               setEditing((e) => !e);
             }}
           >
-            {editing ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
+            {editing ? <Check className="size-4" strokeWidth={3.5} /> : <Pencil className="size-4" strokeWidth={3} />}
             {editing ? "Done" : "Edit"}
           </Button>
           <IconButton ref={menuAnchorRef} label="More" size="md" onClick={menu.toggle}>
-            <Ellipsis className="size-4" />
+            <Ellipsis className="size-5" strokeWidth={3} />
           </IconButton>
           <Popover open={menu.open} onClose={menu.close} anchor={menu.anchor} align="end" width={200}>
             <MenuList>
@@ -182,16 +237,16 @@ function KbPageEditor({ page }: { page: KbPage }) {
       <EditableText
         value={page.title}
         onCommit={(title) => title && void update("kb_pages", page.id, { title, updated_by: me?.id ?? null })}
-        className="mt-1 text-[32px] font-bold leading-tight tracking-[-0.01em] sm:text-[40px]"
+        className="mt-4 text-[30px] font-black leading-tight sm:text-[34px]"
       />
-      <div className="mb-6 mt-1 text-[12px] text-fg-3">
+      <div className="mb-6 mt-1 text-[13px] font-bold text-fg-3">
         Edited {timeAgo(page.updated_at)} by {people.get(page.updated_by)?.full_name ?? "someone"}
       </div>
 
       {editing ? (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="rounded-md bg-subtle p-4 shadow-[inset_0_0_0_1px_var(--border)]">
-            <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-fg-3">Markdown</div>
+        <div className="space-y-6">
+          <div className="rounded-2xl border-2 border-blue bg-subtle p-4">
+            <div className="label-caps mb-2 text-[11px] text-blue">Writing · Markdown</div>
             <AutoTextarea
               autoFocus
               value={draft}
@@ -204,14 +259,17 @@ function KbPageEditor({ page }: { page: KbPage }) {
               placeholder="Write in Markdown — # headings, - lists, **bold**, | tables |"
             />
           </div>
-          <div className="prose-notion min-w-0" dangerouslySetInnerHTML={{ __html: html }} />
+          <div>
+            <div className="label-caps mb-2 text-[11px] text-fg-3">Preview</div>
+            <div className="prose-notion min-w-0" dangerouslySetInnerHTML={{ __html: html }} />
+          </div>
         </div>
       ) : page.content_md.trim() ? (
         <div className="prose-notion" onDoubleClick={() => setEditing(true)} dangerouslySetInnerHTML={{ __html: html }} />
       ) : (
-        <button type="button" onClick={() => setEditing(true)} className="text-[16px] text-fg-3 hover:text-fg-2">
-          Empty page — click to write.
-        </button>
+        <Card>
+          <EmptyState mood="think" title="This page is empty" description="Write a few short paragraphs — anyone new should get it in a minute." action={<Button variant="primary" onClick={() => setEditing(true)}>Start writing</Button>} />
+        </Card>
       )}
     </article>
   );
@@ -221,17 +279,17 @@ function SpotMdPanel({ md }: { md: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div>
-      <div className="mb-2 text-[44px] leading-none">🧠</div>
-      <h1 className="text-[32px] font-bold leading-tight sm:text-[40px]">SPOT.md</h1>
-      <p className="mt-1.5 text-[15px] text-fg-2">
+      <IconTile tone="purple" size={72}>🧠</IconTile>
+      <h1 className="mt-4 text-[30px] font-black leading-tight sm:text-[34px]">SPOT.md</h1>
+      <p className="mt-1.5 text-[16px] font-semibold text-fg-2">
         The canonical studio context document, generated from every Spot Base page. It’s ready to use as context for an internal AI assistant later.
       </p>
-      <div className="mb-3 mt-5 flex gap-1.5">
-        <Button onClick={() => downloadFile("SPOT.md", md, "text/markdown")}>
-          <Download className="size-3.5" /> Download SPOT.md
+      <div className="mb-4 mt-5 flex gap-2">
+        <Button variant="blue" onClick={() => downloadFile("SPOT.md", md, "text/markdown")}>
+          <Download className="size-4" strokeWidth={3} /> Download
         </Button>
         <Button
-          variant="ghost"
+          variant="secondary"
           onClick={() => {
             void navigator.clipboard.writeText(md).then(() => {
               setCopied(true);
@@ -239,10 +297,10 @@ function SpotMdPanel({ md }: { md: string }) {
             });
           }}
         >
-          {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />} {copied ? "Copied" : "Copy"}
+          {copied ? <Check className="size-4" strokeWidth={3} /> : <Copy className="size-4" strokeWidth={3} />} {copied ? "Copied" : "Copy"}
         </Button>
       </div>
-      <pre className="max-h-[70vh] overflow-auto whitespace-pre-wrap rounded-md bg-subtle p-5 font-mono text-[12.5px] leading-relaxed shadow-[inset_0_0_0_1px_var(--border)]">{md}</pre>
+      <pre className="max-h-[70vh] overflow-auto whitespace-pre-wrap rounded-2xl border-2 border-line bg-subtle p-5 font-mono text-[12.5px] leading-relaxed">{md}</pre>
     </div>
   );
 }

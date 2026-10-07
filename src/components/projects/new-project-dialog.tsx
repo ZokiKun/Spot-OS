@@ -9,7 +9,8 @@ import { useProfiles, useWorkspace } from "@/lib/store";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
-import { DateField, OptionField, PersonField } from "@/components/ui/fields";
+import { DateField, OptionField, PersonField, PropertyRow } from "@/components/ui/fields";
+import { cn } from "@/lib/utils";
 
 const ICONS = ["📁", "🧭", "🪶", "🫙", "🟠", "⚙️", "📓", "🔤", "🎨", "📐", "🖼️", "🎬", "📦", "🌱", "✳️", "🔶"];
 
@@ -64,10 +65,10 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
       title="New project"
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" size="md" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={() => void submit()} disabled={!name.trim()}>
+          <Button variant="primary" size="md" onClick={() => void submit()} disabled={!name.trim()}>
             Create project
           </Button>
         </>
@@ -81,37 +82,43 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
         className="space-y-4"
       >
         <div>
-          <div className="mb-1.5 flex flex-wrap gap-0.5">
+          <div className="mb-3 flex flex-wrap gap-1.5">
             {ICONS.map((i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => setIcon(i)}
-                className={`flex size-8 items-center justify-center rounded-md text-[17px] hover:bg-hover ${icon === i ? "bg-active" : ""}`}
+                aria-pressed={icon === i}
+                className={cn(
+                  "flex size-10 items-center justify-center rounded-xl border-2 text-[19px]",
+                  icon === i ? "border-line-selected bg-selected" : "border-transparent hover:bg-hover",
+                )}
               >
                 {i}
               </button>
             ))}
           </div>
-          <TextInput autoFocus placeholder="Project name" value={name} onChange={(e) => setName(e.target.value)} className="h-10 text-[16px]" />
+          <TextInput autoFocus placeholder="What’s the project called?" value={name} onChange={(e) => setName(e.target.value)} className="text-[17px] font-extrabold" />
         </div>
-        <div className="grid grid-cols-[110px_1fr] items-center gap-x-3 gap-y-1 text-[14px]">
-          <span className="text-fg-2">Type</span>
-          <div className="-ml-1.5">
+        <TextInput placeholder="What’s the very next step? (optional)" value={nextAction} onChange={(e) => setNextAction(e.target.value)} />
+        <div className="grid grid-cols-2 gap-2.5">
+          <PropertyRow label="Type">
             <OptionField variant="property" kind="select" options={PROJECT_TYPES} value={type} onChange={setType} />
-          </div>
-          <span className="text-fg-2">Client</span>
-          <TextInput placeholder="Optional" value={client} onChange={(e) => setClient(e.target.value)} />
-          <span className="text-fg-2">Lead</span>
-          <div className="-ml-1.5">
+          </PropertyRow>
+          <PropertyRow label="Lead">
             <PersonField variant="property" people={people.list} value={lead} onChange={setLead} />
-          </div>
-          <span className="text-fg-2">Deadline</span>
-          <div className="-ml-1.5">
-            <DateField variant="property" value={deadline} onChange={setDeadline} />
-          </div>
-          <span className="text-fg-2">Next action</span>
-          <TextInput placeholder="The one next meaningful step" value={nextAction} onChange={(e) => setNextAction(e.target.value)} />
+          </PropertyRow>
+          <PropertyRow label="Deadline">
+            <DateField variant="property" value={deadline} onChange={setDeadline} placeholder="Pick a day" />
+          </PropertyRow>
+          <PropertyRow label="Client">
+            <input
+              placeholder="Optional"
+              value={client}
+              onChange={(e) => setClient(e.target.value)}
+              className="h-9 w-full rounded-xl bg-transparent px-1.5 text-[15px] font-bold outline-none placeholder:text-fg-3"
+            />
+          </PropertyRow>
         </div>
         <button type="submit" hidden />
       </form>

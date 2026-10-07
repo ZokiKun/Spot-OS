@@ -28,7 +28,7 @@ export function useMoneyVisible() {
 
 export function Money({ value, currency, compact }: { value: number | null | undefined; currency: string; compact?: boolean }) {
   const { visible } = useMoneyVisible();
-  if (!visible) return <span className="select-none tracking-[0.12em] text-fg-3" aria-label="Hidden amount">••••••</span>;
+  if (!visible) return <span className="select-none tracking-[0.12em] text-fg-3" aria-label="Hidden amount">•••••</span>;
   return <>{formatMoney(value, currency, compact)}</>;
 }
 
@@ -36,8 +36,8 @@ export function RevealToggle() {
   const { visible, setVisible } = useMoneyVisible();
   return (
     <Button variant="ghost" onClick={() => setVisible(!visible)} aria-pressed={visible}>
-      {visible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-      {visible ? "Hide values" : "Reveal values"}
+      {visible ? <EyeOff className="size-4" strokeWidth={3} /> : <Eye className="size-4" strokeWidth={3} />}
+      {visible ? "Hide amounts" : "Show amounts"}
     </Button>
   );
 }

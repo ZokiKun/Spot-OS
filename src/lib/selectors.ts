@@ -207,3 +207,20 @@ export function periodMetrics(data: Snapshot, start: string, end: string) {
     overdueTasks: data.tasks.filter((t) => isOpen(t) && t.due_date && t.due_date >= start && t.due_date < end && t.due_date < todayISO()).length,
   };
 }
+
+/** My week at a glance: tasks finished since the week started vs. still open and due by its end. */
+export function myWeek(data: Snapshot, meId: UUID | null, weekStartsOn: 0 | 1 = 1) {
+  const today = todayISO();
+  const d = new Date(`${today}T00:00:00`);
+  const back = (d.getDay() - weekStartsOn + 7) % 7;
+  const start = addDaysISO(today, -back);
+  const end = addDaysISO(start, 7);
+  const mine = data.tasks.filter((t) => t.assignee_id === meId);
+  const done = mine.filter((t) => t.status === "done" && t.completed_at && t.completed_at.slice(0, 10) >= start && t.completed_at.slice(0, 10) < end).length;
+  const open = mine.filter((t) => isOpen(t) && t.due_date && t.due_date < end).length;
+  const overdue = mine.filter((t) => isOverdue(t, today)).length;
+  return { start, end, done, open, total: done + open, overdue };
+}
+
+export const weekStartsOn = (data: Snapshot) =>
+  (((data.settings.find((s) => s.key === "workspace")?.value.week_starts_on as number) ?? 1) === 0 ? 0 : 1) as 0 | 1;

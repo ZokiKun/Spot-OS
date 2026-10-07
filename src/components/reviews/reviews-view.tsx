@@ -2,28 +2,27 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ClipboardCheck, Plus } from "lucide-react";
-import type { ReviewPeriod } from "@/lib/types";
-import { useProfiles, useWorkspace } from "@/lib/store";
-import { isReviewStarted, periodLabel, recentPeriods } from "@/lib/reviews";
-import { timeAgo } from "@/lib/utils";
+import { ChevronRight } from "lucide-react";
+import type { Review, ReviewPeriod } from "@/lib/types";
+import { useWorkspace } from "@/lib/store";
+import { periodLabel, recentPeriods, reviewFields } from "@/lib/reviews";
+import { cn } from "@/lib/utils";
 import { Page, PageTitle } from "@/components/shell/page";
-import { Button } from "@/components/ui/button";
-import { Popover, usePopover } from "@/components/ui/popover";
-import { MenuDivider, MenuItem, MenuLabel, MenuList } from "@/components/ui/menu";
-import { EmptyState, SectionHeading } from "@/components/ui/misc";
+import { Banner } from "@/components/ui/banner";
+import { buttonClasses } from "@/components/ui/button";
+import { Card, EmptyState, IconTile, ProgressBar, SectionHeading } from "@/components/ui/misc";
+import { Mascot } from "@/components/ui/mascot";
 import { StatusTag } from "@/components/ui/tag";
-import { Avatar } from "@/components/ui/avatar";
+import { NAV_ART } from "@/components/shell/icons";
+import { RailCard } from "@/components/home/rail-cards";
 
-export function ReviewsView() {
+export const answeredCount = (r: Review) => reviewFields(r.period).filter((f) => r[f.key]?.trim()).length;
+
+/** Find or create the review for a period, then open it. */
+export function useOpenReview() {
   const { data, create, me } = useWorkspace();
-  const people = useProfiles();
   const router = useRouter();
-  const { setAnchor: popAnchorRef, ...pop } = usePopover();
-
-  const existing = new Set(data.reviews.map((r) => `${r.period}:${r.period_start}`));
-  const open = async (period: ReviewPeriod, start: string) => {
-    pop.close();
+  return async (period: ReviewPeriod, start: string) => {
     const found = data.reviews.find((r) => r.period === period && r.period_start === start);
     if (found) return router.push(`/reviews/${found.id}`);
     const r = await create("reviews", {
@@ -43,73 +42,85 @@ export function ReviewsView() {
     });
     router.push(`/reviews/${r.id}`);
   };
+}
 
-  const months = recentPeriods("month", 4);
-  const quarters = recentPeriods("quarter", 3);
+/** Reviews: one clear "write this next" banner, then the history as simple cards. */
+export function ReviewsView() {
+  const { data } = useWorkspace();
+  const open = useOpenReview();
+
+  // The review that matters now: last month's (it's a look back), then last quarter's.
+  const candidates: [ReviewPeriod, string][] = [
+    ["month", recentPeriods("month", 2)[1]!],
+    ["quarter", recentPeriods("quarter", 2)[1]!],
+  ];
+  const next = candidates.find(([period, start]) => {
+    const r = data.reviews.find((x) => x.period === period && x.period_start === start);
+    return !r || answeredCount(r) < reviewFields(period).length;
+  });
+  const nextReview = next && data.reviews.find((x) => x.period === next[0] && x.period_start === next[1]);
+  const nextAnswered = nextReview ? answeredCount(nextReview) : 0;
 
   return (
-    <Page
-      width="doc"
-      crumbs={[{ label: "Reviews", icon: <ClipboardCheck className="size-4" /> }]}
-      actions={
-        <>
-          <Button ref={popAnchorRef} variant="primary" onClick={pop.toggle}>
-            <Plus className="size-3.5" /> New review
-          </Button>
-          <Popover open={pop.open} onClose={pop.close} anchor={pop.anchor} align="end" width={240}>
-            <MenuList>
-              <MenuLabel>Monthly</MenuLabel>
-              {months.map((m) => (
-                <MenuItem key={m} onSelect={() => void open("month", m)} hint={existing.has(`month:${m}`) ? "Open" : undefined}>
-                  {periodLabel("month", m)}
-                </MenuItem>
-              ))}
-              <MenuDivider />
-              <MenuLabel>Quarterly</MenuLabel>
-              {quarters.map((q) => (
-                <MenuItem key={q} onSelect={() => void open("quarter", q)} hint={existing.has(`quarter:${q}`) ? "Open" : undefined}>
-                  {periodLabel("quarter", q)}
-                </MenuItem>
-              ))}
-            </MenuList>
-          </Popover>
-        </>
-      }
-    >
-      <PageTitle
-        icon="🪞"
-        title="Reviews"
-        description="Monthly and quarterly look-backs. Spot OS fills in the numbers; you write what they mean."
-      />
+    <Page crumbs={[{ label: "Reviews" }]} aside={<HowItWorks />}>
+      <PageTitle title="Reviews" description="A short look back each month and quarter. Spot OS fills in the numbers — you say what they mean." />
+
+      {next ? (
+        <Banner
+          tone="purple"
+          overline={next[0] === "month" ? "Monthly review" : "Quarterly review"}
+          title={periodLabel(next[0], next[1])}
+          art={<NAV_ART.reviews size={76} />}
+          action={
+            <button type="button" onClick={() => void open(next[0], next[1])} className={buttonClasses("white", "md")}>
+              {nextAnswered ? "Continue" : "Start"}
+            </button>
+          }
+        >
+          {nextAnswered
+            ? `${nextAnswered} of ${reviewFields(next[0]).length} questions answered. Pick up where you left off.`
+            : `${reviewFields(next[0]).length} short questions, one at a time. About 10 minutes.`}
+        </Banner>
+      ) : (
+        <Banner tone="green" title="You’re all caught up!" art={<Mascot mood="cheer" size={96} />}>
+          Last month’s and last quarter’s reviews are written.
+        </Banner>
+      )}
+
       {(["month", "quarter"] as const).map((period) => {
         const list = data.reviews.filter((r) => r.period === period).sort((a, b) => b.period_start.localeCompare(a.period_start));
-        const suggested = (period === "month" ? months.slice(0, 2) : quarters.slice(0, 2)).find((p) => !existing.has(`${period}:${p}`));
         return (
-          <section key={period} className="mb-10">
-            <SectionHeading
-              action={
-                suggested && (
-                  <button type="button" onClick={() => void open(period, suggested)} className="rounded px-1.5 text-accent hover:bg-hover">
-                    + {periodLabel(period, suggested)}
-                  </button>
-                )
-              }
-            >
-              {period === "month" ? "Monthly" : "Quarterly"}
-            </SectionHeading>
+          <section key={period} className="mt-10">
+            <SectionHeading>{period === "month" ? "Monthly" : "Quarterly"}</SectionHeading>
             {list.length === 0 ? (
-              <EmptyState title={`No ${period === "month" ? "monthly" : "quarterly"} reviews yet`} className="border-y border-line py-6" />
+              <Card>
+                <EmptyState mood="sleepy" title={`No ${period === "month" ? "monthly" : "quarterly"} reviews yet`} className="py-8" />
+              </Card>
             ) : (
-              <div className="border-t border-line">
+              <div className="space-y-3">
                 {list.map((r) => {
-                  const started = isReviewStarted(r);
+                  const n = answeredCount(r);
+                  const total = reviewFields(r.period).length;
                   return (
-                    <Link key={r.id} href={`/reviews/${r.id}`} className="flex h-11 items-center gap-3 border-b border-line px-2 hover:bg-hover">
-                      <span className="w-40 shrink-0 text-[14px] font-medium">{periodLabel(r.period, r.period_start)}</span>
-                      <StatusTag color={started ? "green" : "default"}>{started ? "Written" : "Not started"}</StatusTag>
-                      <span className="min-w-0 flex-1 truncate text-[13px] text-fg-2">{r.wins.split("\n")[0]}</span>
-                      <Avatar profile={people.get(r.updated_by)} size={18} />
-                      <span className="w-24 shrink-0 text-right text-[12px] text-fg-3">{timeAgo(r.updated_at)}</span>
+                    <Link key={r.id} href={`/reviews/${r.id}`} className="card-press flex items-center gap-4 rounded-2xl bg-bg px-4 py-3.5">
+                      <IconTile tone={n === total ? "green" : n ? "purple" : "gray"} size={48}>
+                        {period === "month" ? "🗓️" : "📊"}
+                      </IconTile>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[16.5px] font-extrabold">{periodLabel(r.period, r.period_start)}</div>
+                        {n === total ? (
+                          <div className="truncate text-[13.5px] font-semibold text-fg-2">{r.wins.split("\n")[0] || "All questions answered"}</div>
+                        ) : (
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <ProgressBar value={n / total} tone="purple" size="sm" className="max-w-36" />
+                            <span className="text-[12.5px] font-bold text-fg-2">
+                              {n}/{total}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <StatusTag color={n === total ? "green" : n ? "purple" : "default"}>{n === total ? "Done" : n ? "Started" : "Not started"}</StatusTag>
+                      <ChevronRight className={cn("size-5 shrink-0 text-fg-3")} strokeWidth={3} />
                     </Link>
                   );
                 })}
@@ -119,5 +130,30 @@ export function ReviewsView() {
         );
       })}
     </Page>
+  );
+}
+
+function HowItWorks() {
+  const steps = [
+    ["📊", "Spot OS adds up the numbers", "Projects, tasks and money for the period."],
+    ["💬", "You answer short questions", "One at a time. Skip any you like."],
+    ["🔁", "Read it back next time", "So the same problems don’t repeat."],
+  ];
+  return (
+    <RailCard title="How it works">
+      <ol className="space-y-3 pt-1">
+        {steps.map(([icon, title, sub]) => (
+          <li key={title} className="flex items-start gap-3">
+            <IconTile tone="purple" size={40}>
+              {icon}
+            </IconTile>
+            <div>
+              <div className="text-[14.5px] font-extrabold">{title}</div>
+              <div className="text-[13px] font-semibold text-fg-2">{sub}</div>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </RailCard>
   );
 }

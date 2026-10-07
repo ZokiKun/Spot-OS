@@ -7,7 +7,7 @@ import { useWorkspace } from "@/lib/store";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
-import { OptionField, ProjectField } from "@/components/ui/fields";
+import { OptionField, ProjectField, PropertyRow } from "@/components/ui/fields";
 import { detectLibraryType, guessNameFromUrl } from "./library-meta";
 import { GooglePickerButton } from "./google-picker";
 
@@ -80,17 +80,17 @@ export function LibraryItemDialog({
       title={item ? "Edit resource" : "Add to Library"}
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" size="md" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" disabled={!valid} onClick={() => void submit()}>
+          <Button variant="primary" size="md" disabled={!valid} onClick={() => void submit()}>
             {item ? "Save" : "Add"}
           </Button>
         </>
       }
     >
       <form
-        className="space-y-3"
+        className="space-y-3.5"
         onSubmit={(e) => {
           e.preventDefault();
           void submit();
@@ -110,9 +110,9 @@ export function LibraryItemDialog({
           )}
         </div>
         <TextInput placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-        <div className="grid grid-cols-[90px_1fr] items-center gap-x-3 gap-y-1 text-[14px]">
-          <span className="text-fg-2">Type</span>
-          <div className="-ml-1.5">
+        <TextInput placeholder="What is it for? (optional)" value={description} onChange={(e) => setDescription(e.target.value)} />
+        <div className="grid grid-cols-2 gap-2.5">
+          <PropertyRow label="Type">
             <OptionField
               variant="property"
               kind="select"
@@ -123,15 +123,20 @@ export function LibraryItemDialog({
                 setTypeTouched(true);
               }}
             />
+          </PropertyRow>
+          <PropertyRow label="Project">
+            <ProjectField variant="property" projects={data.projects} value={projectId} onChange={setProjectId} placeholder="Studio-wide" />
+          </PropertyRow>
+          <div className="col-span-2">
+            <PropertyRow label="Tags">
+              <input
+                placeholder="brand, template"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                className="h-9 w-full rounded-xl bg-transparent px-1.5 text-[15px] font-bold outline-none placeholder:text-fg-3"
+              />
+            </PropertyRow>
           </div>
-          <span className="text-fg-2">Project</span>
-          <div className="-ml-1.5">
-            <ProjectField variant="property" projects={data.projects} value={projectId} onChange={setProjectId} placeholder="None (studio-wide)" />
-          </div>
-          <span className="text-fg-2">Tags</span>
-          <TextInput placeholder="brand, template" value={tags} onChange={(e) => setTags(e.target.value)} />
-          <span className="text-fg-2">Note</span>
-          <TextInput placeholder="What is it for? (optional)" value={description} onChange={(e) => setDescription(e.target.value)} />
         </div>
         <button type="submit" hidden />
       </form>

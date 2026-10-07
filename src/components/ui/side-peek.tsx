@@ -2,7 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { ChevronsRight, Maximize2 } from "lucide-react";
+import { Maximize2, X } from "lucide-react";
 import Link from "next/link";
 import { IconButton } from "./button";
 
@@ -32,19 +32,19 @@ export function SidePeek({
 
   if (!open || typeof document === "undefined") return null;
   return createPortal(
-    <aside className="anim-peek fixed inset-y-0 right-0 z-30 flex w-full max-w-[560px] flex-col border-l border-line bg-bg shadow-[rgba(15,15,15,0.04)_0_0_0_1px,rgba(15,15,15,0.03)_0_3px_6px,rgba(15,15,15,0.06)_0_9px_24px]">
-      <div className="flex h-11 shrink-0 items-center gap-1 px-3">
+    <aside className="anim-peek fixed inset-y-0 right-0 z-30 flex w-full max-w-[520px] flex-col border-l-2 border-line bg-bg shadow-[-12px_0_32px_rgba(0,0,0,0.08)] sm:inset-y-3 sm:right-3 sm:rounded-3xl sm:border-2">
+      <div className="flex h-14 shrink-0 items-center gap-1 px-4">
         <IconButton label="Close" onClick={onClose}>
-          <ChevronsRight className="size-4" />
+          <X className="size-5" strokeWidth={2.5} />
         </IconButton>
         {expandHref && (
-          <Link href={expandHref} className="inline-flex size-6 items-center justify-center rounded-md text-fg-2 hover:bg-hover" title="Open as page">
+          <Link href={expandHref} className="inline-flex size-8 items-center justify-center rounded-xl text-fg-2 hover:bg-hover" title="Open as page">
             <Maximize2 className="size-3.5" />
           </Link>
         )}
         <div className="ml-auto flex items-center gap-1">{actions}</div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-10 pb-16 pt-6 max-sm:px-5">{children}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-16 pt-2 max-sm:px-5">{children}</div>
     </aside>,
     document.body,
   );

@@ -31,11 +31,12 @@ This document answers the brief's "first task" list: schema, routes, components,
 ```
 /login                     email + password or magic link (demo: pick a member)
 /auth/callback             PKCE code exchange for magic links / invites
-/                          Home — ?view=personal|studio|finance|performance
+/                          Home ("today": focus, nudges, my projects)
+/studio                    ?tab=team|money|progress  (old /?view=… links redirect here)
 /calendar                  ?date=YYYY-MM-DD&note=<id>
-/projects                  ?view=table|board
+/projects                  ?show=now|next|done
 /projects/tasks            ?filter=all|mine|member:<id>|overdue|today|upcoming|completed
-/projects/[id]             ?tab=overview|tasks|files|links|notes|activity
+/projects/[id]             ?tab=tasks|notes|files|about
 /library
 /reviews, /reviews/[id]
 /spot-base, /spot-base/[slug], /spot-base/spot-md
@@ -72,7 +73,7 @@ src/
     editor/rich-editor.tsx  Tiptap (headings, bold/italic, lists, checklists, links, images)
 ```
 
-**Design system:** the tokens in `globals.css` are derived from Notion's web UI. That means a warm off-white sidebar (`#F8F8F7`), warm near-black text (`#32302C`), hairline dividers (`rgba(55,53,47,.09)`), Notion's muted tag palette with status dots, one blue accent (`#2383E2`), the system font stack, 30px rows, and layered menu shadows. Light and dark themes are both supported.
+**Design system (Direction 3):** the tokens in `globals.css` follow Duolingo's web UI: white canvas, 2px light-grey card outlines, 16–24px radii, Nunito at heavy weights with uppercase letter-spaced labels, "pressable" buttons with a darker bottom edge, thick progress bars, and one meaning per colour (green = go/done, blue = selected, orange = due soon, red = late/stuck, yellow = progress, purple = review). Pages use one centre column plus a right rail of glanceable cards (stacked below on smaller screens); phones get a bottom tab bar. Spotty, the orange-spot mascot (`ui/mascot.tsx`), appears in banners and empty states. Light and dark themes are both supported.
 
 ## 4. Realtime architecture
 

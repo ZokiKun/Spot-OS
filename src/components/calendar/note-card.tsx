@@ -36,16 +36,16 @@ export function NoteCard({ note, focus }: { note: CalendarNote; focus?: boolean 
   }, [focus]);
 
   return (
-    <article ref={ref} className="scroll-mt-14 border-b border-line pb-8 pt-2 last:border-b-0">
+    <article ref={ref} className="scroll-mt-20 rounded-2xl border-2 border-line bg-bg px-5 pb-5 pt-4">
       <div className="flex items-start gap-2">
         <EditableText
           value={note.title}
           onCommit={(title) => void update("calendar_notes", note.id, { title, updated_by: me?.id ?? null })}
-          placeholder="Untitled"
-          className="text-[22px] font-semibold leading-tight"
+          placeholder="Give it a title"
+          className="text-[20px] font-extrabold leading-tight placeholder:text-fg-3"
         />
-        <IconButton ref={menuAnchorRef} label="Note options" onClick={menu.toggle} className="mt-0.5">
-          <Ellipsis className="size-4" />
+        <IconButton ref={menuAnchorRef} label="Note options" onClick={menu.toggle} className="-mt-0.5">
+          <Ellipsis className="size-5" strokeWidth={3} />
         </IconButton>
         <Popover open={menu.open} onClose={menu.close} anchor={menu.anchor} align="end" width={220}>
           <MenuList>
@@ -94,7 +94,7 @@ export function NoteCard({ note, focus }: { note: CalendarNote; focus?: boolean 
           </MenuList>
         </Popover>
       </div>
-      <div className="mb-3 mt-1 text-[12px] text-fg-3">
+      <div className="mb-3 mt-0.5 text-[12.5px] font-bold text-fg-3">
         {people.get(note.created_by)?.full_name ?? "Someone"}
         {note.updated_by && note.updated_at !== note.created_at && (
           <> · edited by {people.get(note.updated_by)?.full_name ?? "someone"} {timeAgo(note.updated_at)}</>
@@ -107,7 +107,7 @@ export function NoteCard({ note, focus }: { note: CalendarNote; focus?: boolean 
         placeholder="What happened? What should we remember?"
         className="min-h-[96px]"
       />
-      <div className="mt-3">
+      <div className="mt-3 border-t-2 border-line pt-2">
         <AttachmentList items={attachments} owner={{ note_id: note.id }} folder={`calendar/${note.date}`} compact />
       </div>
     </article>

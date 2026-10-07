@@ -1,135 +1,196 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CircleCheck, Columns3, ListFilter, Plus, Search, Table2 } from "lucide-react";
-import type { ProjectType } from "@/lib/types";
-import { PROJECT_TYPES } from "@/lib/constants";
+import { ChevronRight, Plus, Search, X } from "lucide-react";
+import type { Project, ProjectStatus } from "@/lib/types";
 import { useWorkspace } from "@/lib/store";
-import { sortProjects } from "@/lib/selectors";
+import { isOpen, sortProjects } from "@/lib/selectors";
 import { cn } from "@/lib/utils";
 import { Page, PageTitle } from "@/components/shell/page";
 import { ViewTabs } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Popover, usePopover } from "@/components/ui/popover";
-import { MenuDivider, MenuItem, MenuLabel, MenuList } from "@/components/ui/menu";
-import { Tag } from "@/components/ui/tag";
-import { NAV_ICONS } from "@/components/shell/icons";
-import { ProjectBoard, ProjectTable } from "./project-views";
+import { Card, EmptyState, ProgressBar, SectionHeading } from "@/components/ui/misc";
+import { RailCard } from "@/components/home/rail-cards";
+import { NAV_ART } from "@/components/shell/icons";
+import { ProjectCard, PROJECT_STATE_LABEL } from "./project-card";
 import { NewProjectDialog } from "./new-project-dialog";
 
-type View = "table" | "board" | "tasks";
+type Bucket = "now" | "next" | "done";
 
+const BUCKETS: Record<Bucket, ProjectStatus[]> = {
+  now: ["blocked", "active", "review"],
+  next: ["backlog"],
+  done: ["completed", "archived"],
+};
+
+/**
+ * Projects as three plain buckets — what we're doing now, what's next, what's done —
+ * each project a single readable card. Editing lives on the project page.
+ */
 export function ProjectsView() {
   const { data } = useWorkspace();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const view = (params.get("view") as View) || "table";
+  const bucket = (params.get("show") as Bucket) || "now";
   const [query, setQuery] = useState("");
-  const [types, setTypes] = useState<ProjectType[]>([]);
-  const [showClosed, setShowClosed] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
-  const { setAnchor: filterAnchorRef, ...filter } = usePopover();
 
-  const setView = (v: View) => {
-    if (v === "tasks") return router.push("/projects/tasks");
-    router.replace(`${pathname}?view=${v}`);
-  };
+  const counts = useMemo(
+    () => Object.fromEntries((Object.keys(BUCKETS) as Bucket[]).map((b) => [b, data.projects.filter((p) => BUCKETS[b].includes(p.status)).length])) as Record<Bucket, number>,
+    [data.projects],
+  );
 
   const projects = useMemo(() => {
     const q = query.trim().toLowerCase();
     return sortProjects(
       data.projects.filter(
-        (p) =>
-          (showClosed || view === "board" || !["completed", "archived"].includes(p.status)) &&
-          (view !== "board" || p.status !== "archived") &&
-          (!types.length || types.includes(p.type)) &&
-          (!q || [p.name, p.client, p.description].some((f) => f?.toLowerCase().includes(q))),
+        (p) => (q ? true : BUCKETS[bucket].includes(p.status)) && (!q || [p.name, p.client, p.description, p.next_action].some((f) => f?.toLowerCase().includes(q))),
       ),
     );
-  }, [data.projects, query, types, showClosed, view]);
+  }, [data.projects, bucket, query]);
 
-  const Icon = NAV_ICONS.projects!;
-  const activeFilters = types.length + (showClosed ? 1 : 0);
+  // Inside "now", show the stuck ones first under their own heading.
+  const sections: { title?: string; list: Project[] }[] =
+    bucket === "now" && !query
+      ? [
+          { title: "Needs help", list: projects.filter((p) => p.status === "blocked") },
+          { title: "In progress", list: projects.filter((p) => p.status === "active") },
+          { title: "In review", list: projects.filter((p) => p.status === "review") },
+        ].filter((s) => s.list.length)
+      : [{ list: projects }];
 
   return (
     <Page
-      crumbs={[{ label: "Projects", icon: <Icon className="size-4" /> }]}
-      actions={
-        <Button variant="primary" onClick={() => setNewOpen(true)}>
-          <Plus className="size-3.5" /> New project
-        </Button>
+      crumbs={[{ label: "Projects" }]}
+      aside={
+        <>
+          <StudioGlance />
+          <TasksShortcut />
+        </>
       }
     >
-      <PageTitle title="Projects" description="Every studio project, its status, owner and next action." />
-      <div className="mb-2 flex flex-wrap items-center gap-2 border-b border-line pb-1.5">
-        <ViewTabs<View>
-          value={view}
-          onChange={setView}
+      <div className="flex items-start justify-between gap-4">
+        <PageTitle title="Projects" description="Every studio project, and the one next step for each." />
+        <Button variant="primary" size="md" className="mt-1 max-sm:hidden" onClick={() => setNewOpen(true)}>
+          <Plus className="size-4" strokeWidth={3.5} /> New project
+        </Button>
+      </div>
+
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <ViewTabs<Bucket>
+          value={bucket}
+          onChange={(v) => {
+            setQuery("");
+            router.replace(v === "now" ? pathname : `${pathname}?show=${v}`, { scroll: false });
+          }}
           items={[
-            { value: "table", label: "Table", icon: <Table2 className="size-4" /> },
-            { value: "board", label: "Board", icon: <Columns3 className="size-4" /> },
-            { value: "tasks", label: "All tasks", icon: <CircleCheck className="size-4" /> },
+            { value: "now", label: "Now", count: counts.now },
+            { value: "next", label: "Up next", count: counts.next },
+            { value: "done", label: "Done", count: counts.done },
           ]}
         />
-        <div className="ml-auto flex items-center gap-1">
-          <label className="flex h-7 items-center gap-1.5 rounded-md px-2 text-fg-2 focus-within:bg-hover hover:bg-hover">
-            <Search className="size-3.5" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search"
-              className="w-24 bg-transparent text-[14px] text-fg outline-none placeholder:text-fg-2 focus:w-40"
-            />
-          </label>
-          <button
-            ref={filterAnchorRef}
-            type="button"
-            onClick={filter.toggle}
-            className={cn("flex h-7 items-center gap-1.5 rounded-md px-2 text-[14px] hover:bg-hover", activeFilters ? "text-accent" : "text-fg-2")}
-          >
-            <ListFilter className="size-3.5" /> Filter{activeFilters ? ` · ${activeFilters}` : ""}
-          </button>
-          <Popover open={filter.open} onClose={filter.close} anchor={filter.anchor} align="end" width={220}>
-            <MenuList>
-              <MenuLabel>Type</MenuLabel>
-              {PROJECT_TYPES.map((t) => (
-                <MenuItem
-                  key={t.value}
-                  selected={types.includes(t.value)}
-                  onSelect={() => setTypes((ts) => (ts.includes(t.value) ? ts.filter((x) => x !== t.value) : [...ts, t.value]))}
-                >
-                  <Tag color={t.color}>{t.label}</Tag>
-                </MenuItem>
-              ))}
-              {view === "table" && (
-                <>
-                  <MenuDivider />
-                  <MenuItem selected={showClosed} onSelect={() => setShowClosed((s) => !s)}>
-                    Show completed & archived
-                  </MenuItem>
-                </>
-              )}
-              {activeFilters > 0 && (
-                <>
-                  <MenuDivider />
-                  <MenuItem
-                    onSelect={() => {
-                      setTypes([]);
-                      setShowClosed(false);
-                    }}
-                  >
-                    Clear filters
-                  </MenuItem>
-                </>
-              )}
-            </MenuList>
-          </Popover>
-        </div>
+        <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border-2 border-line bg-input px-3 focus-within:border-blue sm:max-w-56">
+          <Search className="size-4 shrink-0 text-fg-3" strokeWidth={3} />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Find a project"
+            className="min-w-0 flex-1 bg-transparent text-[14.5px] font-bold outline-none placeholder:font-semibold placeholder:text-fg-3"
+          />
+          {query && (
+            <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="text-fg-3 hover:text-fg">
+              <X className="size-4" strokeWidth={3} />
+            </button>
+          )}
+        </label>
       </div>
-      {view === "board" ? <ProjectBoard projects={projects} /> : <ProjectTable projects={projects} />}
+
+      {projects.length === 0 ? (
+        <Card>
+          <EmptyState
+            mood="sleepy"
+            title={query ? "No project matches that" : bucket === "next" ? "Nothing lined up yet" : bucket === "done" ? "Nothing finished yet" : "No projects in progress"}
+            description={query ? "Try another word." : "Start one — it only needs a name."}
+            action={
+              !query && (
+                <Button variant="primary" size="md" onClick={() => setNewOpen(true)}>
+                  New project
+                </Button>
+              )
+            }
+          />
+        </Card>
+      ) : (
+        <div className="space-y-8">
+          {sections.map((s, i) => (
+            <section key={s.title ?? i}>
+              {s.title && sections.length > 1 && (
+                <SectionHeading size="md" className={cn(s.title === "Needs help" && "[&_h2]:text-red")}>
+                  {s.title}
+                </SectionHeading>
+              )}
+              <div className="space-y-3">
+                {s.list.map((p) => (
+                  <ProjectCard key={p.id} project={p} showState={!!query || bucket === "done"} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+
+      <Button variant="primary" size="lg" className="mt-8 w-full sm:hidden" onClick={() => setNewOpen(true)}>
+        <Plus className="size-4" strokeWidth={3.5} /> New project
+      </Button>
       <NewProjectDialog open={newOpen} onClose={() => setNewOpen(false)} />
     </Page>
+  );
+}
+
+/** How the studio's projects are spread across states — one bar per state. */
+function StudioGlance() {
+  const { data } = useWorkspace();
+  const rows: { status: ProjectStatus; tone: "red" | "blue" | "purple" | "default" }[] = [
+    { status: "blocked", tone: "red" },
+    { status: "active", tone: "blue" },
+    { status: "review", tone: "purple" },
+    { status: "backlog", tone: "default" },
+  ];
+  const max = Math.max(1, ...rows.map((r) => data.projects.filter((p) => p.status === r.status).length));
+  return (
+    <RailCard title="At a glance">
+      <div className="space-y-3 pt-1">
+        {rows.map((r) => {
+          const n = data.projects.filter((p) => p.status === r.status).length;
+          return (
+            <div key={r.status}>
+              <div className="mb-1 flex justify-between text-[14px] font-extrabold">
+                <span className={cn(r.status === "blocked" && n > 0 && "text-red")}>{PROJECT_STATE_LABEL[r.status]}</span>
+                <span className="text-fg-2 tabular">{n}</span>
+              </div>
+              <ProgressBar value={n / max} tone={r.tone === "default" ? "default" : r.tone} size="sm" className={cn(r.tone === "default" && "[&>div]:bg-fg-3")} />
+            </div>
+          );
+        })}
+      </div>
+    </RailCard>
+  );
+}
+
+function TasksShortcut() {
+  const { data } = useWorkspace();
+  const open = data.tasks.filter(isOpen).length;
+  return (
+    <Link href="/projects/tasks" className="card-press flex items-center gap-4 rounded-2xl bg-bg px-5 py-4">
+      <NAV_ART.reviews size={40} />
+      <div className="min-w-0 flex-1">
+        <div className="text-[16px] font-extrabold">All tasks</div>
+        <div className="text-[13.5px] font-semibold text-fg-2">{open} open across every project</div>
+      </div>
+      <ChevronRight className="size-5 text-fg-3" strokeWidth={3} />
+    </Link>
   );
 }

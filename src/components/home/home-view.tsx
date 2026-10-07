@@ -1,68 +1,131 @@
 "use client";
 
-import { useMemo } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { BarChart3, Building2, House, User, Wallet } from "lucide-react";
+import { useEffect, useMemo } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useWorkspace } from "@/lib/store";
-import { isActiveProject, isDueToday, isOverdue } from "@/lib/selectors";
+import { attentionItems, isActiveProject, isDueToday, isOverdue, isUpcoming, sortProjects, sortTasks } from "@/lib/selectors";
 import { firstName, formatLongDate, greeting, plural, todayISO } from "@/lib/utils";
 import { Page } from "@/components/shell/page";
-import { ViewTabs } from "@/components/ui/tabs";
-import { PersonalView } from "./personal-view";
-import { StudioView } from "./studio-view";
-import { FinanceView } from "./finance-view";
-import { PerformanceView } from "./performance-view";
+import { Banner, bannerButton } from "@/components/ui/banner";
+import { Mascot } from "@/components/ui/mascot";
+import { ActionLink, Card, EmptyState, SectionHeading } from "@/components/ui/misc";
+import { TaskList } from "@/components/tasks/task-table";
+import { ProjectCard } from "@/components/projects/project-card";
+import { Attention } from "./attention";
+import { ComingUpCard, TeamCard, WeekCard } from "./rail-cards";
 
-type View = "personal" | "studio" | "finance" | "performance";
-
+/**
+ * Home = "what should I do now?". One banner that says how things stand in a sentence,
+ * then three small chunks: today's focus, what needs a nudge, and your projects.
+ * Studio-wide numbers live on the Studio page.
+ */
 export function HomeView() {
   const { data, me } = useWorkspace();
-  const router = useRouter();
-  const pathname = usePathname();
-  const params = useSearchParams();
-  const view = (params.get("view") as View) || "personal";
+  const meId = me?.id ?? null;
   const today = todayISO();
+  const router = useRouter();
+  const legacyView = useSearchParams().get("view");
+  useEffect(() => {
+    // Old links (/?view=studio|finance|performance) now live on the Studio page.
+    const tab = { studio: "", finance: "?tab=money", performance: "?tab=progress" }[legacyView ?? ""];
+    if (tab !== undefined) router.replace(`/studio${tab}`);
+  }, [legacyView, router]);
 
-  // The 10-second summary: one sentence that says how things stand.
-  const summary = useMemo(() => {
-    const mine = data.tasks.filter((t) => t.assignee_id === me?.id);
-    const overdue = mine.filter((t) => isOverdue(t, today)).length;
-    const dueToday = mine.filter((t) => isDueToday(t, today)).length;
-    const active = data.projects.filter(isActiveProject).length;
-    const blocked = data.projects.filter((p) => p.status === "blocked").length;
-    const parts: string[] = [];
-    if (overdue) parts.push(`${plural(overdue, "overdue task")}`);
-    if (dueToday) parts.push(`${dueToday} due today`);
-    const you = parts.length ? `You have ${parts.join(" and ")}.` : "You’re on top of your tasks.";
-    const studio = `The studio has ${plural(active, "active project")}${blocked ? `, ${blocked} blocked` : ""}.`;
-    return `${you} ${studio}`;
-  }, [data.tasks, data.projects, me, today]);
+  const mine = useMemo(() => data.tasks.filter((t) => t.assignee_id === meId), [data.tasks, meId]);
+  const overdue = sortTasks(mine.filter((t) => isOverdue(t, today)));
+  const dueToday = sortTasks(mine.filter((t) => isDueToday(t, today)));
+  const upcoming = sortTasks(mine.filter((t) => isUpcoming(t, today, 7)));
+  const focus = [...overdue, ...dueToday];
+  if (focus.length < 3) focus.push(...upcoming.slice(0, 3 - focus.length));
+
+  // Late / due-today tasks already sit in "Today's focus", so nudges show the rest.
+  const nudges = attentionItems(data, { meId, mine: true }).filter((i) => i.kind !== "overdue_task" && i.kind !== "due_today");
+
+  const myProjects = useMemo(
+    () =>
+      sortProjects(
+        data.projects.filter(
+          (p) =>
+            isActiveProject(p) &&
+            (p.lead_id === meId ||
+              p.creative_director_id === meId ||
+              data.project_members.some((m) => m.project_id === p.id && m.profile_id === meId) ||
+              mine.some((t) => t.project_id === p.id && t.status !== "done")),
+        ),
+      ),
+    [data.projects, data.project_members, mine, meId],
+  );
+
+  const summary = overdue.length
+    ? `${plural(overdue.length, "task is", "tasks are")} late${dueToday.length ? ` and ${dueToday.length} due today` : ""}. Let’s clear ${overdue.length + dueToday.length === 1 ? "it" : "them"} first.`
+    : dueToday.length
+      ? `${plural(dueToday.length, "thing")} due today. You’ve got this.`
+      : upcoming.length
+        ? `Nothing due today. ${plural(upcoming.length, "task")} coming up this week.`
+        : "Nothing due this week. Nice and calm.";
 
   return (
-    <Page crumbs={[{ label: "Home", icon: <House className="size-4" /> }]}>
-      <div className="mb-7">
-        <div className="text-[13px] text-fg-2">{formatLongDate(today)}</div>
-        <h1 className="mt-1 text-[30px] font-bold leading-tight tracking-[-0.01em] sm:text-[36px]">
-          {greeting()}, {firstName(me?.full_name) || "there"}
-        </h1>
-        <p className="mt-1.5 text-[15px] text-fg-2">{summary}</p>
-      </div>
-      <div className="mb-7 border-b border-line pb-1.5">
-        <ViewTabs<View>
-          value={view}
-          onChange={(v) => router.replace(v === "personal" ? pathname : `${pathname}?view=${v}`, { scroll: false })}
-          items={[
-            { value: "personal", label: "Personal", icon: <User className="size-4" /> },
-            { value: "studio", label: "Studio", icon: <Building2 className="size-4" /> },
-            { value: "finance", label: "Finance", icon: <Wallet className="size-4" /> },
-            { value: "performance", label: "Performance", icon: <BarChart3 className="size-4" /> },
-          ]}
-        />
-      </div>
-      {view === "personal" && <PersonalView />}
-      {view === "studio" && <StudioView />}
-      {view === "finance" && <FinanceView />}
-      {view === "performance" && <PerformanceView />}
+    <Page
+      crumbs={[{ label: "Home" }]}
+      aside={
+        <>
+          <WeekCard />
+          <ComingUpCard />
+          <TeamCard />
+        </>
+      }
+    >
+      <Banner
+        tone={overdue.length ? "orange" : "green"}
+        overline={formatLongDate(today)}
+        title={`${greeting()}, ${firstName(me?.full_name) || "there"}!`}
+        art={<Mascot mood={overdue.length ? "think" : focus.length ? "happy" : "cheer"} size={104} float />}
+        action={
+          <>
+            <Link href="/projects/tasks?filter=mine" className={bannerButton}>
+              All my tasks
+            </Link>
+            <Link href={`/calendar?date=${today}`} className={bannerButton}>
+              Today’s notes
+            </Link>
+          </>
+        }
+      >
+        {summary}
+      </Banner>
+
+      <section className="mt-10">
+        <SectionHeading action={<ActionLink href="/projects/tasks?filter=mine">See all</ActionLink>}>Today’s focus</SectionHeading>
+        {focus.length ? (
+          <TaskList tasks={focus.slice(0, 5)} showAssignee={false} />
+        ) : (
+          <Card>
+            <EmptyState mood="cheer" title="You’re all clear!" description="Nothing due this week. Pick something from a project, or take a breather." />
+          </Card>
+        )}
+        {focus.length > 5 && <p className="mt-2 px-1 text-[13px] font-bold text-fg-3">+{focus.length - 5} more in your tasks</p>}
+      </section>
+
+      <section className="mt-10">
+        <SectionHeading>Needs a nudge</SectionHeading>
+        <Attention items={nudges} />
+      </section>
+
+      <section className="mt-10">
+        <SectionHeading action={<ActionLink href="/projects">All projects</ActionLink>}>Your projects</SectionHeading>
+        {myProjects.length === 0 ? (
+          <Card>
+            <EmptyState mood="sleepy" title="You’re not on any active project" description="Projects you lead, direct or have tasks in show up here." />
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {myProjects.slice(0, 4).map((p) => (
+              <ProjectCard key={p.id} project={p} />
+            ))}
+          </div>
+        )}
+      </section>
     </Page>
   );
 }

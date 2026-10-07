@@ -2,7 +2,7 @@
 
 import { createContext, Suspense, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { CalendarDays, CircleDot, Flag, FolderKanban, Trash2, User, Clock } from "lucide-react";
+import { Check, Trash2, Undo2 } from "lucide-react";
 import { useWorkspace, useProfiles } from "@/lib/store";
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/constants";
 import type { Task, TaskStatus, UUID } from "@/lib/types";
@@ -10,7 +10,8 @@ import { nowISO, timeAgo } from "@/lib/utils";
 import { SidePeek } from "@/components/ui/side-peek";
 import { AutoTextarea, EditableText } from "@/components/ui/input";
 import { DateField, OptionField, PersonField, ProjectField, PropertyRow } from "@/components/ui/fields";
-import { IconButton } from "@/components/ui/button";
+import { Button, IconButton } from "@/components/ui/button";
+import { useCompleteTask } from "./task-table";
 
 interface TaskPeekApi {
   openTask: (id: UUID) => void;
@@ -58,6 +59,7 @@ function TaskParamWatcher({ onTask }: { onTask: (id: UUID) => void }) {
 function TaskPeek({ taskId, onClose }: { taskId: UUID | null; onClose: () => void }) {
   const { data, update, remove } = useWorkspace();
   const people = useProfiles();
+  const complete = useCompleteTask();
   const task = data.tasks.find((t) => t.id === taskId);
   const project = task?.project_id ? data.projects.find((p) => p.id === task.project_id) : undefined;
   const [description, setDescription] = useState(task?.description ?? "");
@@ -76,7 +78,7 @@ function TaskPeek({ taskId, onClose }: { taskId: UUID | null; onClose: () => voi
     <SidePeek
       open
       onClose={onClose}
-      expandHref={project ? `/projects/${project.id}?tab=tasks&task=${task.id}` : undefined}
+      expandHref={project ? `/projects/${project.id}?task=${task.id}` : undefined}
       actions={
         <IconButton
           label="Delete task"
@@ -87,49 +89,66 @@ function TaskPeek({ taskId, onClose }: { taskId: UUID | null; onClose: () => voi
             }
           }}
         >
-          <Trash2 className="size-4" />
+          <Trash2 className="size-[18px]" strokeWidth={2.5} />
         </IconButton>
       }
     >
+      {project && (
+        <div className="mb-1 flex items-center gap-1.5 text-[13px] font-bold text-fg-2">
+          <span>{project.icon ?? "📁"}</span> {project.name}
+        </div>
+      )}
       <EditableText
         value={task.title}
         onCommit={(title) => title && set({ title })}
         placeholder="Untitled"
         multiline
-        className="text-[30px] font-bold leading-tight"
+        className="text-[26px] font-black leading-tight"
       />
-      <div className="mt-5 space-y-0.5">
-        <PropertyRow icon={<CircleDot className="size-4" />} label="Status">
+      <div className="mt-5">
+        {task.status === "done" ? (
+          <Button variant="secondary" size="md" className="w-full" onClick={() => set(statusPatch("todo"))}>
+            <Undo2 className="size-4" strokeWidth={3} /> Mark as not done
+          </Button>
+        ) : (
+          <Button variant="primary" size="md" className="w-full" onClick={() => complete(task, true)}>
+            <Check className="size-5" strokeWidth={3.5} /> Mark as done
+          </Button>
+        )}
+      </div>
+      <div className="mt-5 grid grid-cols-2 gap-2.5">
+        <PropertyRow label="Status">
           <OptionField variant="property" options={TASK_STATUSES} value={task.status} onChange={(s) => set(statusPatch(s))} />
         </PropertyRow>
-        <PropertyRow icon={<User className="size-4" />} label="Assignee">
+        <PropertyRow label="Who">
           <PersonField variant="property" people={people.list} value={task.assignee_id} onChange={(assignee_id) => set({ assignee_id })} />
         </PropertyRow>
-        <PropertyRow icon={<CalendarDays className="size-4" />} label="Due date">
-          <DateField variant="property" value={task.due_date} highlightOverdue={task.status !== "done"} onChange={(due_date) => set({ due_date })} />
+        <PropertyRow label="Due">
+          <DateField variant="property" value={task.due_date} highlightOverdue={task.status !== "done"} onChange={(due_date) => set({ due_date })} placeholder="Pick a day" />
         </PropertyRow>
-        <PropertyRow icon={<Flag className="size-4" />} label="Priority">
+        <PropertyRow label="Priority">
           <OptionField variant="property" kind="select" options={TASK_PRIORITIES} value={task.priority} onChange={(priority) => set({ priority })} />
         </PropertyRow>
-        <PropertyRow icon={<FolderKanban className="size-4" />} label="Project">
-          <ProjectField variant="property" projects={data.projects} value={task.project_id} onChange={(project_id) => set({ project_id })} />
-        </PropertyRow>
-        <PropertyRow icon={<Clock className="size-4" />} label="Created">
-          <div className="flex min-h-[30px] items-center px-1.5 text-fg-2">
-            {people.get(task.created_by)?.full_name ?? "Someone"} · {timeAgo(task.created_at)}
-            {task.updated_at !== task.created_at && <span className="ml-1 text-fg-3">· edited {timeAgo(task.updated_at)}</span>}
-          </div>
-        </PropertyRow>
+        <div className="col-span-2">
+          <PropertyRow label="Project">
+            <ProjectField variant="property" projects={data.projects} value={task.project_id} onChange={(project_id) => set({ project_id })} />
+          </PropertyRow>
+        </div>
       </div>
-      <div className="mt-4 border-t border-line pt-4">
+      <div className="mt-5">
+        <div className="label-caps mb-1.5 px-1 text-[11px] text-fg-3">Notes</div>
         <AutoTextarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           onBlur={() => description !== (task.description ?? "") && set({ description: description || null })}
-          placeholder="Add a description…"
-          className="min-h-24 text-[15px] leading-relaxed"
+          placeholder="Anything worth knowing? Links, context, what “done” looks like…"
+          className="min-h-28 rounded-2xl border-2 border-line bg-subtle px-4 py-3 text-[15px] font-semibold leading-relaxed focus:border-blue"
         />
       </div>
+      <p className="mt-4 px-1 text-[12.5px] font-semibold text-fg-3">
+        Added by {people.get(task.created_by)?.full_name ?? "someone"} · {timeAgo(task.created_at)}
+        {task.updated_at !== task.created_at && <> · edited {timeAgo(task.updated_at)}</>}
+      </p>
     </SidePeek>
   );
 }

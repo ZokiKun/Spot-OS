@@ -56,7 +56,7 @@ export function Picker<V>({
 
   return (
     <div className="w-full">
-      <div className="border-b border-line p-1.5">
+      <div className="border-b-2 border-line p-2">
         <input
           ref={inputRef}
           value={query}
@@ -66,11 +66,11 @@ export function Picker<V>({
           }}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
-          className="h-7 w-full rounded-md bg-input px-2 text-[14px] shadow-[inset_0_0_0_1px_var(--border)] outline-none placeholder:text-fg-3 focus:shadow-[inset_0_0_0_1px_var(--accent)]"
+          className="h-10 w-full rounded-xl border-2 border-line bg-input px-3 text-[14px] font-semibold outline-none placeholder:text-fg-3 focus:border-blue"
         />
       </div>
-      <div className="max-h-72 overflow-y-auto p-1">
-        {filtered.length === 0 && <div className="px-2 py-1.5 text-[13px] text-fg-3">{emptyLabel ?? "No results"}</div>}
+      <div className="max-h-72 overflow-y-auto p-1.5">
+        {filtered.length === 0 && <div className="px-2.5 py-2 text-[13px] text-fg-3">{emptyLabel ?? "No results"}</div>}
         {filtered.map((item, i) => (
           <button
             key={String(item.value)}
@@ -78,21 +78,21 @@ export function Picker<V>({
             onMouseEnter={() => setActive(i)}
             onClick={() => onSelect(item.value)}
             className={cn(
-              "flex min-h-7 w-full items-center gap-2 rounded-md px-2 py-0.5 text-left text-[14px]",
+              "flex min-h-10 w-full items-center gap-2 rounded-xl px-2.5 py-1 text-left text-[14px] font-bold",
               i === active && "bg-hover",
             )}
           >
             <span className="min-w-0 flex-1 truncate">{item.render ?? item.label}</span>
-            {value != null && item.value === value && <Check className="size-4 shrink-0" />}
+            {value != null && item.value === value && <Check className="size-4 shrink-0 text-blue" strokeWidth={3} />}
           </button>
         ))}
         {onClear && value != null && (
           <>
-            <div className="-mx-1 my-1 h-px bg-line" />
+            <div className="-mx-1.5 my-1.5 h-[2px] bg-line" />
             <button
               type="button"
               onClick={onClear}
-              className="flex h-7 w-full items-center rounded-md px-2 text-left text-[14px] text-fg-2 hover:bg-hover"
+              className="flex h-10 w-full items-center rounded-xl px-2.5 text-left text-[14px] font-bold text-fg-2 hover:bg-hover"
             >
               {clearLabel}
             </button>

@@ -5,15 +5,15 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function MenuList({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("p-1", className)}>{children}</div>;
+  return <div className={cn("p-1.5", className)}>{children}</div>;
 }
 
 export function MenuLabel({ children }: { children: ReactNode }) {
-  return <div className="px-2 pb-1 pt-1.5 text-[12px] font-medium text-fg-2">{children}</div>;
+  return <div className="label-caps px-2.5 pb-1 pt-2 text-[11px] text-fg-3">{children}</div>;
 }
 
 export function MenuDivider() {
-  return <div className="-mx-1 my-1 h-px bg-line" />;
+  return <div className="-mx-1.5 my-1.5 h-[2px] bg-line" />;
 }
 
 export function MenuItem({
@@ -41,15 +41,15 @@ export function MenuItem({
       disabled={disabled}
       onClick={onSelect}
       className={cn(
-        "flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-[14px] transition-colors duration-75 hover:bg-hover disabled:opacity-40",
+        "flex h-10 w-full items-center gap-2.5 rounded-xl px-2.5 text-left text-[14px] font-bold transition-colors duration-75 hover:bg-hover disabled:opacity-40",
         danger && "text-danger",
         active && "bg-hover",
       )}
     >
       {icon && <span className={cn("flex size-4 shrink-0 items-center justify-center", danger ? "text-danger" : "text-fg-2")}>{icon}</span>}
       <span className="min-w-0 flex-1 truncate">{children}</span>
-      {hint && <span className="shrink-0 text-[12px] text-fg-3">{hint}</span>}
-      {selected && <Check className="size-4 shrink-0 text-fg" />}
+      {hint && <span className="shrink-0 text-[12px] font-semibold text-fg-3">{hint}</span>}
+      {selected && <Check className="size-4 shrink-0 text-blue" strokeWidth={3} />}
     </button>
   );
 }

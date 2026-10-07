@@ -10,7 +10,7 @@ export interface TabItem<V extends string> {
   count?: number;
 }
 
-/** Notion database view tabs — selected tab gets a soft filled pill. */
+/** Chunky pill tabs — the selected one gets Duolingo's blue "selected answer" treatment. */
 export function ViewTabs<V extends string>({
   items,
   value,
@@ -23,7 +23,7 @@ export function ViewTabs<V extends string>({
   className?: string;
 }) {
   return (
-    <div role="tablist" className={cn("-mx-1 flex items-center gap-0.5 overflow-x-auto [scrollbar-width:none]", className)}>
+    <div role="tablist" className={cn("-mx-1 flex items-center gap-2 overflow-x-auto px-1 py-1 [scrollbar-width:none]", className)}>
       {items.map((item) => {
         const selected = item.value === value;
         return (
@@ -34,13 +34,17 @@ export function ViewTabs<V extends string>({
             type="button"
             onClick={() => onChange(item.value)}
             className={cn(
-              "flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[14px] transition-colors duration-100",
-              selected ? "bg-active font-medium text-fg" : "text-fg-2 hover:bg-hover",
+              "label-caps flex h-10 shrink-0 items-center gap-2 rounded-xl border-2 border-b-4 px-3.5 text-[12.5px] transition-colors duration-100",
+              selected ? "border-line-selected bg-selected text-blue" : "border-line text-fg-2 hover:bg-subtle",
             )}
           >
-            {item.icon && <span className="flex size-4 items-center justify-center">{item.icon}</span>}
+            {item.icon && <span className="flex size-5 items-center justify-center">{item.icon}</span>}
             {item.label}
-            {item.count != null && item.count > 0 && <span className="text-[12px] text-fg-3">{item.count}</span>}
+            {item.count != null && item.count > 0 && (
+              <span className={cn("rounded-full px-1.5 text-[11px] leading-[18px] tabular", selected ? "bg-blue text-white" : "bg-hover text-fg-2")}>
+                {item.count}
+              </span>
+            )}
           </button>
         );
       })}
@@ -48,7 +52,7 @@ export function ViewTabs<V extends string>({
   );
 }
 
-/** Underlined section tabs (used on project pages). */
+/** Uppercase tabs with a blue underline (Duolingo profile "FOLLOWING / FOLLOWERS"). */
 export function UnderlineTabs<V extends string>({
   items,
   value,
@@ -59,7 +63,7 @@ export function UnderlineTabs<V extends string>({
   onChange: (v: V) => void;
 }) {
   return (
-    <div role="tablist" className="flex items-center gap-4 overflow-x-auto border-b border-line">
+    <div role="tablist" className="flex items-center gap-1 overflow-x-auto border-b-2 border-line [scrollbar-width:none]">
       {items.map((item) => {
         const selected = item.value === value;
         return (
@@ -70,14 +74,14 @@ export function UnderlineTabs<V extends string>({
             type="button"
             onClick={() => onChange(item.value)}
             className={cn(
-              "relative flex h-9 shrink-0 items-center gap-1.5 text-[14px] transition-colors",
-              selected ? "font-medium text-fg" : "text-fg-2 hover:text-fg",
+              "label-caps relative flex h-12 shrink-0 items-center gap-1.5 px-3 text-[13px] transition-colors",
+              selected ? "text-blue" : "text-fg-3 hover:text-fg-2",
             )}
           >
             {item.icon}
             {item.label}
-            {item.count != null && item.count > 0 && <span className="text-[12px] text-fg-3">{item.count}</span>}
-            {selected && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-fg" />}
+            {item.count != null && item.count > 0 && <span className={cn("text-[12px]", selected ? "text-blue" : "text-fg-3")}>{item.count}</span>}
+            {selected && <span className="absolute inset-x-2 -bottom-[2px] h-[3px] rounded-full bg-blue" />}
           </button>
         );
       })}

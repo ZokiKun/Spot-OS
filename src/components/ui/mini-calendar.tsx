@@ -35,14 +35,14 @@ export function MiniCalendar({
   const weekdays = weekStartsOn === 1 ? ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] : ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
   return (
-    <div className="w-[248px] select-none p-2">
+    <div className="w-[280px] select-none p-3">
       <div className="mb-1 flex items-center justify-between pl-1.5">
-        <span className="text-[14px] font-medium">{format(month, "MMMM yyyy")}</span>
+        <span className="text-[15px] font-extrabold">{format(month, "MMMM yyyy")}</span>
         <div className="flex items-center">
           <button
             type="button"
             onClick={() => setMonth(startOfMonth(new Date()))}
-            className="mr-1 rounded px-1.5 text-[12px] text-fg-2 hover:bg-hover"
+            className="label-caps mr-1 rounded-lg px-1.5 text-[11px] text-blue hover:bg-hover"
           >
             Today
           </button>
@@ -54,7 +54,7 @@ export function MiniCalendar({
           </IconButton>
         </div>
       </div>
-      <div className="grid grid-cols-7 text-center text-[11px] text-fg-3">
+      <div className="label-caps grid grid-cols-7 text-center text-[10px] text-fg-3">
         {weekdays.map((d) => (
           <div key={d} className="py-1">
             {d}
@@ -72,10 +72,10 @@ export function MiniCalendar({
               type="button"
               onClick={() => onSelect(iso)}
               className={cn(
-                "relative mx-auto flex size-8 items-center justify-center rounded-md text-[13px] tabular transition-colors duration-75",
+                "relative mx-auto flex size-9 items-center justify-center rounded-full text-[13px] font-bold tabular transition-colors duration-75",
                 !isSameMonth(d, month) && "text-fg-3",
-                selected ? "bg-accent font-medium text-white" : "hover:bg-hover",
-                isToday && !selected && "font-semibold text-danger",
+                selected ? "bg-blue text-white" : "hover:bg-hover",
+                isToday && !selected && "font-black text-orange",
               )}
             >
               {format(d, "d")}

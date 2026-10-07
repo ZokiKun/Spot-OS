@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Bell, Building2, Database, Palette, Plug, Settings, Wallet } from "lucide-react";
+import { Bell, Building2, Database, Palette, Plug, Wallet } from "lucide-react";
 import type { Profile } from "@/lib/types";
 import { MEMBER_COLORS } from "@/lib/constants";
 import { useWorkspace } from "@/lib/store";
@@ -20,6 +20,7 @@ import { Popover, usePopover } from "@/components/ui/popover";
 import { isGooglePickerConfigured } from "@/components/library/google-picker";
 import { SettingsRow, SettingsSection } from "./settings-ui";
 import { FinanceSettings } from "./finance-settings";
+import { DirectionSwitcher } from "./direction-switcher";
 
 const SECTIONS = [
   { id: "appearance", label: "Appearance", icon: Palette },
@@ -39,26 +40,32 @@ export function SettingsView() {
   const current = SECTIONS.find((s) => s.id === section) ?? SECTIONS[0];
 
   return (
-    <Page width="wide" crumbs={[{ label: "Settings", icon: <Settings className="size-4" /> }]}>
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-[200px_minmax(0,1fr)] md:gap-12">
-        <nav className="flex gap-0.5 overflow-x-auto md:sticky md:top-16 md:flex-col md:self-start" aria-label="Settings sections">
+    <Page width="wide" crumbs={[{ label: "Settings" }]}>
+      <h1 className="mb-6 text-[28px] font-black sm:text-[32px]">Settings</h1>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[220px_minmax(0,1fr)] md:gap-10">
+        <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 md:sticky md:top-7 md:flex-col md:self-start" aria-label="Settings sections">
           {SECTIONS.map((s) => (
             <button
               key={s.id}
               type="button"
               onClick={() => router.replace(`${pathname}?section=${s.id}`, { scroll: false })}
               className={cn(
-                "flex h-[30px] shrink-0 items-center gap-2 rounded-md px-2 text-[14px] transition-colors",
-                s.id === current.id ? "bg-active font-medium text-fg" : "text-fg-2 hover:bg-hover",
+                "label-caps flex h-12 shrink-0 items-center gap-3 rounded-xl border-2 px-3 text-[13px] transition-colors",
+                s.id === current.id ? "border-line-selected bg-selected text-blue" : "border-transparent text-fg-2 hover:bg-hover",
               )}
             >
-              <s.icon className="size-4" strokeWidth={1.8} /> {s.label}
+              <s.icon className="size-5" strokeWidth={2.5} /> {s.label}
             </button>
           ))}
         </nav>
         <div className="min-w-0 max-w-[720px]">
-          <h1 className="mb-6 text-[24px] font-semibold">{current.label}</h1>
-          {current.id === "appearance" && <Appearance />}
+          <h2 className="mb-5 text-[22px] font-extrabold">{current.label}</h2>
+          {current.id === "appearance" && (
+          <div className="space-y-8">
+            <DirectionSwitcher />
+            <Appearance />
+          </div>
+        )}
           {current.id === "notifications" && <Notifications />}
           {current.id === "workspace" && <WorkspaceSettings />}
           {current.id === "finance" && <FinanceSettings />}

@@ -1,15 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { RefreshCw, Settings2, TriangleAlert } from "lucide-react";
 import { useFinance } from "@/lib/finance/use-finance";
 import { cn, timeAgo } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { EmptyState, SectionHeading, Skeleton } from "@/components/ui/misc";
+import { Button, buttonClasses } from "@/components/ui/button";
+import { Card, EmptyState, SectionHeading, Skeleton } from "@/components/ui/misc";
 import { Money, RevealToggle, useMoneyVisible } from "./money";
 import { StatRow } from "./stat-row";
 import type { PeriodTotals } from "@/lib/finance/normalize";
+import Link from "next/link";
 
+/** Money, at a glance: four tiles, then each month as two bars (in vs. out). */
 export function FinanceView() {
   const fin = useFinance();
   const { visible } = useMoneyVisible();
@@ -17,40 +18,43 @@ export function FinanceView() {
 
   if (!fin.source)
     return (
-      <EmptyState
-        title="No finance source connected"
-        description="Point Spot OS at the studio finance spreadsheet. The sheet stays the source of truth."
-        action={
-          <Link href="/settings?section=finance" className="text-[14px] text-accent hover:underline">
-            Connect a sheet
-          </Link>
-        }
-      />
+      <Card>
+        <EmptyState
+          mood="think"
+          title="No finance sheet connected"
+          description="Point Spot OS at the studio’s finance spreadsheet. The sheet stays the source of truth — Spot OS only reads it."
+          action={
+            <Link href="/settings?section=finance" className={buttonClasses("blue", "md")}>
+              Connect a sheet
+            </Link>
+          }
+        />
+      </Card>
     );
 
   const s = fin.summary;
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="text-[13px] text-fg-2">
-          From <span className="font-medium text-fg">{fin.source.name}</span>
+        <div className="min-w-0 flex-1 text-[13.5px] font-semibold text-fg-2">
+          From <span className="font-extrabold text-fg">{fin.source.name}</span>
           {fin.fetchedAt && <> · updated {timeAgo(fin.fetchedAt)}</>}
-          {fin.source.kind === "demo" && <span className="ml-1.5 rounded-[3px] bg-[var(--tag-orange-bg)] px-1 text-[11px] text-[var(--tag-text)]">Sample data</span>}
+          {fin.source.kind === "demo" && <span className="label-caps ml-2 rounded-md bg-orange-soft px-1.5 text-[10.5px] leading-5 text-orange-edge">Sample data</span>}
         </div>
-        <div className="ml-auto flex items-center gap-1">
+        <div className="flex items-center gap-1">
           <Button variant="ghost" onClick={fin.refresh} disabled={fin.loading}>
-            <RefreshCw className={cn("size-3.5", fin.loading && "animate-spin")} /> Refresh
+            <RefreshCw className={cn("size-4", fin.loading && "animate-spin")} strokeWidth={3} /> Refresh
           </Button>
-          <Link href="/settings?section=finance" className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[13px] font-medium text-fg-2 hover:bg-hover">
-            <Settings2 className="size-3.5" /> Source
+          <Link href="/settings?section=finance" className={buttonClasses("ghost")}>
+            <Settings2 className="size-4" strokeWidth={3} /> Sheet
           </Link>
           <RevealToggle />
         </div>
       </div>
 
       {fin.error && (
-        <div className="flex items-start gap-2 rounded-md bg-danger-soft px-3 py-2.5 text-[13px] text-danger">
-          <TriangleAlert className="mt-px size-4 shrink-0" /> {fin.error}
+        <div className="flex items-start gap-2 rounded-2xl border-2 border-red/30 bg-red-soft px-4 py-3 text-[14px] font-bold text-red-edge">
+          <TriangleAlert className="mt-px size-5 shrink-0" strokeWidth={2.5} /> {fin.error}
         </div>
       )}
 
@@ -62,72 +66,79 @@ export function FinanceView() {
       ) : (
         <>
           <StatRow
+            columns={2}
             stats={[
-              { label: "Available now", value: <Money value={s.available} currency={c} />, sub: "Current balance" },
-              { label: "Outstanding", value: <Money value={s.outstanding} currency={c} />, sub: "Invoiced, not yet received" },
+              { icon: "🏦", label: "In the bank", value: <Money value={s.available} currency={c} /> },
+              { icon: "📨", label: "Waiting to be paid", value: <Money value={s.outstanding} currency={c} /> },
               {
-                label: `Net · ${s.currentMonth?.label ?? "this month"}`,
+                icon: "📅",
+                label: `Left over · ${s.currentMonth?.label ?? "this month"}`,
                 value: <Money value={s.currentMonth?.net ?? 0} currency={c} />,
                 tone: visible ? ((s.currentMonth?.net ?? 0) < 0 ? "danger" : "good") : "default",
-                sub: s.previousMonth && <>Last month <Money value={s.previousMonth.net} currency={c} compact /></>,
               },
               {
-                label: `Net · ${s.currentQuarter?.label ?? "this quarter"}`,
+                icon: "📊",
+                label: `Left over · ${s.currentQuarter?.label ?? "this quarter"}`,
                 value: <Money value={s.currentQuarter?.net ?? 0} currency={c} />,
                 tone: visible ? ((s.currentQuarter?.net ?? 0) < 0 ? "danger" : "good") : "default",
               },
             ]}
           />
-          <div className="grid grid-cols-1 gap-x-10 gap-y-8 lg:grid-cols-[3fr_2fr]">
-            <section>
-              <SectionHeading>Monthly · last 6 months</SectionHeading>
-              <PeriodTable rows={s.months.slice(-6).reverse()} currency={c} />
-            </section>
-            <section>
-              <SectionHeading>Quarterly</SectionHeading>
-              <PeriodTable rows={s.quarters.slice(-4).reverse()} currency={c} />
-            </section>
-          </div>
+          <section>
+            <SectionHeading size="md">Month by month</SectionHeading>
+            <PeriodBars rows={s.months.slice(-6).reverse()} currency={c} />
+          </section>
+          <section>
+            <SectionHeading size="md">Quarter by quarter</SectionHeading>
+            <PeriodBars rows={s.quarters.slice(-4).reverse()} currency={c} />
+          </section>
         </>
       )}
     </div>
   );
 }
 
-function PeriodTable({ rows, currency }: { rows: PeriodTotals[]; currency: string }) {
+function PeriodBars({ rows, currency }: { rows: PeriodTotals[]; currency: string }) {
   const { visible } = useMoneyVisible();
   const max = Math.max(1, ...rows.flatMap((r) => [r.income, r.expenses]));
-  if (!rows.length) return <EmptyState title="No entries" className="py-6" />;
+  if (!rows.length)
+    return (
+      <Card>
+        <EmptyState title="No entries yet" className="py-6" />
+      </Card>
+    );
   return (
-    <div className="text-[14px]">
-      <div className="grid grid-cols-[1fr_repeat(3,minmax(84px,auto))] gap-3 border-y border-line px-2 py-1.5 text-[12px] text-fg-2">
-        <span>Period</span>
-        <span className="text-right">Income</span>
-        <span className="text-right">Expenses</span>
-        <span className="text-right">Net</span>
-      </div>
+    <Card className="divide-y-2 divide-line">
       {rows.map((r) => (
-        <div key={r.key} className="grid grid-cols-[1fr_repeat(3,minmax(84px,auto))] items-center gap-3 border-b border-line px-2 py-2">
-          <div>
-            <div>{r.label}</div>
-            {visible && (
-              <div className="mt-1 flex flex-col gap-0.5">
-                <span className="h-1 rounded-full bg-[var(--dot-green)]" style={{ width: `${(r.income / max) * 100}%` }} />
-                <span className="h-1 rounded-full bg-[var(--dot-red)] opacity-70" style={{ width: `${(r.expenses / max) * 100}%` }} />
-              </div>
-            )}
+        <div key={r.key} className="px-5 py-3.5">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-[15px] font-extrabold">{r.label}</span>
+            <span className={cn("text-[15px] font-black tabular", visible && (r.net < 0 ? "text-red" : "text-green-edge"))}>
+              <Money value={r.net} currency={currency} />
+            </span>
           </div>
-          <span className="text-right tabular">
-            <Money value={r.income} currency={currency} />
-          </span>
-          <span className="text-right tabular text-fg-2">
-            <Money value={r.expenses} currency={currency} />
-          </span>
-          <span className={cn("text-right font-medium tabular", visible && r.net < 0 && "text-danger")}>
-            <Money value={r.net} currency={currency} />
-          </span>
+          {visible && (
+            <div className="mt-2 space-y-1.5">
+              <Bar label="In" value={r.income} max={max} currency={currency} className="bg-green" />
+              <Bar label="Out" value={r.expenses} max={max} currency={currency} className="bg-red/80" />
+            </div>
+          )}
         </div>
       ))}
+    </Card>
+  );
+}
+
+function Bar({ label, value, max, currency, className }: { label: string; value: number; max: number; currency: string; className: string }) {
+  return (
+    <div className="flex items-center gap-2.5 text-[12.5px] font-bold text-fg-2">
+      <span className="label-caps w-8 shrink-0 text-[10.5px]">{label}</span>
+      <span className="h-3 min-w-0 flex-1 overflow-hidden rounded-full bg-active">
+        <span className={cn("block h-full rounded-full", className)} style={{ width: `${(value / max) * 100}%` }} />
+      </span>
+      <span className="w-20 shrink-0 text-right tabular">
+        <Money value={value} currency={currency} compact />
+      </span>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 # Spot OS
 
-Studio Spot's internal operating system. Home, Calendar, Projects, Library, Reviews, Spot Base and Settings in one calm, Notion-style workspace for three people.
+Studio Spot's internal operating system. Home, Calendar, Projects, Studio, Library, Reviews, Spot Base and Settings in one friendly, easy-to-digest workspace for three people (Duolingo-inspired UI).
 
 **Stack:** Next.js 16 (App Router) · TypeScript · Tailwind v4 · Supabase (Postgres, Auth, Realtime, Storage) · Tiptap · Vercel.
 

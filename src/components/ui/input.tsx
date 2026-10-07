@@ -11,7 +11,7 @@ export const TextInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLIn
     <input
       ref={ref}
       className={cn(
-        "h-8 w-full rounded-md bg-input px-2.5 text-[14px] text-fg shadow-[inset_0_0_0_1px_var(--border-strong)] outline-none transition-shadow placeholder:text-fg-3 focus:shadow-[inset_0_0_0_1px_var(--accent),0_0_0_3px_var(--accent-soft)]",
+        "h-12 w-full rounded-2xl border-2 border-line bg-input px-4 text-[15px] font-semibold text-fg outline-none transition-colors placeholder:font-semibold placeholder:text-fg-3 focus:border-blue",
         className,
       )}
       {...props}
@@ -100,11 +100,13 @@ export function Checkbox({
   onChange,
   label,
   className,
+  size = 26,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   label: string;
   className?: string;
+  size?: number;
 }) {
   return (
     <button
@@ -116,17 +118,18 @@ export function Checkbox({
         e.stopPropagation();
         onChange(!checked);
       }}
+      style={{ width: size, height: size }}
       className={cn(
-        "inline-flex size-4 shrink-0 items-center justify-center rounded-[3px] transition-colors duration-100",
-        checked ? "bg-accent text-white" : "shadow-[inset_0_0_0_1.5px_var(--text-3)] hover:bg-hover",
+        "inline-flex shrink-0 items-center justify-center rounded-full transition-colors duration-150",
+        checked
+          ? "anim-check bg-green text-white shadow-[0_2px_0_var(--green-edge)]"
+          : "border-2 border-b-[3px] border-line-strong bg-bg text-transparent hover:border-green hover:text-green",
         className,
       )}
     >
-      {checked && (
-        <svg viewBox="0 0 14 14" className="size-3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 7.5l2.5 2.5L11 4.5" />
-        </svg>
-      )}
+      <svg viewBox="0 0 14 14" className="size-[58%]" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 7.5l2.5 2.5L11 4.5" />
+      </svg>
     </button>
   );
 }
@@ -140,11 +143,11 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
       aria-label={label}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative inline-flex h-[14px] w-[26px] shrink-0 items-center rounded-full p-[2px] transition-colors duration-150",
-        checked ? "bg-accent" : "bg-[rgba(135,131,120,0.3)]",
+        "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition-colors duration-150",
+        checked ? "bg-blue" : "bg-active",
       )}
     >
-      <span className={cn("size-[10px] rounded-full bg-white transition-transform duration-150", checked && "translate-x-[12px]")} />
+      <span className={cn("size-5 rounded-full bg-white shadow-[0_2px_0_rgba(0,0,0,0.15)] transition-transform duration-150", checked && "translate-x-5")} />
     </button>
   );
 }

@@ -6,7 +6,8 @@ import type { Profile } from "@/lib/types";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getDemoAdapter } from "@/lib/data";
-import { SpotMark } from "@/components/shell/icons";
+import { Wordmark } from "@/components/shell/icons";
+import { Mascot, SpeechBubble } from "@/components/ui/mascot";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
@@ -16,11 +17,13 @@ export default function LoginPage() {
   useTheme();
   return (
     <div className="flex min-h-dvh items-center justify-center bg-bg px-4">
-      <div className="w-full max-w-[340px]">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <SpotMark size={40} />
-          <h1 className="mt-4 text-[22px] font-semibold">Spot OS</h1>
-          <p className="mt-1 text-[14px] text-fg-2">Studio Spot’s operating system</p>
+      <div className="w-full max-w-[400px] py-10">
+        <div className="mb-6 text-center">
+          <Wordmark className="text-[40px] leading-none" />
+        </div>
+        <div className="mb-6 flex items-center gap-3">
+          <Mascot mood="happy" size={88} float />
+          <SpeechBubble className="ml-2 flex-1">{isSupabaseConfigured ? "Welcome back! Sign in to see what’s on today." : "Hi! Who’s working today?"}</SpeechBubble>
         </div>
         {isSupabaseConfigured ? <SupabaseLogin /> : <DemoLogin />}
       </div>
@@ -58,23 +61,23 @@ function SupabaseLogin() {
   };
 
   return (
-    <form onSubmit={signIn} className="space-y-3">
+    <form onSubmit={signIn} className="space-y-4">
       <label className="block">
-        <span className="mb-1 block text-[12px] font-medium text-fg-2">Email</span>
+        <span className="label-caps mb-1.5 block px-1 text-[11px] text-fg-3">Email</span>
         <TextInput type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@studiospot.co" />
       </label>
       <label className="block">
-        <span className="mb-1 block text-[12px] font-medium text-fg-2">Password</span>
+        <span className="label-caps mb-1.5 block px-1 text-[11px] text-fg-3">Password</span>
         <TextInput type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
       </label>
-      {message && <p className={message.tone === "error" ? "text-[13px] text-danger" : "text-[13px] text-fg-2"}>{message.text}</p>}
-      <Button type="submit" variant="primary" size="md" className="w-full" disabled={busy || !password}>
+      {message && <p className={message.tone === "error" ? "text-[14px] font-bold text-danger" : "text-[14px] font-bold text-fg-2"}>{message.text}</p>}
+      <Button type="submit" variant="blue" size="lg" className="w-full" disabled={busy || !password}>
         Continue
       </Button>
-      <Button variant="ghost" size="md" className="w-full" onClick={magicLink} disabled={busy}>
+      <Button variant="secondary" size="lg" className="w-full" onClick={magicLink} disabled={busy}>
         Email me a sign-in link
       </Button>
-      <p className="pt-2 text-center text-[12px] text-fg-3">Accounts are created by a workspace admin. There is no public sign-up.</p>
+      <p className="pt-2 text-center text-[13px] font-semibold text-fg-3">Accounts are created by a workspace admin. There is no public sign-up.</p>
     </form>
   );
 }
@@ -89,11 +92,8 @@ function DemoLogin() {
 
   return (
     <div>
-      <div className="mb-3 rounded-md bg-callout px-3.5 py-3 text-[13px] text-fg-2">
-        <span className="font-medium text-fg">Demo mode.</span> Supabase isn’t configured yet, so data lives in this browser. Pick a team member to continue.
-      </div>
-      <div className="overflow-hidden rounded-lg shadow-[inset_0_0_0_1px_var(--border-strong)]">
-        {members.map((m, i) => (
+      <div className="space-y-3">
+        {members.map((m) => (
           <button
             key={m.id}
             type="button"
@@ -101,16 +101,19 @@ function DemoLogin() {
               demo?.signInAs(m.id);
               router.replace("/");
             }}
-            className={`flex w-full items-center gap-3 px-3.5 py-2.5 text-left hover:bg-hover ${i > 0 ? "border-t border-line" : ""}`}
+            className="card-press flex w-full items-center gap-4 rounded-2xl bg-bg px-4 py-3.5 text-left hover:border-line-selected hover:bg-selected"
           >
-            <Avatar profile={m} size={28} />
-            <div className="min-w-0">
-              <div className="truncate text-[14px] font-medium">{m.full_name}</div>
-              <div className="truncate text-[12px] text-fg-2">{m.role_title}</div>
+            <Avatar profile={m} size={44} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[17px] font-extrabold">{m.full_name}</div>
+              <div className="truncate text-[13.5px] font-semibold text-fg-2">{m.role_title}</div>
             </div>
           </button>
         ))}
       </div>
+      <p className="mt-6 text-center text-[13px] font-semibold text-fg-3">
+        Demo mode — Supabase isn’t connected yet, so everything stays in this browser.
+      </p>
     </div>
   );
 }
