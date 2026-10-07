@@ -1,25 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
 import Link from "next/link";
-import { Activity, CalendarClock, FolderKanban, Users } from "lucide-react";
-import { useProfiles, useWorkspace } from "@/lib/store";
-import { attentionItems, isActiveProject, projectProgress, sortProjects, workload } from "@/lib/selectors";
-import { PROJECT_STATUSES, optionFor } from "@/lib/constants";
-import { addDaysISO, cn, daysUntil, formatDay, todayISO } from "@/lib/utils";
-import { EmptyState, ProgressBar, SectionHeading } from "@/components/ui/misc";
-import { StatusTag } from "@/components/ui/tag";
+import { Activity, CalendarClock, Users } from "lucide-react";
+import { useWorkspace } from "@/lib/store";
+import { isActiveProject, workload } from "@/lib/selectors";
+import { addDaysISO, formatDay, todayISO } from "@/lib/utils";
+import { EmptyState, SectionHeading } from "@/components/ui/misc";
 import { Avatar } from "@/components/ui/avatar";
 import { ActivityFeed } from "@/components/activity-feed";
-import { Attention } from "./attention";
 
 export function StudioView() {
   const { data } = useWorkspace();
-  const people = useProfiles();
   const today = todayISO();
-  const attention = useMemo(() => attentionItems(data, { meId: null, mine: false }), [data]);
-  const active = useMemo(() => sortProjects(data.projects.filter(isActiveProject)), [data.projects]);
-  const load = useMemo(() => workload(data), [data]);
+  const load = workload(data);
   const maxOpen = Math.max(1, ...load.map((l) => l.open));
 
   const upcoming = [
@@ -30,55 +23,6 @@ export function StudioView() {
 
   return (
     <div className="space-y-10">
-      <Attention items={attention} showAssignee initial={8} />
-
-      <section>
-        <SectionHeading icon={<FolderKanban className="size-3.5" />} action={<Link href="/projects" className="rounded px-1 hover:bg-hover">All projects</Link>}>
-          Active projects
-        </SectionHeading>
-        {active.length === 0 ? (
-          <EmptyState title="No active projects" />
-        ) : (
-          <div className="-mx-2 overflow-x-auto px-2">
-            <div className="min-w-[720px]">
-              {active.map((p) => {
-                const prog = projectProgress(p.id, data.tasks);
-                const s = optionFor(PROJECT_STATUSES, p.status)!;
-                const d = daysUntil(p.deadline);
-                return (
-                  <Link
-                    key={p.id}
-                    href={`/projects/${p.id}`}
-                    className="grid h-11 grid-cols-[minmax(180px,1.2fr)_100px_28px_120px_minmax(200px,1.6fr)_80px] items-center gap-3 border-b border-line px-2 text-[14px] hover:bg-hover"
-                  >
-                    <span className="flex min-w-0 items-center gap-2 font-medium">
-                      <span>{p.icon}</span>
-                      <span className="truncate">{p.name}</span>
-                    </span>
-                    <span>
-                      <StatusTag color={s.color}>{s.label}</StatusTag>
-                    </span>
-                    <Avatar profile={people.get(p.lead_id)} size={22} />
-                    <span className="flex items-center gap-2">
-                      <ProgressBar value={prog.ratio} className="w-14" tone={prog.ratio === 1 ? "green" : "default"} />
-                      <span className="text-[12px] text-fg-3 tabular">
-                        {prog.done}/{prog.total}
-                      </span>
-                    </span>
-                    <span className={cn("truncate text-[13px]", p.next_action ? "text-fg-2" : "text-danger")}>
-                      → {p.next_action ?? "No next action"}
-                    </span>
-                    <span className={cn("text-right text-[12px] tabular", d != null && d < 0 ? "text-danger" : d != null && d <= 7 ? "text-fg" : "text-fg-3")}>
-                      {p.deadline ? formatDay(p.deadline) : "—"}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </section>
-
       <div className="grid grid-cols-1 gap-x-10 gap-y-8 lg:grid-cols-2">
         <section>
           <SectionHeading icon={<Users className="size-3.5" />}>Team workload</SectionHeading>

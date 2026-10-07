@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { BarChart3, Building2, House, User, Wallet } from "lucide-react";
+import { Building2, House, User } from "lucide-react";
 import { useWorkspace } from "@/lib/store";
 import { isActiveProject, isDueToday, isOverdue } from "@/lib/selectors";
 import { firstName, formatLongDate, greeting, plural, todayISO } from "@/lib/utils";
@@ -10,17 +10,21 @@ import { Page } from "@/components/shell/page";
 import { ViewTabs } from "@/components/ui/tabs";
 import { PersonalView } from "./personal-view";
 import { StudioView } from "./studio-view";
-import { FinanceView } from "./finance-view";
-import { PerformanceView } from "./performance-view";
 
-type View = "personal" | "studio" | "finance" | "performance";
+type View = "personal" | "studio";
 
 export function HomeView() {
   const { data, me } = useWorkspace();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const view = (params.get("view") as View) || "personal";
+  const requested = params.get("view");
+  const view: View = requested === "studio" ? "studio" : "personal";
+
+  // Finance and Performance moved to Library — keep old links working.
+  useEffect(() => {
+    if (requested === "finance" || requested === "performance") router.replace(`/library?tab=${requested}`);
+  }, [requested, router]);
   const today = todayISO();
 
   // The 10-second summary: one sentence that says how things stand.
@@ -54,15 +58,11 @@ export function HomeView() {
           items={[
             { value: "personal", label: "Personal", icon: <User className="size-4" /> },
             { value: "studio", label: "Studio", icon: <Building2 className="size-4" /> },
-            { value: "finance", label: "Finance", icon: <Wallet className="size-4" /> },
-            { value: "performance", label: "Performance", icon: <BarChart3 className="size-4" /> },
           ]}
         />
       </div>
       {view === "personal" && <PersonalView />}
       {view === "studio" && <StudioView />}
-      {view === "finance" && <FinanceView />}
-      {view === "performance" && <PerformanceView />}
     </Page>
   );
 }

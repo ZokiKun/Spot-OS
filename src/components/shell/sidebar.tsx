@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { readPref } from "@/lib/hooks";
+import { useMemo } from "react";
 import { ChevronDown, LogOut, Monitor, Moon, Search, Sun, Users } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/constants";
 import { useWorkspace } from "@/lib/store";
-import { attentionItems, isActiveProject, sortProjects } from "@/lib/selectors";
+import { isActiveProject, sortProjects } from "@/lib/selectors";
 import { cn } from "@/lib/utils";
 import { getDemoAdapter } from "@/lib/data";
 import { Avatar } from "@/components/ui/avatar";
@@ -61,18 +60,6 @@ export function Sidebar() {
   const workspaceName = (data.settings.find((s) => s.key === "workspace")?.value.name as string) ?? "Studio Spot";
 
   const activeProjects = useMemo(() => sortProjects(data.projects.filter(isActiveProject)), [data.projects]);
-  const myAttention = useMemo(
-    () => attentionItems(data, { meId: me?.id ?? null, mine: true }).filter((i) => i.severity === "high").length,
-    [data, me],
-  );
-
-  const [badgeOn, setBadgeOn] = useState(true);
-  useEffect(() => {
-    const sync = () => setBadgeOn(readPref("attention-badge", true));
-    sync();
-    window.addEventListener("spotos:prefs", sync);
-    return () => window.removeEventListener("spotos:prefs", sync);
-  }, []);
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
   const demo = getDemoAdapter();
@@ -171,7 +158,6 @@ export function Sidebar() {
               label={item.label}
               icon={<Icon className="size-[18px]" strokeWidth={1.8} />}
               active={isActive(item.href)}
-              badge={item.href === "/" && badgeOn ? myAttention : undefined}
               onNavigate={closeMobileNav}
             />
           );

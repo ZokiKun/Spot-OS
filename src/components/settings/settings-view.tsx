@@ -87,28 +87,8 @@ function Appearance() {
   );
 }
 
-export const ATTENTION_BADGE_PREF = "attention-badge";
-
 function Notifications() {
-  const [badge, setBadge] = useState(() => readPref(ATTENTION_BADGE_PREF, true));
-  return (
-    <SettingsSection
-      title="In-app"
-      description="Spot OS V1 doesn’t send email or push notifications on purpose. Anything that needs attention shows up on Home."
-    >
-      <SettingsRow label="Attention badge" description="Show the number of urgent items assigned to you next to Home in the sidebar.">
-        <Toggle
-          label="Attention badge"
-          checked={badge}
-          onChange={(v) => {
-            setBadge(v);
-            writePref(ATTENTION_BADGE_PREF, v);
-            window.dispatchEvent(new Event("spotos:prefs"));
-          }}
-        />
-      </SettingsRow>
-    </SettingsSection>
-  );
+  return <SettingsSection title="In-app" description="Notifications arrive when someone @mentions you.">{null}</SettingsSection>;
 }
 
 function WorkspaceSettings() {

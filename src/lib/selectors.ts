@@ -9,6 +9,17 @@ export const isUpcoming = (t: Task, today = todayISO(), days = 7) =>
   isOpen(t) && !!t.due_date && t.due_date > today && t.due_date <= addDaysISO(today, days);
 export const isActiveProject = (p: Project) => ACTIVE_PROJECT_STATUSES.includes(p.status);
 
+/** I lead it, direct it, am a member, or have an open task on it. */
+export function isMyProject(p: Project, data: Pick<Snapshot, "project_members" | "tasks">, meId: UUID | null) {
+  if (!meId) return false;
+  return (
+    p.lead_id === meId ||
+    p.creative_director_id === meId ||
+    data.project_members.some((m) => m.project_id === p.id && m.profile_id === meId) ||
+    data.tasks.some((t) => t.project_id === p.id && t.assignee_id === meId && isOpen(t))
+  );
+}
+
 const priorityRank = { urgent: 0, high: 1, medium: 2, low: 3 } as const;
 
 export function sortTasks(tasks: Task[]) {
@@ -64,112 +75,6 @@ export function filterTasks(tasks: Task[], filter: TaskFilter, meId: UUID | null
         .filter((t) => t.status === "done")
         .sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? ""));
   }
-}
-
-export type AttentionKind =
-  | "overdue_task"
-  | "due_today"
-  | "blocked_project"
-  | "blocked_task"
-  | "no_next_action"
-  | "project_overdue"
-  | "deadline_soon";
-
-export interface AttentionItem {
-  id: string;
-  kind: AttentionKind;
-  severity: "high" | "medium" | "low";
-  title: string;
-  detail: string;
-  href: string;
-  taskId?: UUID;
-  projectId?: UUID;
-  assigneeId?: UUID | null;
-}
-
-/**
- * Genuine exceptions only — the things that would otherwise be noticed too late.
- * `scope: "me"` limits task-level items to my assignments.
- */
-export function attentionItems(data: Snapshot, scope: { meId: UUID | null; mine: boolean }): AttentionItem[] {
-  const today = todayISO();
-  const items: AttentionItem[] = [];
-  const projects = new Map(data.projects.map((p) => [p.id, p]));
-  const projName = (id: UUID | null) => (id ? (projects.get(id)?.name ?? "No project") : "No project");
-  const relevantTask = (t: Task) => !scope.mine || t.assignee_id === scope.meId;
-
-  for (const p of data.projects) {
-    if (p.status === "blocked")
-      items.push({
-        id: `bp-${p.id}`,
-        kind: "blocked_project",
-        severity: "high",
-        title: p.name,
-        detail: p.next_action ? `Blocked · ${p.next_action}` : "Blocked",
-        href: `/projects/${p.id}`,
-        projectId: p.id,
-      });
-    if (isActiveProject(p) && p.deadline && p.deadline < today)
-      items.push({
-        id: `po-${p.id}`,
-        kind: "project_overdue",
-        severity: "high",
-        title: p.name,
-        detail: "Past its deadline",
-        href: `/projects/${p.id}`,
-        projectId: p.id,
-      });
-    if (p.status === "active" && !p.next_action?.trim())
-      items.push({
-        id: `nna-${p.id}`,
-        kind: "no_next_action",
-        severity: "medium",
-        title: p.name,
-        detail: "No next action set",
-        href: `/projects/${p.id}`,
-        projectId: p.id,
-      });
-  }
-
-  for (const t of data.tasks) {
-    if (!relevantTask(t)) continue;
-    if (isOverdue(t, today))
-      items.push({
-        id: `ot-${t.id}`,
-        kind: "overdue_task",
-        severity: "high",
-        title: t.title,
-        detail: projName(t.project_id),
-        href: t.project_id ? `/projects/${t.project_id}?tab=tasks&task=${t.id}` : `/projects/tasks?task=${t.id}`,
-        taskId: t.id,
-        assigneeId: t.assignee_id,
-      });
-    else if (t.status === "blocked")
-      items.push({
-        id: `bt-${t.id}`,
-        kind: "blocked_task",
-        severity: "medium",
-        title: t.title,
-        detail: projName(t.project_id),
-        href: t.project_id ? `/projects/${t.project_id}?tab=tasks&task=${t.id}` : `/projects/tasks?task=${t.id}`,
-        taskId: t.id,
-        assigneeId: t.assignee_id,
-      });
-    else if (isDueToday(t, today))
-      items.push({
-        id: `dt-${t.id}`,
-        kind: "due_today",
-        severity: "medium",
-        title: t.title,
-        detail: projName(t.project_id),
-        href: t.project_id ? `/projects/${t.project_id}?tab=tasks&task=${t.id}` : `/projects/tasks?task=${t.id}`,
-        taskId: t.id,
-        assigneeId: t.assignee_id,
-      });
-  }
-
-  const rank = { high: 0, medium: 1, low: 2 };
-  return items.sort((a, b) => rank[a.severity] - rank[b.severity]);
 }
 
 export interface Workload {

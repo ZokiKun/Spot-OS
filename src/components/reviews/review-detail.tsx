@@ -17,8 +17,8 @@ import { IconButton } from "@/components/ui/button";
 import { Popover, usePopover } from "@/components/ui/popover";
 import { MenuItem, MenuList } from "@/components/ui/menu";
 import { EmptyState } from "@/components/ui/misc";
-import { StatRow } from "@/components/home/stat-row";
-import { Money, RevealToggle } from "@/components/home/money";
+import { StatRow } from "@/components/insights/stat-row";
+import { Money, RevealToggle } from "@/components/insights/money";
 
 export function ReviewDetail({ id }: { id: string }) {
   const { data, status, remove } = useWorkspace();
