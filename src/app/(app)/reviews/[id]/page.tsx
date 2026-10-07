@@ -1,0 +1,6 @@
+import { ReviewDetail } from "@/components/reviews/review-detail";
+
+export default async function ReviewPage({ params }: PageProps<"/reviews/[id]">) {
+  const { id } = await params;
+  return <ReviewDetail id={id} />;
+}

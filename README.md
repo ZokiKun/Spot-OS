@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Spot OS
 
-## Getting Started
+Studio Spot's internal operating system. Home, Calendar, Projects, Library, Reviews, Spot Base and Settings in one calm, Notion-style workspace for three people.
 
-First, run the development server:
+**Stack:** Next.js 16 (App Router) · TypeScript · Tailwind v4 · Supabase (Postgres, Auth, Realtime, Storage) · Tiptap · Vercel.
+
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the schema, realtime design, Google integration and the decisions behind them.
+
+---
+
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+With no Supabase keys, Spot OS runs in **demo mode**: sample data lives in your browser's localStorage, you sign in by picking a sample member, and open tabs sync live (like Realtime). Reset it under **Settings → Data**.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Connect Supabase
 
-## Learn More
+1. Create a project at [supabase.com](https://supabase.com).
+2. Run `supabase/migrations/0001_init.sql`, either in the SQL editor or with `supabase db push` via the CLI. This creates the tables, RLS, triggers, Realtime publication and the private `attachments` bucket.
+3. **Authentication → Providers → Email:** keep Email enabled and **turn off "Allow new users to sign up"**.
+4. **Authentication → URL configuration:** set the Site URL to your app URL, and add `http://localhost:3000/auth/callback` plus `https://<your-domain>/auth/callback` to the redirect URLs.
+5. **Authentication → Users → Invite user** for each of the three members. Their profile is created automatically. Members set a password via the invite link, or use "Email me a sign-in link".
+6. Copy `.env.example` to `.env.local` and fill in `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+7. Restart `npm run dev`, sign in, then open **Spot Base → Add starter pages** and **Settings → Finance** to connect the sheet.
 
-To learn more about Next.js, take a look at the following resources:
+## Connect the finance sheet
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Settings → Finance → paste the Google Sheet URL (the specific tab). Map the column headers, then press **Test connection** to preview, then **Save**.
+The sheet must be viewable by link, or published to the web as CSV. Spot OS reads it and never writes to it.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deploy to Vercel
 
-## Deploy on Vercel
+1. Import the GitHub repo in Vercel (framework: Next.js, root directory: repository root).
+2. Add the same environment variables (plus the optional Google ones).
+3. Add the production `/auth/callback` URL in Supabase (step 4 above).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Dev server |
+| `npm run build` | Production build (type-checks) |
+| `npm run lint` | ESLint (incl. React Compiler rules) |
