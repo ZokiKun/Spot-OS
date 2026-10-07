@@ -1,92 +1,95 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { addMonths, addQuarters, format, startOfMonth, startOfQuarter } from "date-fns";
+import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { useWorkspace } from "@/lib/store";
 import { periodMetrics } from "@/lib/selectors";
 import { useFinance } from "@/lib/finance/use-finance";
 import { cn, parseDate, todayISO } from "@/lib/utils";
-import { SectionHeading } from "@/components/ui/misc";
+import { Page, PageTitle } from "@/components/shell/page";
+import { Card, Eyebrow, PillTabs, type Tone } from "@/components/ui/chunk";
 import { Money, RevealToggle, useMoneyVisible } from "./money";
 
 const iso = (d: Date) => format(d, "yyyy-MM-dd");
+const qKey = (d: Date) => `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`;
 
-/** Lightweight period comparison — deliberately not an analytics suite. */
+/** "Are we doing better than last time?" — one card per number, one arrow per card. */
 export function PerformanceView() {
   const { data } = useWorkspace();
   const fin = useFinance();
   const { visible } = useMoneyVisible();
+  const [period, setPeriod] = useState<"month" | "quarter">("month");
   const todayKey = todayISO();
-  const periods = useMemo(() => {
+
+  const p = useMemo(() => {
     const now = parseDate(todayKey)!;
-    const m0 = startOfMonth(now);
+    if (period === "month") {
+      const m0 = startOfMonth(now);
+      return { label: format(m0, "MMMM"), prevLabel: "last month", cur: [iso(m0), iso(addMonths(m0, 1))], prev: [iso(addMonths(m0, -1)), iso(m0)], finKey: format(m0, "yyyy-MM"), prevFinKey: format(addMonths(m0, -1), "yyyy-MM") };
+    }
     const q0 = startOfQuarter(now);
-    return [
-      { key: "month", title: "This month", label: format(m0, "MMMM"), cur: [iso(m0), iso(addMonths(m0, 1))], prev: [iso(addMonths(m0, -1)), iso(m0)], finKey: format(m0, "yyyy-MM"), prevFinKey: format(addMonths(m0, -1), "yyyy-MM") },
-      {
-        key: "quarter",
-        title: "This quarter",
-        label: `Q${Math.floor(q0.getMonth() / 3) + 1} ${q0.getFullYear()}`,
-        cur: [iso(q0), iso(addQuarters(q0, 1))],
-        prev: [iso(addQuarters(q0, -1)), iso(q0)],
-        finKey: `${q0.getFullYear()}-Q${Math.floor(q0.getMonth() / 3) + 1}`,
-        prevFinKey: (() => {
-          const p = addQuarters(q0, -1);
-          return `${p.getFullYear()}-Q${Math.floor(p.getMonth() / 3) + 1}`;
-        })(),
-      },
-    ];
-  }, [todayKey]);
+    return { label: `Q${Math.floor(q0.getMonth() / 3) + 1}`, prevLabel: "last quarter", cur: [iso(q0), iso(addQuarters(q0, 1))], prev: [iso(addQuarters(q0, -1)), iso(q0)], finKey: qKey(q0), prevFinKey: qKey(addQuarters(q0, -1)) };
+  }, [period, todayKey]);
+
+  const cur = periodMetrics(data, p.cur[0]!, p.cur[1]!);
+  const prev = periodMetrics(data, p.prev[0]!, p.prev[1]!);
+  const list = period === "month" ? fin.summary?.months : fin.summary?.quarters;
+  const f = list?.find((x) => x.key === p.finKey);
+  const pf = list?.find((x) => x.key === p.prevFinKey);
+
+  const rows: { label: string; cur: number; prev: number; money?: boolean; invert?: boolean; tone: Tone }[] = [
+    { label: "Tasks done", cur: cur.tasksCompleted, prev: prev.tasksCompleted, tone: "lime" },
+    { label: "Projects finished", cur: cur.projectsCompleted, prev: prev.projectsCompleted, tone: "sky" },
+    { label: "Projects started", cur: cur.projectsStarted, prev: prev.projectsStarted, tone: "cream" },
+    { label: "Money in", cur: f?.income ?? 0, prev: pf?.income ?? 0, money: true, tone: "ink" },
+    { label: "Money out", cur: f?.expenses ?? 0, prev: pf?.expenses ?? 0, money: true, invert: true, tone: "ink" },
+  ];
 
   return (
-    <div className="space-y-10">
-      <div className="flex justify-end">
-        <RevealToggle />
-      </div>
-      {periods.map((p) => {
-        const cur = periodMetrics(data, p.cur[0]!, p.cur[1]!);
-        const prev = periodMetrics(data, p.prev[0]!, p.prev[1]!);
-        const list = p.key === "month" ? fin.summary?.months : fin.summary?.quarters;
-        const f = list?.find((x) => x.key === p.finKey);
-        const pf = list?.find((x) => x.key === p.prevFinKey);
-        const rows: { label: string; cur: number; prev: number; money?: boolean; invert?: boolean }[] = [
-          { label: "Projects started", cur: cur.projectsStarted, prev: prev.projectsStarted },
-          { label: "Projects completed", cur: cur.projectsCompleted, prev: prev.projectsCompleted },
-          { label: "Tasks completed", cur: cur.tasksCompleted, prev: prev.tasksCompleted },
-          { label: "Revenue", cur: f?.income ?? 0, prev: pf?.income ?? 0, money: true },
-          { label: "Expenses", cur: f?.expenses ?? 0, prev: pf?.expenses ?? 0, money: true, invert: true },
-        ];
-        return (
-          <section key={p.key}>
-            <SectionHeading>
-              {p.title} · {p.label}
-            </SectionHeading>
-            <div className="text-[14px]">
-              <div className="grid grid-cols-[1fr_120px_120px_70px] gap-3 border-y border-line px-2 py-1.5 text-[12px] text-fg-2">
-                <span>Metric</span>
-                <span className="text-right">{p.key === "month" ? "This month" : "This quarter"}</span>
-                <span className="text-right">Previous</span>
-                <span className="text-right">Change</span>
+    <Page crumbs={[{ label: "Home", href: "/" }, { label: "How we’re doing" }]}>
+      <PageTitle title={<>How we’re<br />doing</>} description={`${p.label} so far, compared with ${p.prevLabel}.`} aside={<RevealToggle />} />
+      <PillTabs
+        className="mb-6"
+        value={period}
+        onChange={setPeriod}
+        items={[
+          { value: "month", label: "This month" },
+          { value: "quarter", label: "This quarter" },
+        ]}
+      />
+      <div className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {rows.map((r) => {
+          const delta = r.cur - r.prev;
+          const good = r.invert ? delta < 0 : delta > 0;
+          const hidden = r.money && !visible;
+          const Icon = delta === 0 ? Minus : delta > 0 ? ArrowUpRight : ArrowDownRight;
+          return (
+            <Card key={r.label} tone={r.tone} className="min-h-[190px]">
+              <Eyebrow>{r.label}</Eyebrow>
+              <div className="mt-auto pt-6 text-[48px] font-medium leading-none tracking-[-0.045em] tabular">
+                {r.money ? <Money value={r.cur} currency={fin.currency} compact /> : r.cur}
               </div>
-              {rows.map((r) => {
-                const delta = r.cur - r.prev;
-                const good = r.invert ? delta < 0 : delta > 0;
-                return (
-                  <div key={r.label} className="grid grid-cols-[1fr_120px_120px_70px] items-center gap-3 border-b border-line px-2 py-2.5">
-                    <span>{r.label}</span>
-                    <span className="text-right font-semibold tabular">{r.money ? <Money value={r.cur} currency={fin.currency} /> : r.cur}</span>
-                    <span className="text-right text-fg-2 tabular">{r.money ? <Money value={r.prev} currency={fin.currency} /> : r.prev}</span>
-                    <span className={cn("text-right text-[12px] tabular", delta === 0 ? "text-fg-3" : good ? "text-[var(--success)]" : "text-danger")}>
-                      {r.money ? (r.prev && visible ? `${delta > 0 ? "+" : ""}${Math.round((delta / r.prev) * 100)}%` : "—") : `${delta > 0 ? "+" : ""}${delta}`}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
-      <p className="text-[12px] text-fg-3">Task and project numbers come from Spot OS; revenue and expenses come from the finance sheet.</p>
-    </div>
+              <div className="mt-3 flex items-center gap-2 text-[13px]">
+                {!hidden && (
+                  <span
+                    className={cn(
+                      "flex size-7 items-center justify-center rounded-full",
+                      delta === 0 ? "bg-[var(--chunk-soft)]" : good ? "bg-[#3d8048] text-white" : "bg-[#c8431d] text-white",
+                    )}
+                  >
+                    <Icon className="size-4" />
+                  </span>
+                )}
+                <span className="opacity-60">
+                  {r.money ? <Money value={r.prev} currency={fin.currency} compact /> : r.prev} {p.prevLabel}
+                </span>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+      <p className="mt-6 text-[12.5px] text-fg-3">Tasks and projects come from Spot OS. Money comes from the finance sheet.</p>
+    </Page>
   );
 }

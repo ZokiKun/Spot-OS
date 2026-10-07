@@ -36,15 +36,15 @@ export function NoteCard({ note, focus }: { note: CalendarNote; focus?: boolean 
   }, [focus]);
 
   return (
-    <article ref={ref} className="scroll-mt-14 border-b border-line pb-8 pt-2 last:border-b-0">
+    <article ref={ref} className="scroll-mt-24 rounded-[28px] bg-cream p-6 text-on-chunk [--check-stroke:#f7f3ea] [&_.prose-notion]:text-current sm:p-7">
       <div className="flex items-start gap-2">
         <EditableText
           value={note.title}
           onCommit={(title) => void update("calendar_notes", note.id, { title, updated_by: me?.id ?? null })}
-          placeholder="Untitled"
-          className="text-[22px] font-semibold leading-tight"
+          placeholder="Give it a title"
+          className="text-[24px] font-medium leading-tight tracking-[-0.02em] placeholder:text-[var(--on-chunk-2)]"
         />
-        <IconButton ref={menuAnchorRef} label="Note options" onClick={menu.toggle} className="mt-0.5">
+        <IconButton ref={menuAnchorRef} label="Note options" size="md" onClick={menu.toggle} className="-mr-2 -mt-1 bg-[var(--chunk-soft)] text-current hover:bg-[var(--chunk-soft-2)]">
           <Ellipsis className="size-4" />
         </IconButton>
         <Popover open={menu.open} onClose={menu.close} anchor={menu.anchor} align="end" width={220}>
@@ -94,7 +94,7 @@ export function NoteCard({ note, focus }: { note: CalendarNote; focus?: boolean 
           </MenuList>
         </Popover>
       </div>
-      <div className="mb-3 mt-1 text-[12px] text-fg-3">
+      <div className="mb-4 mt-1 text-[12.5px] text-[var(--on-chunk-2)]">
         {people.get(note.created_by)?.full_name ?? "Someone"}
         {note.updated_by && note.updated_at !== note.created_at && (
           <> · edited by {people.get(note.updated_by)?.full_name ?? "someone"} {timeAgo(note.updated_at)}</>

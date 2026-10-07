@@ -62,3 +62,78 @@ export function recentPeriods(period: ReviewPeriod, count: number, today = new D
 export function isReviewStarted(r: Review) {
   return reviewFields(r.period).some((f) => r[f.key]?.trim());
 }
+
+/* ---------- Guided flow: the fields grouped into three steps ---------- */
+
+export type ReviewStepTone = "cream" | "sky" | "lime";
+
+export interface ReviewStep {
+  /** 1-based, used in the `?step=` param. */
+  n: number;
+  title: string;
+  helper: string;
+  tone: ReviewStepTone;
+  fields: ReviewField[];
+}
+
+const STEP_META: Omit<ReviewStep, "n" | "fields">[] = [
+  { title: "Look back", helper: "What was the plan, and what actually happened?", tone: "cream" },
+  { title: "What we learned", helper: "The good, the bad, and what to change.", tone: "sky" },
+  { title: "Look ahead", helper: "Turn it into a short plan for what’s next.", tone: "lime" },
+];
+
+const STEP_KEYS: Record<ReviewPeriod, ReviewField["key"][][]> = {
+  month: [
+    ["planned", "done", "not_done", "reasons"],
+    ["wins", "problems", "lessons"],
+    ["next_period", "numbers"],
+  ],
+  quarter: [
+    ["planned", "done", "not_done", "numbers"],
+    ["wins", "problems", "lessons"],
+    ["next_period"],
+  ],
+};
+
+/** The review's questions split into Look back → What we learned → Look ahead. */
+export function reviewSteps(period: ReviewPeriod): ReviewStep[] {
+  const fields = reviewFields(period);
+  return STEP_KEYS[period].map((keys, i) => ({
+    n: i + 1,
+    ...STEP_META[i],
+    fields: keys.map((k) => fields.find((f) => f.key === k)!).filter(Boolean),
+  }));
+}
+
+/** How many of the review's questions have an answer. */
+export function reviewProgress(r: Review, fields: ReviewField[] = reviewFields(r.period)) {
+  const filled = fields.filter((f) => r[f.key]?.trim()).length;
+  return { filled, total: fields.length };
+}
+
+/** "September" / "2026", or "Q3" / "2026" — for big period titles. */
+export function periodParts(period: ReviewPeriod, start: string) {
+  const d = parseDate(start);
+  if (!d) return { name: start, year: "" };
+  return {
+    name: period === "month" ? format(d, "MMMM") : `Q${Math.floor(d.getMonth() / 3) + 1}`,
+    year: String(d.getFullYear()),
+  };
+}
+
+/**
+ * The period a review is due for right now, or null when none is.
+ * Monthly: this month, or last month during the first week.
+ * Quarterly: the last month of a quarter, or the previous quarter during the first two weeks.
+ */
+export function duePeriod(period: ReviewPeriod, today = new Date()): string | null {
+  if (period === "month") {
+    const base = startOfMonth(today);
+    return format(today.getDate() <= 7 ? addMonths(base, -1) : base, "yyyy-MM-dd");
+  }
+  const q = startOfQuarter(today);
+  const monthInQuarter = today.getMonth() - q.getMonth();
+  if (monthInQuarter === 0 && today.getDate() <= 14) return format(addQuarters(q, -1), "yyyy-MM-dd");
+  if (monthInQuarter === 2) return format(q, "yyyy-MM-dd");
+  return null;
+}

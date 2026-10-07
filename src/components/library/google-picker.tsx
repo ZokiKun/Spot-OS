@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { LibraryItemType } from "@/lib/types";
-import { Button } from "@/components/ui/button";
+import { PillButton } from "@/components/ui/chunk";
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY ?? "";
@@ -110,13 +110,13 @@ export function GooglePickerButton({ onPick }: { onPick: (p: { url: string; name
   };
 
   return (
-    <Button onClick={() => void open()} disabled={busy} className="h-8">
-      <svg viewBox="0 0 24 24" className="size-3.5" aria-hidden>
+    <PillButton tone="outline" size="lg" onClick={() => void open()} disabled={busy}>
+      <svg viewBox="0 0 24 24" aria-hidden>
         <path fill="#4285f4" d="M7.7 3.5h8.6l5.2 9h-8.6z" />
         <path fill="#0f9d58" d="M2.5 15.5l4.3-7.5 4.3 7.5-4.3 7.5z" transform="translate(0 -2)" />
         <path fill="#f4b400" d="M6.8 20.5l4.3-7.5h10.4l-4.3 7.5z" />
       </svg>
       Drive
-    </Button>
+    </PillButton>
   );
 }

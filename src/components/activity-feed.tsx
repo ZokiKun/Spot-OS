@@ -32,7 +32,7 @@ function describe(e: ActivityEntry, names: (id: string) => string) {
     case "added":
       return "added";
     case "next_action_set":
-      return "set the next action on";
+      return "set the next step on";
     case "edited":
       return `edited ${noun}`;
     default:
@@ -69,9 +69,9 @@ export function ActivityFeed({ entries, limit = 12, compact = false }: { entries
         const actor = people.get(e.actor_id);
         const project = e.entity_type !== "project" && e.project_id ? data.projects.find((p) => p.id === e.project_id) : undefined;
         return (
-          <li key={e.id} className="flex gap-2.5 rounded-md px-2 py-1.5 hover:bg-hover">
-            <Avatar profile={actor} size={20} className="mt-px" />
-            <div className="min-w-0 flex-1 text-[14px] leading-[22px]">
+          <li key={e.id} className="flex gap-3 rounded-[18px] px-2 py-2 hover:bg-hover">
+            <Avatar profile={actor} size={26} className="mt-px" />
+            <div className="min-w-0 flex-1 text-[14px] leading-[24px]">
               <span className="font-medium">{actor ? firstName(actor.full_name) : "Someone"}</span>{" "}
               <span className="text-fg-2">{describe(e, names)}</span>{" "}
               <Link href={hrefFor(e)} className="font-medium underline decoration-fg-3 underline-offset-2 hover:decoration-fg">
@@ -79,7 +79,7 @@ export function ActivityFeed({ entries, limit = 12, compact = false }: { entries
               </Link>
               {project && !compact && <span className="text-fg-3"> in {project.name}</span>}
             </div>
-            <span className="shrink-0 pt-0.5 text-[12px] text-fg-3">{timeAgo(e.created_at)}</span>
+            <span className="shrink-0 pt-1 text-[12px] text-fg-3">{timeAgo(e.created_at)}</span>
           </li>
         );
       })}

@@ -1,18 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { todayISO } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import type { ProjectType } from "@/lib/types";
 import { PROJECT_TYPES } from "@/lib/constants";
 import { useProfiles, useWorkspace } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { Dialog } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
-import { DateField, OptionField, PersonField } from "@/components/ui/fields";
+import { DateField, PersonField } from "@/components/ui/fields";
+import { PillButton, PillTabs } from "@/components/ui/chunk";
 
 const ICONS = ["📁", "🧭", "🪶", "🫙", "🟠", "⚙️", "📓", "🔤", "🎨", "📐", "🖼️", "🎬", "📦", "🌱", "✳️", "🔶"];
 
+/** Two questions up front (what, and what kind); everything else is optional and folded. */
 export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { create, me } = useWorkspace();
   const people = useProfiles();
@@ -24,6 +27,7 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
   const [lead, setLead] = useState<string | null>(me?.id ?? null);
   const [deadline, setDeadline] = useState<string | null>(null);
   const [nextAction, setNextAction] = useState("");
+  const [more, setMore] = useState(false);
 
   const reset = () => {
     setName("");
@@ -31,6 +35,7 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
     setDeadline(null);
     setNextAction("");
     setIcon("📁");
+    setMore(false);
   };
 
   const submit = async () => {
@@ -64,12 +69,12 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
       title="New project"
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>
+          <PillButton tone="outline" onClick={onClose}>
             Cancel
-          </Button>
-          <Button variant="primary" onClick={() => void submit()} disabled={!name.trim()}>
+          </PillButton>
+          <PillButton onClick={() => void submit()} disabled={!name.trim()}>
             Create project
-          </Button>
+          </PillButton>
         </>
       }
     >
@@ -78,41 +83,54 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
           e.preventDefault();
           void submit();
         }}
-        className="space-y-4"
+        className="space-y-5"
       >
+        <div className="flex items-center gap-3">
+          <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-cream text-[28px]">{icon}</span>
+          <input
+            autoFocus
+            placeholder="What’s the project called?"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="h-14 min-w-0 flex-1 rounded-[20px] bg-input px-5 text-[17px] outline-none placeholder:text-fg-3 focus:shadow-[inset_0_0_0_1.5px_var(--text)]"
+          />
+        </div>
         <div>
-          <div className="mb-1.5 flex flex-wrap gap-0.5">
-            {ICONS.map((i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setIcon(i)}
-                className={`flex size-8 items-center justify-center rounded-md text-[17px] hover:bg-hover ${icon === i ? "bg-active" : ""}`}
-              >
-                {i}
-              </button>
-            ))}
-          </div>
-          <TextInput autoFocus placeholder="Project name" value={name} onChange={(e) => setName(e.target.value)} className="h-10 text-[16px]" />
+          <div className="mb-2 text-[13px] text-fg-2">What kind?</div>
+          <PillTabs size="sm" value={type} onChange={setType} items={PROJECT_TYPES.map((t) => ({ value: t.value, label: t.label }))} />
         </div>
-        <div className="grid grid-cols-[110px_1fr] items-center gap-x-3 gap-y-1 text-[14px]">
-          <span className="text-fg-2">Type</span>
-          <div className="-ml-1.5">
-            <OptionField variant="property" kind="select" options={PROJECT_TYPES} value={type} onChange={setType} />
-          </div>
-          <span className="text-fg-2">Client</span>
-          <TextInput placeholder="Optional" value={client} onChange={(e) => setClient(e.target.value)} />
-          <span className="text-fg-2">Lead</span>
-          <div className="-ml-1.5">
-            <PersonField variant="property" people={people.list} value={lead} onChange={setLead} />
-          </div>
-          <span className="text-fg-2">Deadline</span>
-          <div className="-ml-1.5">
-            <DateField variant="property" value={deadline} onChange={setDeadline} />
-          </div>
-          <span className="text-fg-2">Next action</span>
-          <TextInput placeholder="The one next meaningful step" value={nextAction} onChange={(e) => setNextAction(e.target.value)} />
+        <div>
+          <div className="mb-2 text-[13px] text-fg-2">What’s the first step?</div>
+          <TextInput placeholder="e.g. Send the kickoff questions" value={nextAction} onChange={(e) => setNextAction(e.target.value)} />
         </div>
+
+        <button type="button" onClick={() => setMore((m) => !m)} className="flex items-center gap-1.5 text-[13px] text-fg-2 hover:text-fg">
+          <ChevronDown className={cn("size-4 transition-transform", more && "rotate-180")} />
+          {more ? "Fewer details" : "Icon, client, lead and deadline"}
+        </button>
+        {more && (
+          <div className="anim-fade space-y-4 rounded-[22px] bg-hover p-4">
+            <div className="flex flex-wrap gap-1">
+              {ICONS.map((i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setIcon(i)}
+                  className={cn("flex size-9 items-center justify-center rounded-full text-[18px] hover:bg-hover", icon === i && "bg-elevated shadow-card")}
+                >
+                  {i}
+                </button>
+              ))}
+            </div>
+            <TextInput placeholder="Client (optional)" value={client} onChange={(e) => setClient(e.target.value)} />
+            <div className="grid grid-cols-[90px_1fr] items-center gap-x-3 gap-y-1 text-[14px]">
+              <span className="text-fg-2">Lead</span>
+              <PersonField variant="property" people={people.list} value={lead} onChange={setLead} />
+              <span className="text-fg-2">Deadline</span>
+              <DateField variant="property" value={deadline} onChange={setDeadline} />
+            </div>
+          </div>
+        )}
         <button type="submit" hidden />
       </form>
     </Dialog>

@@ -19,15 +19,15 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   settings: Settings,
 };
 
-/** Studio Spot mark — an orange spot. */
+/** Studio Spot mark — a coral spot with a cream dot. */
 export function SpotMark({ size = 20 }: { size?: number }) {
   return (
     <span
-      className="inline-flex shrink-0 items-center justify-center rounded-[5px] bg-[#e16f24] text-white"
+      className="relative inline-flex shrink-0 items-center justify-center rounded-full bg-coral"
       style={{ width: size, height: size }}
       aria-hidden
     >
-      <span className="rounded-full bg-white" style={{ width: size * 0.36, height: size * 0.36 }} />
+      <span className="absolute rounded-full bg-[#f7f3ea]" style={{ width: size * 0.3, height: size * 0.3, top: size * 0.24, right: size * 0.24 }} />
     </span>
   );
 }

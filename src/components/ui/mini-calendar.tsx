@@ -42,7 +42,7 @@ export function MiniCalendar({
           <button
             type="button"
             onClick={() => setMonth(startOfMonth(new Date()))}
-            className="mr-1 rounded px-1.5 text-[12px] text-fg-2 hover:bg-hover"
+            className="mr-1 h-7 rounded-full px-2.5 text-[12px] text-fg-2 hover:bg-hover"
           >
             Today
           </button>
@@ -72,15 +72,15 @@ export function MiniCalendar({
               type="button"
               onClick={() => onSelect(iso)}
               className={cn(
-                "relative mx-auto flex size-8 items-center justify-center rounded-md text-[13px] tabular transition-colors duration-75",
+                "relative mx-auto flex size-9 items-center justify-center rounded-full text-[13px] tabular transition-colors duration-75",
                 !isSameMonth(d, month) && "text-fg-3",
-                selected ? "bg-accent font-medium text-white" : "hover:bg-hover",
-                isToday && !selected && "font-semibold text-danger",
+                selected ? "bg-accent font-medium text-on-accent" : "hover:bg-hover",
+                isToday && !selected && "bg-sun font-medium text-on-chunk",
               )}
             >
               {format(d, "d")}
               {marked?.has(iso) && (
-                <span className={cn("absolute bottom-1 size-1 rounded-full", selected ? "bg-white" : "bg-fg-3")} />
+                <span className={cn("absolute bottom-1 size-1 rounded-full", selected ? "bg-on-accent" : "bg-fg-3")} />
               )}
             </button>
           );

@@ -102,14 +102,14 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   if (!open || typeof document === "undefined") return null;
   let lastGroup = "";
   return createPortal(
-    <div className="anim-fade fixed inset-0 z-50 flex items-start justify-center bg-[rgba(15,15,15,0.6)] px-4 pt-[14vh]" onMouseDown={onClose}>
+    <div className="anim-fade fixed inset-0 z-50 flex items-start justify-center bg-[rgba(12,12,12,0.55)] px-4 pt-[12vh] backdrop-blur-[2px]" onMouseDown={onClose}>
       <div
         role="dialog"
         aria-label="Search"
         onMouseDown={(e) => e.stopPropagation()}
-        className="anim-pop w-full max-w-[620px] overflow-hidden rounded-xl bg-elevated shadow-menu"
+        className="anim-pop w-full max-w-[620px] overflow-hidden rounded-[28px] bg-elevated shadow-menu"
       >
-        <div className="flex items-center gap-2.5 border-b border-line px-4">
+        <div className="m-2 flex items-center gap-3 rounded-full bg-hover px-5">
           <Search className="size-[18px] text-fg-3" />
           <input
             ref={inputRef}
@@ -131,23 +131,23 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               } else if (e.key === "Escape") onClose();
             }}
             placeholder="Search projects, tasks, library, notes, Spot Base…"
-            className="h-12 flex-1 bg-transparent text-[16px] outline-none placeholder:text-fg-3"
+            className="h-14 flex-1 bg-transparent text-[16px] outline-none placeholder:text-fg-3"
           />
         </div>
-        <div ref={listRef} className="max-h-[52vh] overflow-y-auto p-1.5">
+        <div ref={listRef} className="max-h-[52vh] overflow-y-auto px-2 pb-2">
           {results.length === 0 && <div className="px-3 py-8 text-center text-[14px] text-fg-3">No results for “{query}”</div>}
           {results.map((r, i) => {
             const header = r.group !== lastGroup ? r.group : null;
             lastGroup = r.group;
             return (
               <div key={`${r.group}-${r.id}`}>
-                {header && <div className="px-2.5 pb-1 pt-2.5 text-[12px] font-medium text-fg-2">{header}</div>}
+                {header && <div className="px-4 pb-1 pt-3 text-[12px] text-fg-3">{header}</div>}
                 <button
                   type="button"
                   data-index={i}
                   onMouseMove={() => setActive(i)}
                   onClick={() => go(r)}
-                  className={cn("flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-[14px]", i === active && "bg-hover")}
+                  className={cn("flex h-11 w-full items-center gap-3 rounded-full px-4 text-left text-[14px]", i === active && "bg-hover")}
                 >
                   <span className="flex size-5 shrink-0 items-center justify-center text-fg-2">{r.icon}</span>
                   <span className="min-w-0 flex-1 truncate">{r.label}</span>

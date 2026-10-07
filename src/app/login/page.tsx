@@ -2,26 +2,33 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowRight, Mail } from "lucide-react";
 import type { Profile } from "@/lib/types";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getDemoAdapter } from "@/lib/data";
 import { SpotMark } from "@/components/shell/icons";
-import { Button } from "@/components/ui/button";
+import { MEMBER_TONE } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import { Card, MUTED, PillButton } from "@/components/ui/chunk";
 import { TextInput } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { useTheme } from "@/components/shell/theme";
 
+const INPUT = "h-12 rounded-full px-5 text-[15px]";
+
 export default function LoginPage() {
   useTheme();
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-bg px-4">
-      <div className="w-full max-w-[340px]">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <SpotMark size={40} />
-          <h1 className="mt-4 text-[22px] font-semibold">Spot OS</h1>
-          <p className="mt-1 text-[14px] text-fg-2">Studio Spot’s operating system</p>
-        </div>
+    <div className="flex min-h-dvh justify-center bg-bg px-4 py-12 sm:items-center">
+      <div className="anim-rise w-full max-w-[420px]">
+        <SpotMark size={72} />
+        <h1 className="mt-8 text-[44px] font-medium leading-[1.02] tracking-[-0.035em] sm:text-[54px]">
+          Welcome to
+          <br />
+          Spot OS
+        </h1>
+        <p className="mb-8 mt-3 text-[15px] leading-relaxed text-fg-2">Studio Spot’s projects, tasks and notes, all in one calm place.</p>
         {isSupabaseConfigured ? <SupabaseLogin /> : <DemoLogin />}
       </div>
     </div>
@@ -58,23 +65,38 @@ function SupabaseLogin() {
   };
 
   return (
-    <form onSubmit={signIn} className="space-y-3">
+    <form onSubmit={signIn} className="flex flex-col gap-4">
       <label className="block">
-        <span className="mb-1 block text-[12px] font-medium text-fg-2">Email</span>
-        <TextInput type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@studiospot.co" />
+        <span className="mb-1.5 block px-1 text-[13.5px] text-fg-2">Email</span>
+        <TextInput
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@studiospot.co"
+          className={INPUT}
+        />
       </label>
       <label className="block">
-        <span className="mb-1 block text-[12px] font-medium text-fg-2">Password</span>
-        <TextInput type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <span className="mb-1.5 block px-1 text-[13.5px] text-fg-2">Password</span>
+        <TextInput type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={INPUT} />
       </label>
-      {message && <p className={message.tone === "error" ? "text-[13px] text-danger" : "text-[13px] text-fg-2"}>{message.text}</p>}
-      <Button type="submit" variant="primary" size="md" className="w-full" disabled={busy || !password}>
-        Continue
-      </Button>
-      <Button variant="ghost" size="md" className="w-full" onClick={magicLink} disabled={busy}>
-        Email me a sign-in link
-      </Button>
-      <p className="pt-2 text-center text-[12px] text-fg-3">Accounts are created by a workspace admin. There is no public sign-up.</p>
+      {message && (
+        <p
+          role={message.tone === "error" ? "alert" : "status"}
+          className={cn("rounded-[22px] px-4 py-3 text-[14px]", message.tone === "error" ? "bg-coral text-on-chunk" : "bg-lime text-on-chunk")}
+        >
+          {message.text}
+        </p>
+      )}
+      <PillButton type="submit" size="lg" className="mt-2 w-full" disabled={busy || !password}>
+        Continue <ArrowRight />
+      </PillButton>
+      <PillButton tone="outline" size="lg" className="w-full" onClick={magicLink} disabled={busy}>
+        <Mail /> Email me a sign-in link
+      </PillButton>
+      <p className="pt-2 text-center text-[13px] text-fg-3">Accounts are made by a workspace admin. There’s no public sign-up.</p>
     </form>
   );
 }
@@ -89,27 +111,33 @@ function DemoLogin() {
 
   return (
     <div>
-      <div className="mb-3 rounded-md bg-callout px-3.5 py-3 text-[13px] text-fg-2">
-        <span className="font-medium text-fg">Demo mode.</span> Supabase isn’t configured yet, so data lives in this browser. Pick a team member to continue.
+      <div className="mb-4 rounded-[22px] bg-elevated px-5 py-4 text-[14px] leading-snug text-fg-2">
+        <span className="font-medium text-fg">Demo mode.</span> Supabase isn’t set up yet, so everything lives in this browser. Who are you?
       </div>
-      <div className="overflow-hidden rounded-lg shadow-[inset_0_0_0_1px_var(--border-strong)]">
-        {members.map((m, i) => (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => {
-              demo?.signInAs(m.id);
-              router.replace("/");
-            }}
-            className={`flex w-full items-center gap-3 px-3.5 py-2.5 text-left hover:bg-hover ${i > 0 ? "border-t border-line" : ""}`}
-          >
-            <Avatar profile={m} size={28} />
-            <div className="min-w-0">
-              <div className="truncate text-[14px] font-medium">{m.full_name}</div>
-              <div className="truncate text-[12px] text-fg-2">{m.role_title}</div>
-            </div>
-          </button>
-        ))}
+      <div className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {members.map((m) => {
+          const tone = MEMBER_TONE[m.color] ?? "cream";
+          return (
+            <Card
+              key={m.id}
+              tone={tone}
+              onClick={() => {
+                demo?.signInAs(m.id);
+                router.replace("/");
+              }}
+              className="min-h-[92px] flex-row items-center gap-4 sm:min-h-[150px] sm:flex-col sm:items-start"
+            >
+              <span className="shrink-0 rounded-full bg-[#fffdf8]/75 p-[3px]">
+                <Avatar profile={m} size={48} />
+              </span>
+              <div className="min-w-0 flex-1 sm:mt-auto">
+                <div className="truncate text-[19px] font-medium tracking-[-0.02em]">{m.full_name}</div>
+                <div className={cn("truncate text-[13px]", MUTED[tone])}>{m.role_title ?? "Team"}</div>
+              </div>
+              <ArrowRight className="size-5 shrink-0 opacity-50 sm:hidden" />
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

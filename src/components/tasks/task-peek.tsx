@@ -2,11 +2,11 @@
 
 import { createContext, Suspense, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { CalendarDays, CircleDot, Flag, FolderKanban, Trash2, User, Clock } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, CircleDot, Clock, Flag, FolderKanban, Trash2, User } from "lucide-react";
 import { useWorkspace, useProfiles } from "@/lib/store";
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/constants";
 import type { Task, TaskStatus, UUID } from "@/lib/types";
-import { nowISO, timeAgo } from "@/lib/utils";
+import { cn, nowISO, timeAgo } from "@/lib/utils";
 import { SidePeek } from "@/components/ui/side-peek";
 import { AutoTextarea, EditableText } from "@/components/ui/input";
 import { DateField, OptionField, PersonField, ProjectField, PropertyRow } from "@/components/ui/fields";
@@ -61,6 +61,7 @@ function TaskPeek({ taskId, onClose }: { taskId: UUID | null; onClose: () => voi
   const task = data.tasks.find((t) => t.id === taskId);
   const project = task?.project_id ? data.projects.find((p) => p.id === task.project_id) : undefined;
   const [description, setDescription] = useState(task?.description ?? "");
+  const [more, setMore] = useState(false);
   // Reset the draft when switching tasks or when someone else edits the description.
   const sourceKey = `${task?.id}:${task?.description ?? ""}`;
   const [seen, setSeen] = useState(sourceKey);
@@ -71,15 +72,18 @@ function TaskPeek({ taskId, onClose }: { taskId: UUID | null; onClose: () => voi
 
   if (!task) return <SidePeek open={false} onClose={onClose}>{null}</SidePeek>;
   const set = (patch: Partial<Task>) => void update("tasks", task.id, patch);
+  const done = task.status === "done";
 
   return (
     <SidePeek
       open
       onClose={onClose}
-      expandHref={project ? `/projects/${project.id}?tab=tasks&task=${task.id}` : undefined}
+      expandHref={project ? `/projects/${project.id}?task=${task.id}` : undefined}
       actions={
         <IconButton
           label="Delete task"
+          size="md"
+          className="bg-hover"
           onClick={() => {
             if (confirm(`Delete “${task.title}”?`)) {
               void remove("tasks", task.id);
@@ -91,43 +95,68 @@ function TaskPeek({ taskId, onClose }: { taskId: UUID | null; onClose: () => voi
         </IconButton>
       }
     >
+      {project && (
+        <div className="mb-3 inline-flex h-8 items-center gap-1.5 rounded-full bg-hover px-3 text-[13px] text-fg-2">
+          <span>{project.icon}</span> {project.name}
+        </div>
+      )}
       <EditableText
         value={task.title}
         onCommit={(title) => title && set({ title })}
         placeholder="Untitled"
         multiline
-        className="text-[30px] font-bold leading-tight"
+        className={cn("text-[30px] font-medium leading-[1.1] tracking-[-0.03em]", done && "line-through opacity-50")}
       />
-      <div className="mt-5 space-y-0.5">
+      <button
+        type="button"
+        onClick={() => set(statusPatch(done ? "todo" : "done"))}
+        className={cn(
+          "mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-full text-[15px] font-medium transition-[background,transform] active:scale-[0.98]",
+          done ? "bg-lime text-on-chunk" : "bg-accent text-on-accent hover:bg-accent-hover",
+        )}
+      >
+        <Check className="size-[18px]" /> {done ? "Done — tap to reopen" : "Mark as done"}
+      </button>
+
+      <div className="mt-5 rounded-[24px] bg-hover p-2">
         <PropertyRow icon={<CircleDot className="size-4" />} label="Status">
           <OptionField variant="property" options={TASK_STATUSES} value={task.status} onChange={(s) => set(statusPatch(s))} />
         </PropertyRow>
-        <PropertyRow icon={<User className="size-4" />} label="Assignee">
-          <PersonField variant="property" people={people.list} value={task.assignee_id} onChange={(assignee_id) => set({ assignee_id })} />
+        <PropertyRow icon={<User className="size-4" />} label="Who">
+          <PersonField variant="property" people={people.list} value={task.assignee_id} onChange={(assignee_id) => set({ assignee_id })} placeholder="Nobody yet" />
         </PropertyRow>
-        <PropertyRow icon={<CalendarDays className="size-4" />} label="Due date">
-          <DateField variant="property" value={task.due_date} highlightOverdue={task.status !== "done"} onChange={(due_date) => set({ due_date })} />
+        <PropertyRow icon={<CalendarDays className="size-4" />} label="When">
+          <DateField variant="property" value={task.due_date} highlightOverdue={!done} onChange={(due_date) => set({ due_date })} placeholder="No date" />
         </PropertyRow>
-        <PropertyRow icon={<Flag className="size-4" />} label="Priority">
-          <OptionField variant="property" kind="select" options={TASK_PRIORITIES} value={task.priority} onChange={(priority) => set({ priority })} />
-        </PropertyRow>
-        <PropertyRow icon={<FolderKanban className="size-4" />} label="Project">
-          <ProjectField variant="property" projects={data.projects} value={task.project_id} onChange={(project_id) => set({ project_id })} />
-        </PropertyRow>
-        <PropertyRow icon={<Clock className="size-4" />} label="Created">
-          <div className="flex min-h-[30px] items-center px-1.5 text-fg-2">
-            {people.get(task.created_by)?.full_name ?? "Someone"} · {timeAgo(task.created_at)}
-            {task.updated_at !== task.created_at && <span className="ml-1 text-fg-3">· edited {timeAgo(task.updated_at)}</span>}
+        {more && (
+          <div className="anim-fade">
+            <PropertyRow icon={<Flag className="size-4" />} label="Priority">
+              <OptionField variant="property" kind="select" options={TASK_PRIORITIES} value={task.priority} onChange={(priority) => set({ priority })} />
+            </PropertyRow>
+            <PropertyRow icon={<FolderKanban className="size-4" />} label="Project">
+              <ProjectField variant="property" projects={data.projects} value={task.project_id} onChange={(project_id) => set({ project_id })} />
+            </PropertyRow>
+            <PropertyRow icon={<Clock className="size-4" />} label="Created">
+              <div className="flex min-h-10 items-center px-3 text-fg-2">
+                {people.get(task.created_by)?.full_name ?? "Someone"} · {timeAgo(task.created_at)}
+              </div>
+            </PropertyRow>
           </div>
-        </PropertyRow>
+        )}
+        <button type="button" onClick={() => setMore((m) => !m)} className="flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] text-fg-2 hover:text-fg">
+          <ChevronDown className={cn("size-4 transition-transform", more && "rotate-180")} />
+          {more ? "Fewer details" : "Priority, project & more"}
+        </button>
       </div>
-      <div className="mt-4 border-t border-line pt-4">
+
+      <div className="mt-3 rounded-[24px] bg-cream p-5 text-on-chunk">
+        <div className="mb-1 text-[12.5px] text-[var(--on-chunk-2)]">Notes</div>
         <AutoTextarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           onBlur={() => description !== (task.description ?? "") && set({ description: description || null })}
-          placeholder="Add a description…"
-          className="min-h-24 text-[15px] leading-relaxed"
+          placeholder="Add any detail that helps — links, context, what “done” looks like…"
+          className="min-h-24 text-[15px] leading-relaxed placeholder:text-[var(--on-chunk-2)]"
         />
       </div>
     </SidePeek>

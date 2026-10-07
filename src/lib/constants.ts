@@ -24,12 +24,13 @@ export interface Option<T extends string> {
   color: TagColor;
 }
 
+// Plain-language labels: anyone should understand a status without a legend.
 export const PROJECT_STATUSES: Option<ProjectStatus>[] = [
-  { value: "backlog", label: "Backlog", color: "default" },
-  { value: "active", label: "Active", color: "blue" },
-  { value: "blocked", label: "Blocked", color: "red" },
-  { value: "review", label: "Review", color: "purple" },
-  { value: "completed", label: "Completed", color: "green" },
+  { value: "backlog", label: "Not started", color: "default" },
+  { value: "active", label: "In progress", color: "blue" },
+  { value: "blocked", label: "Stuck", color: "red" },
+  { value: "review", label: "In review", color: "yellow" },
+  { value: "completed", label: "Done", color: "green" },
   { value: "archived", label: "Archived", color: "gray" },
 ];
 
@@ -41,16 +42,16 @@ export const PROJECT_TYPES: Option<ProjectType>[] = [
 ];
 
 export const TASK_STATUSES: Option<TaskStatus>[] = [
-  { value: "todo", label: "Todo", color: "default" },
-  { value: "in_progress", label: "In Progress", color: "blue" },
-  { value: "blocked", label: "Blocked", color: "red" },
-  { value: "review", label: "Review", color: "purple" },
+  { value: "todo", label: "To do", color: "default" },
+  { value: "in_progress", label: "Doing", color: "blue" },
+  { value: "blocked", label: "Stuck", color: "red" },
+  { value: "review", label: "In review", color: "yellow" },
   { value: "done", label: "Done", color: "green" },
 ];
 
 export const TASK_PRIORITIES: Option<TaskPriority>[] = [
   { value: "low", label: "Low", color: "gray" },
-  { value: "medium", label: "Medium", color: "yellow" },
+  { value: "medium", label: "Normal", color: "default" },
   { value: "high", label: "High", color: "orange" },
   { value: "urgent", label: "Urgent", color: "red" },
 ];
@@ -65,6 +66,46 @@ export const LIBRARY_TYPES: (Option<LibraryItemType> & { icon: string })[] = [
   { value: "template", label: "Template", color: "purple", icon: "template" },
   { value: "url", label: "Link", color: "default", icon: "link" },
 ];
+
+/**
+ * Colour = meaning, everywhere in Direction 2:
+ * coral needs you · sun in motion / today · lime done · sky coming up · cream resting / reading.
+ */
+export type ChunkTone = "coral" | "sun" | "lime" | "sky" | "cream" | "lilac" | "pink" | "ink" | "surface";
+
+export const PROJECT_STATUS_TONE: Record<ProjectStatus, ChunkTone> = {
+  backlog: "cream",
+  active: "sky",
+  blocked: "coral",
+  review: "sun",
+  completed: "lime",
+  archived: "surface",
+};
+
+export const LIBRARY_TYPE_TONE: Record<LibraryItemType, ChunkTone> = {
+  google_doc: "sky",
+  google_sheet: "lime",
+  google_slides: "sun",
+  drive_folder: "cream",
+  drive_file: "cream",
+  pdf: "coral",
+  template: "lilac",
+  url: "surface",
+};
+
+/** Member tag colour → chunk tone (for people cards). */
+export const MEMBER_TONE: Record<string, ChunkTone> = {
+  orange: "coral",
+  blue: "sky",
+  green: "lime",
+  purple: "lilac",
+  pink: "pink",
+  brown: "cream",
+  yellow: "sun",
+  red: "coral",
+  gray: "cream",
+  default: "cream",
+};
 
 export const MEMBER_COLORS: TagColor[] = ["orange", "blue", "green", "purple", "pink", "brown", "yellow", "red"];
 

@@ -66,7 +66,7 @@ export function Picker<V>({
           }}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
-          className="h-7 w-full rounded-md bg-input px-2 text-[14px] shadow-[inset_0_0_0_1px_var(--border)] outline-none placeholder:text-fg-3 focus:shadow-[inset_0_0_0_1px_var(--accent)]"
+          className="h-9 w-full rounded-full bg-input px-3.5 text-[14px] outline-none placeholder:text-fg-3 focus:shadow-[inset_0_0_0_1.5px_var(--text)]"
         />
       </div>
       <div className="max-h-72 overflow-y-auto p-1">
@@ -78,7 +78,7 @@ export function Picker<V>({
             onMouseEnter={() => setActive(i)}
             onClick={() => onSelect(item.value)}
             className={cn(
-              "flex min-h-7 w-full items-center gap-2 rounded-md px-2 py-0.5 text-left text-[14px]",
+              "flex min-h-9 w-full items-center gap-2 rounded-full px-3 py-1 text-left text-[14px]",
               i === active && "bg-hover",
             )}
           >
@@ -92,7 +92,7 @@ export function Picker<V>({
             <button
               type="button"
               onClick={onClear}
-              className="flex h-7 w-full items-center rounded-md px-2 text-left text-[14px] text-fg-2 hover:bg-hover"
+              className="flex h-9 w-full items-center rounded-full px-3 text-left text-[14px] text-fg-2 hover:bg-hover"
             >
               {clearLabel}
             </button>

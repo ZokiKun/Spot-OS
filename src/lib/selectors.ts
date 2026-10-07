@@ -105,7 +105,7 @@ export function attentionItems(data: Snapshot, scope: { meId: UUID | null; mine:
         kind: "blocked_project",
         severity: "high",
         title: p.name,
-        detail: p.next_action ? `Blocked · ${p.next_action}` : "Blocked",
+        detail: p.next_action ? `Stuck · ${p.next_action}` : "Stuck",
         href: `/projects/${p.id}`,
         projectId: p.id,
       });
@@ -125,7 +125,7 @@ export function attentionItems(data: Snapshot, scope: { meId: UUID | null; mine:
         kind: "no_next_action",
         severity: "medium",
         title: p.name,
-        detail: "No next action set",
+        detail: "No next step set",
         href: `/projects/${p.id}`,
         projectId: p.id,
       });

@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { readPref, writePref } from "@/lib/hooks";
 import { formatMoney } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { PillButton } from "@/components/ui/chunk";
 
 const listeners = new Set<() => void>();
 const KEY = "finance-visible";
@@ -28,16 +28,16 @@ export function useMoneyVisible() {
 
 export function Money({ value, currency, compact }: { value: number | null | undefined; currency: string; compact?: boolean }) {
   const { visible } = useMoneyVisible();
-  if (!visible) return <span className="select-none tracking-[0.12em] text-fg-3" aria-label="Hidden amount">••••••</span>;
+  if (!visible) return <span className="select-none tracking-[0.12em] opacity-50" aria-label="Hidden amount">••••</span>;
   return <>{formatMoney(value, currency, compact)}</>;
 }
 
 export function RevealToggle() {
   const { visible, setVisible } = useMoneyVisible();
   return (
-    <Button variant="ghost" onClick={() => setVisible(!visible)} aria-pressed={visible}>
-      {visible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-      {visible ? "Hide values" : "Reveal values"}
-    </Button>
+    <PillButton tone="surface" onClick={() => setVisible(!visible)} aria-pressed={visible}>
+      {visible ? <EyeOff /> : <Eye />}
+      {visible ? "Hide amounts" : "Show amounts"}
+    </PillButton>
   );
 }

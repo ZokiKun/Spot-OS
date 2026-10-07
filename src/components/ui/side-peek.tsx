@@ -6,7 +6,7 @@ import { ChevronsRight, Maximize2 } from "lucide-react";
 import Link from "next/link";
 import { IconButton } from "./button";
 
-/** Notion "side peek": a right-hand panel for opening a row without leaving the list. */
+/** Side sheet: open an item without leaving the list. Floats as a rounded card. */
 export function SidePeek({
   open,
   onClose,
@@ -32,19 +32,19 @@ export function SidePeek({
 
   if (!open || typeof document === "undefined") return null;
   return createPortal(
-    <aside className="anim-peek fixed inset-y-0 right-0 z-30 flex w-full max-w-[560px] flex-col border-l border-line bg-bg shadow-[rgba(15,15,15,0.04)_0_0_0_1px,rgba(15,15,15,0.03)_0_3px_6px,rgba(15,15,15,0.06)_0_9px_24px]">
-      <div className="flex h-11 shrink-0 items-center gap-1 px-3">
-        <IconButton label="Close" onClick={onClose}>
+    <aside className="anim-peek fixed inset-y-0 right-0 z-40 flex w-full max-w-[540px] flex-col bg-elevated shadow-menu sm:inset-y-3 sm:right-3 sm:rounded-[32px]">
+      <div className="flex h-16 shrink-0 items-center gap-2 px-4">
+        <IconButton label="Close" size="md" className="bg-hover" onClick={onClose}>
           <ChevronsRight className="size-4" />
         </IconButton>
         {expandHref && (
-          <Link href={expandHref} className="inline-flex size-6 items-center justify-center rounded-md text-fg-2 hover:bg-hover" title="Open as page">
+          <Link href={expandHref} className="inline-flex size-10 items-center justify-center rounded-full bg-hover text-fg-2 hover:text-fg" title="Open as page">
             <Maximize2 className="size-3.5" />
           </Link>
         )}
         <div className="ml-auto flex items-center gap-1">{actions}</div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-10 pb-16 pt-6 max-sm:px-5">{children}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-16 pt-2 max-sm:px-5">{children}</div>
     </aside>,
     document.body,
   );

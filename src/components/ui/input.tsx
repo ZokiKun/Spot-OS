@@ -11,7 +11,7 @@ export const TextInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLIn
     <input
       ref={ref}
       className={cn(
-        "h-8 w-full rounded-md bg-input px-2.5 text-[14px] text-fg shadow-[inset_0_0_0_1px_var(--border-strong)] outline-none transition-shadow placeholder:text-fg-3 focus:shadow-[inset_0_0_0_1px_var(--accent),0_0_0_3px_var(--accent-soft)]",
+        "h-11 w-full rounded-2xl bg-input px-4 text-[14px] text-fg outline-none transition-shadow placeholder:text-fg-3 focus:shadow-[inset_0_0_0_1.5px_var(--text)]",
         className,
       )}
       {...props}
@@ -117,8 +117,8 @@ export function Checkbox({
         onChange(!checked);
       }}
       className={cn(
-        "inline-flex size-4 shrink-0 items-center justify-center rounded-[3px] transition-colors duration-100",
-        checked ? "bg-accent text-white" : "shadow-[inset_0_0_0_1.5px_var(--text-3)] hover:bg-hover",
+        "inline-flex size-[22px] shrink-0 items-center justify-center rounded-full transition-colors duration-100",
+        checked ? "bg-accent text-on-accent" : "shadow-[inset_0_0_0_1.5px_var(--text-3)] hover:bg-hover",
         className,
       )}
     >
@@ -140,11 +140,11 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
       aria-label={label}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative inline-flex h-[14px] w-[26px] shrink-0 items-center rounded-full p-[2px] transition-colors duration-150",
-        checked ? "bg-accent" : "bg-[rgba(135,131,120,0.3)]",
+        "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-[3px] transition-colors duration-150",
+        checked ? "bg-accent" : "bg-active",
       )}
     >
-      <span className={cn("size-[10px] rounded-full bg-white transition-transform duration-150", checked && "translate-x-[12px]")} />
+      <span className={cn("size-[22px] rounded-full bg-elevated shadow-card transition-transform duration-200", checked && "translate-x-5 bg-on-accent")} />
     </button>
   );
 }

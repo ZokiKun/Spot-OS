@@ -5,15 +5,15 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function MenuList({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("p-1", className)}>{children}</div>;
+  return <div className={cn("p-1.5", className)}>{children}</div>;
 }
 
 export function MenuLabel({ children }: { children: ReactNode }) {
-  return <div className="px-2 pb-1 pt-1.5 text-[12px] font-medium text-fg-2">{children}</div>;
+  return <div className="px-3 pb-1 pt-2 text-[12px] text-fg-3">{children}</div>;
 }
 
 export function MenuDivider() {
-  return <div className="-mx-1 my-1 h-px bg-line" />;
+  return <div className="-mx-1.5 my-1.5 h-px bg-line" />;
 }
 
 export function MenuItem({
@@ -41,7 +41,7 @@ export function MenuItem({
       disabled={disabled}
       onClick={onSelect}
       className={cn(
-        "flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-[14px] transition-colors duration-75 hover:bg-hover disabled:opacity-40",
+        "flex h-9 w-full items-center gap-2.5 rounded-full px-3 text-left text-[14px] transition-colors duration-75 hover:bg-hover disabled:opacity-40",
         danger && "text-danger",
         active && "bg-hover",
       )}

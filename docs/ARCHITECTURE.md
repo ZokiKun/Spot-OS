@@ -31,11 +31,11 @@ This document answers the brief's "first task" list: schema, routes, components,
 ```
 /login                     email + password or magic link (demo: pick a member)
 /auth/callback             PKCE code exchange for magic links / invites
-/                          Home — ?view=personal|studio|finance|performance
+/                          Home — bento; ?view=attention|studio|finance|performance
 /calendar                  ?date=YYYY-MM-DD&note=<id>
-/projects                  ?view=table|board
-/projects/tasks            ?filter=all|mine|member:<id>|overdue|today|upcoming|completed
-/projects/[id]             ?tab=overview|tasks|files|links|notes|activity
+/projects                  ?show=moving|stuck|later|done|all
+/projects/tasks            ?filter=mine|all|member:<id>|completed
+/projects/[id]             ?tab=notes|files|links|activity opens that folded section
 /library
 /reviews, /reviews/[id]
 /spot-base, /spot-base/[slug], /spot-base/spot-md
@@ -66,13 +66,13 @@ src/
     reviews.ts, spot-md.ts, markdown.ts, hooks.ts, utils.ts
     supabase/               env, browser + server clients
   components/
-    ui/                     design system: Button, Tag/StatusTag, Popover, Picker, fields, Dialog, SidePeek, Tabs…
-    shell/                  Sidebar, Topbar/Page, CommandPalette (⌘K), theme
+    ui/                     design system: chunk.tsx (Card, CircleButton, PillTabs, Fold…), Button, Tag, Popover, Picker, fields, Dialog, SidePeek…
+    shell/                  TopNav + MobileDock, Page/PageTitle, CommandPalette (⌘K), theme
     home/ projects/ tasks/ calendar/ library/ reviews/ spot-base/ settings/
     editor/rich-editor.tsx  Tiptap (headings, bold/italic, lists, checklists, links, images)
 ```
 
-**Design system:** the tokens in `globals.css` are derived from Notion's web UI. That means a warm off-white sidebar (`#F8F8F7`), warm near-black text (`#32302C`), hairline dividers (`rgba(55,53,47,.09)`), Notion's muted tag palette with status dots, one blue accent (`#2383E2`), the system font stack, 30px rows, and layered menu shadows. Light and dark themes are both supported.
+**Design system:** Direction 2 "chunks". See [`DIRECTION-2.md`](DIRECTION-2.md). Tokens live in `globals.css` (cream / black canvas, six chunk colours with fixed meanings, ink actions, Lexend). Primitives live in `components/ui/chunk.tsx`. Light and dark themes are both supported.
 
 ## 4. Realtime architecture
 
@@ -118,8 +118,8 @@ src/
 - **SPOT.md** is generated from Spot Base pages, not maintained as a second copy.
 - **Activity** is written by DB triggers, not by client code.
 - **Notifications:** none (by design). The Attention section on Home and an optional sidebar badge cover it.
-- **Kanban:** the project board has fixed status columns and drag to change status. Nothing is configurable.
-- **Performance:** a small period-over-period table, not charts.
+- **No Kanban (Direction 2):** projects are cards filtered by status pills. Status changes from the project page.
+- **Performance:** one card per metric with an up/down arrow against the previous period. No charts.
 - **Project notes:** one rich-text field per project instead of a notes table.
 - Not built (per brief): chat, CRM, invoicing, time tracking, collaborative editing, Drive clone, AI assistant, complex permissions, dashboard builder, native app.
 

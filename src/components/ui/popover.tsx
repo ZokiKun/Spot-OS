@@ -15,7 +15,7 @@ interface PopoverProps {
   offset?: number;
 }
 
-/** Floating menu surface anchored to an element (Notion menus: white, 6px radius, layered shadow). */
+/** Floating menu surface anchored to an element. */
 export function Popover({ open, onClose, anchor, children, align = "start", width, className, offset = 4 }: PopoverProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; width?: number; maxHeight: number } | null>(null);
@@ -77,7 +77,7 @@ export function Popover({ open, onClose, anchor, children, align = "start", widt
       ref={panelRef}
       role="dialog"
       className={cn(
-        "anim-pop fixed z-50 overflow-y-auto rounded-md bg-elevated text-fg shadow-menu",
+        "anim-pop fixed z-50 overflow-y-auto rounded-[20px] bg-elevated text-fg shadow-menu",
         !pos && "invisible",
         className,
       )}

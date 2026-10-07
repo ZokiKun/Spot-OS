@@ -36,10 +36,23 @@ const ICON: Record<LibraryItemType, { Icon: typeof File; color: string }> = {
   url: { Icon: Globe, color: "text-fg-2" },
 };
 
-export function LibraryIcon({ type, className }: { type: LibraryItemType; className?: string }) {
+/** `plain` drops the brand colour so the icon takes the colour of the card it sits on. */
+export function LibraryIcon({ type, className, plain = false }: { type: LibraryItemType; className?: string; plain?: boolean }) {
   const { Icon, color } = ICON[type] ?? ICON.url;
-  return <Icon className={cn("size-4 shrink-0", color, className)} strokeWidth={1.8} />;
+  return <Icon className={cn("size-4 shrink-0", !plain && color, className)} strokeWidth={1.8} />;
 }
+
+/** Plain, short names — singular for a chip, plural for the filter pills. */
+export const LIBRARY_TYPE_NAME: Record<LibraryItemType, { one: string; many: string }> = {
+  google_doc: { one: "Doc", many: "Docs" },
+  google_sheet: { one: "Sheet", many: "Sheets" },
+  google_slides: { one: "Slides", many: "Slides" },
+  drive_folder: { one: "Folder", many: "Folders" },
+  drive_file: { one: "File", many: "Files" },
+  pdf: { one: "PDF", many: "PDFs" },
+  template: { one: "Template", many: "Templates" },
+  url: { one: "Link", many: "Links" },
+};
 
 export function hostOf(url: string) {
   try {

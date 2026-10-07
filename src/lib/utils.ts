@@ -133,3 +133,15 @@ export function downloadFile(filename: string, content: string | Blob, mime = "t
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+/** Human distance to a date: "Today", "Tomorrow", "In 3 days", "2 days late". */
+export function relativeDays(date: ISODate | null | undefined, { late = "late" }: { late?: string } = {}) {
+  const diff = daysUntil(date);
+  if (diff == null) return "";
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Tomorrow";
+  if (diff === -1) return `1 day ${late}`;
+  if (diff < 0) return `${-diff} days ${late}`;
+  if (diff <= 14) return `In ${diff} days`;
+  return formatDay(date);
+}

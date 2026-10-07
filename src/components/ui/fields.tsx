@@ -34,7 +34,7 @@ function FieldButton({
       }}
       className={cn(
         "flex min-w-0 items-center text-left transition-colors duration-75 hover:bg-hover",
-        variant === "property" ? "min-h-[30px] w-full rounded-md px-1.5 py-1" : "h-full min-h-8 w-full px-2",
+        variant === "property" ? "min-h-10 w-full rounded-full px-3 py-1.5" : "h-full min-h-9 w-full rounded-full px-2.5",
         className,
       )}
     >
@@ -173,7 +173,7 @@ export function DateField({
                 onChange(null);
                 pop.close();
               }}
-              className="flex h-7 w-full items-center rounded-md px-2 text-[14px] text-fg-2 hover:bg-hover"
+              className="flex h-9 w-full items-center rounded-full px-3 text-[14px] text-fg-2 hover:bg-hover"
             >
               Clear date
             </button>
@@ -230,12 +230,12 @@ export function ProjectField({
   );
 }
 
-/** Notion page property row: icon + muted label on the left, editable value on the right. */
+/** Property row: icon + muted label on the left, editable value on the right. */
 export function PropertyRow({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-[34px] items-start gap-1">
-      <div className="flex h-[30px] w-40 shrink-0 items-center gap-1.5 px-1.5 text-[14px] text-fg-2 max-sm:w-32">
-        <span className="flex size-4 items-center justify-center text-fg-3">{icon}</span>
+    <div className="flex min-h-11 items-start gap-1">
+      <div className="flex h-10 w-40 shrink-0 items-center gap-2 px-1 text-[14px] opacity-60 max-sm:w-32">
+        <span className="flex size-4 items-center justify-center">{icon}</span>
         <span className="truncate">{label}</span>
       </div>
       <div className="min-w-0 flex-1 text-[14px]">{children}</div>
