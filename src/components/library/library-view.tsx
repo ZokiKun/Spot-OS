@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Library as LibraryIconLucide, Plus, Search, X } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { BarChart3, FolderOpen, Library as LibraryIconLucide, Plus, Search, Wallet, X } from "lucide-react";
 import type { LibraryItemType } from "@/lib/types";
 import { LIBRARY_TYPES } from "@/lib/constants";
 import { useWorkspace } from "@/lib/store";
@@ -10,17 +11,59 @@ import { Page, PageTitle } from "@/components/shell/page";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/misc";
 import { ProjectField } from "@/components/ui/fields";
+import { ViewTabs } from "@/components/ui/tabs";
+import { FinanceView } from "@/components/insights/finance-view";
+import { PerformanceView } from "@/components/insights/performance-view";
 import { LibraryRow } from "./library-row";
 import { LibraryItemDialog } from "./library-item-dialog";
 import { LibraryIcon } from "./library-meta";
 
+type Tab = "resources" | "finance" | "performance";
+
 export function LibraryView() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const requested = params.get("tab");
+  const tab: Tab = requested === "finance" || requested === "performance" ? requested : "resources";
+  const [adding, setAdding] = useState(false);
+
+  return (
+    <Page
+      crumbs={[{ label: "Library", icon: <LibraryIconLucide className="size-4" /> }]}
+      actions={
+        tab === "resources" && (
+          <Button variant="primary" onClick={() => setAdding(true)}>
+            <Plus className="size-3.5" /> Add
+          </Button>
+        )
+      }
+    >
+      <PageTitle title="Library" description="The studio’s docs, links and Spot Base, plus finance and performance at a glance. Files stay in Google Drive." />
+      <div className="mb-5 border-b border-line pb-1.5">
+        <ViewTabs<Tab>
+          value={tab}
+          onChange={(t) => router.replace(t === "resources" ? pathname : `${pathname}?tab=${t}`, { scroll: false })}
+          items={[
+            { value: "resources", label: "Resources", icon: <FolderOpen className="size-4" /> },
+            { value: "finance", label: "Finance", icon: <Wallet className="size-4" /> },
+            { value: "performance", label: "Performance", icon: <BarChart3 className="size-4" /> },
+          ]}
+        />
+      </div>
+      {tab === "resources" && <Resources adding={adding} setAdding={setAdding} />}
+      {tab === "finance" && <FinanceView />}
+      {tab === "performance" && <PerformanceView />}
+    </Page>
+  );
+}
+
+function Resources({ adding, setAdding }: { adding: boolean; setAdding: (v: boolean) => void }) {
   const { data } = useWorkspace();
   const [query, setQuery] = useState("");
   const [type, setType] = useState<LibraryItemType | null>(null);
   const [tag, setTag] = useState<string | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
 
   const allTags = useMemo(() => [...new Set(data.library_items.flatMap((i) => i.tags))].sort(), [data.library_items]);
   const items = useMemo(() => {
@@ -45,16 +88,7 @@ export function LibraryView() {
   const filtered = Boolean(query || type || tag || projectId);
 
   return (
-    <Page
-      crumbs={[{ label: "Library", icon: <LibraryIconLucide className="size-4" /> }]}
-      actions={
-        <Button variant="primary" onClick={() => setAdding(true)}>
-          <Plus className="size-3.5" /> Add
-        </Button>
-      }
-    >
-      <PageTitle title="Library" description="An index of the studio’s docs, sheets, Drive folders, templates and links. Files stay in Google Drive." />
-
+    <>
       <div className="mb-4 flex flex-col gap-3">
         <label className="flex h-9 items-center gap-2 rounded-md bg-input px-3 shadow-[inset_0_0_0_1px_var(--border)] focus-within:shadow-[inset_0_0_0_1px_var(--accent)]">
           <Search className="size-4 text-fg-3" />
@@ -115,7 +149,7 @@ export function LibraryView() {
           ))}
       </div>
       <LibraryItemDialog open={adding} onClose={() => setAdding(false)} defaults={projectId ? { project_id: projectId } : undefined} />
-    </Page>
+    </>
   );
 }
 
