@@ -8,6 +8,8 @@ import { isActiveProject, isDueToday, isOverdue } from "@/lib/selectors";
 import { firstName, formatLongDate, greeting, plural, todayISO } from "@/lib/utils";
 import { Page } from "@/components/shell/page";
 import { ViewTabs } from "@/components/ui/tabs";
+import { LayoutSwitcher } from "./home-blocks";
+import { HOME_LAYOUTS, isHomeLayout, useSavedLayout, type HomeLayout } from "./home-data";
 import { PersonalView } from "./personal-view";
 import { StudioView } from "./studio-view";
 
@@ -20,6 +22,23 @@ export function HomeView() {
   const params = useSearchParams();
   const requested = params.get("view");
   const view: View = requested === "studio" ? "studio" : "personal";
+
+  // Layout: ?layout= wins (shareable), otherwise the last one picked on this device.
+  const [savedLayout, saveLayout] = useSavedLayout();
+  const requestedLayout = params.get("layout");
+  const layout: HomeLayout = isHomeLayout(requestedLayout) ? requestedLayout : savedLayout;
+
+  const navigate = (nextView: View, nextLayout: HomeLayout) => {
+    const q = new URLSearchParams();
+    if (nextView !== "personal") q.set("view", nextView);
+    if (nextLayout !== "table") q.set("layout", nextLayout);
+    const qs = q.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+  const changeLayout = (l: HomeLayout) => {
+    saveLayout(l);
+    navigate(view, l);
+  };
 
   // Finance and Performance moved to Library — keep old links working.
   useEffect(() => {
@@ -51,18 +70,20 @@ export function HomeView() {
         </h1>
         <p className="mt-1.5 text-[15px] text-fg-2">{summary}</p>
       </div>
-      <div className="mb-7 border-b border-line pb-1.5">
+      <div className="mb-7 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line pb-1.5">
         <ViewTabs<View>
+          className="shrink-0 grow"
           value={view}
-          onChange={(v) => router.replace(v === "personal" ? pathname : `${pathname}?view=${v}`, { scroll: false })}
+          onChange={(v) => navigate(v, layout)}
           items={[
             { value: "personal", label: "Personal", icon: <User className="size-4" /> },
             { value: "studio", label: "Studio", icon: <Building2 className="size-4" /> },
           ]}
         />
+        <LayoutSwitcher value={layout} onChange={changeLayout} layouts={HOME_LAYOUTS} />
       </div>
-      {view === "personal" && <PersonalView />}
-      {view === "studio" && <StudioView />}
+      {view === "personal" && <PersonalView layout={layout} />}
+      {view === "studio" && <StudioView layout={layout} />}
     </Page>
   );
 }
