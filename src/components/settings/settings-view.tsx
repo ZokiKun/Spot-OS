@@ -41,7 +41,7 @@ export function SettingsView() {
   const current = SECTIONS.find((s) => s.id === section) ?? SECTIONS[0];
 
   return (
-    <Page width="wide" crumbs={[{ label: "Settings", icon: <Settings className="size-4" /> }]}>
+    <Page crumbs={[{ label: "Settings", icon: <Settings className="size-4" /> }]}>
       <div className="grid grid-cols-1 gap-8 md:grid-cols-[200px_minmax(0,1fr)] md:gap-12">
         <nav className="flex gap-0.5 overflow-x-auto md:sticky md:top-16 md:flex-col md:self-start" aria-label="Settings sections">
           {SECTIONS.map((s) => (
@@ -58,7 +58,7 @@ export function SettingsView() {
             </button>
           ))}
         </nav>
-        <div className="min-w-0 max-w-[720px]">
+        <div className="min-w-0">
           <h1 className="mb-6 text-[24px] font-semibold">{current.label}</h1>
           {current.id === "appearance" && <Appearance />}
           {current.id === "notifications" && <Notifications />}

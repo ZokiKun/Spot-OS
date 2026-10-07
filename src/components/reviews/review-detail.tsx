@@ -53,7 +53,6 @@ export function ReviewDetail({ id }: { id: string }) {
 
   return (
     <Page
-      width="doc"
       crumbs={[
         { label: "Reviews", href: "/reviews", icon: crumbIcon },
         { label },

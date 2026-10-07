@@ -53,7 +53,7 @@ export function MonthGrid({
               type="button"
               onClick={() => onSelect(iso)}
               className={cn(
-                "group relative flex min-h-[92px] flex-col items-stretch gap-0.5 border-line p-1 text-left transition-colors duration-75 max-sm:min-h-[56px]",
+                "group relative flex min-h-[92px] 2xl:min-h-[128px] flex-col items-stretch gap-0.5 border-line p-1 text-left transition-colors duration-75 max-sm:min-h-[56px]",
                 i % 7 !== 0 && "border-l",
                 i >= 7 && "border-t",
                 weekend && !isSel && "bg-subtle/60",

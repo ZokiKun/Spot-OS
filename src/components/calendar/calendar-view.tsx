@@ -118,8 +118,8 @@ export function CalendarView() {
   };
 
   return (
-    <Page crumbs={[{ label: "Calendar", icon: <CalendarDays className="size-4" /> }]} width="full" className="max-w-[1400px]">
-      <div className={cn("grid grid-cols-1 gap-10", view === "month" ? "xl:grid-cols-[minmax(0,1fr)_minmax(420px,520px)]" : "xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]")}>
+    <Page crumbs={[{ label: "Calendar", icon: <CalendarDays className="size-4" /> }]}>
+      <div className={cn("grid grid-cols-1 gap-10", view === "month" ? "xl:grid-cols-[minmax(0,1.75fr)_minmax(420px,1fr)]" : "xl:grid-cols-[minmax(0,2.2fr)_minmax(340px,1fr)]")}>
         <section>
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <h1 className="text-[28px] font-bold tracking-[-0.01em]">{title[0]}</h1>

@@ -32,7 +32,7 @@ export function SidePeek({
 
   if (!open || typeof document === "undefined") return null;
   return createPortal(
-    <aside className="anim-peek fixed inset-y-0 right-0 z-30 flex w-full max-w-[560px] flex-col border-l border-line bg-bg shadow-[rgba(15,15,15,0.04)_0_0_0_1px,rgba(15,15,15,0.03)_0_3px_6px,rgba(15,15,15,0.06)_0_9px_24px]">
+    <aside className="anim-peek fixed inset-y-0 right-0 z-30 flex w-full max-w-[max(560px,34vw)] flex-col border-l border-line bg-bg shadow-[rgba(15,15,15,0.04)_0_0_0_1px,rgba(15,15,15,0.03)_0_3px_6px,rgba(15,15,15,0.06)_0_9px_24px]">
       <div className="flex h-11 shrink-0 items-center gap-1 px-3">
         <IconButton label="Close" onClick={onClose}>
           <ChevronsRight className="size-4" />

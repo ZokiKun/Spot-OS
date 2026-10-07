@@ -49,7 +49,6 @@ export function ReviewsView() {
 
   return (
     <Page
-      width="doc"
       crumbs={[{ label: "Reviews", icon: <ClipboardCheck className="size-4" /> }]}
       actions={
         <>

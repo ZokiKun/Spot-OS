@@ -45,17 +45,10 @@ export function Topbar({ crumbs, actions }: { crumbs: Crumb[]; actions?: ReactNo
   );
 }
 
-const widths = {
-  doc: "max-w-[860px]",
-  wide: "max-w-[1180px]",
-  full: "max-w-none",
-};
-
-/** Standard page frame: top bar + padded content column (Notion page geometry). */
+/** Standard page frame: top bar + content that fills the area beside the sidebar, with padding that grows on big screens. */
 export function Page({
   crumbs,
   actions,
-  width = "wide",
   children,
   className,
   banner,
@@ -64,7 +57,6 @@ export function Page({
   actions?: ReactNode;
   /** Full-bleed area between the top bar and the content (project banners). */
   banner?: ReactNode;
-  width?: keyof typeof widths;
   children: ReactNode;
   className?: string;
 }) {
@@ -77,7 +69,7 @@ export function Page({
     <div className="flex min-h-full flex-col">
       <Topbar crumbs={crumbs} actions={actions} />
       {status === "ready" && banner}
-      <main className={cn("mx-auto w-full flex-1 px-6 pb-24 pt-8 sm:px-12 lg:px-16", widths[width], className)}>
+      <main className={cn("w-full flex-1 px-5 pb-24 pt-8 sm:px-10 lg:px-14 2xl:px-20", className)}>
         {status === "loading" ? <PageSkeleton /> : status === "error" ? <LoadError message={error} /> : children}
       </main>
     </div>

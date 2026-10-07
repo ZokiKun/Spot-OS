@@ -82,7 +82,6 @@ export function ProjectDetail({ id }: { id: string }) {
 
   return (
     <Page
-      width="doc"
       banner={project?.cover ? <ProjectCover project={project} /> : undefined}
       crumbs={[
         { label: "Projects", href: "/projects", icon: <Icon className="size-4" /> },
