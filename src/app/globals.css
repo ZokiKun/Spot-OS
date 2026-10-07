@@ -1,14 +1,7 @@
 @import "tailwindcss";
 @import "../styles/direction-1.css";
-@import "../styles/direction-2.css";
-@import "../styles/direction-3.css";
 
-/*
-  Spot OS ships three design directions in one build. The server sets
-  <html data-direction="1|2|3"> from a cookie; each direction's tokens and styles
-  live in src/styles/direction-N.css, scoped to that attribute.
-  Theme keys that differ between directions point at a per-direction --dir-* variable.
-*/
+/* Classic (Notion-style) tokens and base styles live in src/styles/direction-1.css. */
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
@@ -36,36 +29,6 @@
   --font-mono: var(--dir-font-mono);
   --shadow-menu: var(--shadow-menu);
   --shadow-card: var(--shadow-card);
-  --color-on-accent: var(--on-accent);
-  --color-coral: var(--c-coral);
-  --color-sun: var(--c-sun);
-  --color-lime: var(--c-lime);
-  --color-sky: var(--c-sky);
-  --color-cream: var(--c-cream);
-  --color-lilac: var(--c-lilac);
-  --color-ink: var(--c-ink);
-  --color-on-ink: var(--on-ink);
-  --color-on-chunk: var(--on-chunk);
-  --color-line-selected: var(--border-selected);
-  --color-green: var(--green);
-  --color-green-edge: var(--green-edge);
-  --color-green-soft: var(--green-soft);
-  --color-blue: var(--blue);
-  --color-blue-edge: var(--blue-edge);
-  --color-blue-soft: var(--blue-soft);
-  --color-orange: var(--orange);
-  --color-orange-edge: var(--orange-edge);
-  --color-orange-soft: var(--orange-soft);
-  --color-red: var(--red);
-  --color-red-edge: var(--red-edge);
-  --color-red-soft: var(--red-soft);
-  --color-yellow: var(--yellow);
-  --color-yellow-edge: var(--yellow-edge);
-  --color-yellow-soft: var(--yellow-soft);
-  --color-purple: var(--purple);
-  --color-purple-edge: var(--purple-edge);
-  --color-purple-soft: var(--purple-soft);
-  --color-brand: var(--brand);
 }
 
 html,

@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { DIRECTION_COOKIE, parseDirection } from "@/lib/direction-cookie";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -10,16 +9,6 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
  * In demo mode (no Supabase env) the client-side provider handles the gate instead.
  */
 export async function proxy(request: NextRequest) {
-  // Shareable links: ?direction=2 picks the design direction, then drops the param.
-  const requested = parseDirection(request.nextUrl.searchParams.get("direction"));
-  if (requested) {
-    const to = request.nextUrl.clone();
-    to.searchParams.delete("direction");
-    const res = NextResponse.redirect(to);
-    res.cookies.set(DIRECTION_COOKIE, String(requested), { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
-    return res;
-  }
-
   if (!url || !anonKey) return NextResponse.next();
 
   let response = NextResponse.next({ request });

@@ -1,22 +1,14 @@
 # Spot OS
 
-Studio Spot's internal operating system. Home, Calendar, Projects, Library, Reviews, Spot Base and Settings in one calm, Notion-style workspace for three people.
+Studio Spot's internal operating system. Home, Calendar, Projects, Library (with Spot Base, Finance and Performance), Reviews and Settings in one calm, Notion-style workspace for three people.
 
 **Stack:** Next.js 16 (App Router) · TypeScript · Tailwind v4 · Supabase (Postgres, Auth, Realtime, Storage) · Tiptap · Vercel.
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the schema, realtime design, Google integration and the decisions behind them.
 
-## Design directions
+## Design
 
-One build ships three design directions. Switch between them in **Settings → Appearance → Design direction**, or with a link: `?direction=1|2|3`. The choice is stored in a cookie, so the same page and the same data re-render in the other design.
-
-| # | Name | Code |
-| --- | --- | --- |
-| 1 | Classic (Notion-style) | `src/components`, `src/lib`, `src/styles/direction-1.css` |
-| 2 | Chunks (colour cards) | `src/directions/d2`, `src/styles/direction-2.css` |
-| 3 | Playful (Duolingo-style) | `src/directions/d3`, `src/styles/direction-3.css` |
-
-The route files in `src/app` pick the active direction's component on the server (`src/lib/direction-server.ts`). Each direction's CSS is scoped to `<html data-direction="N">`. `NEXT_PUBLIC_DEFAULT_DIRECTION` sets the direction first-time visitors see (default 1).
+Spot OS uses one design: the classic, Notion-style layout (sidebar, tables, properties). Its tokens live in `src/styles/direction-1.css`. The earlier explorations ("Chunks" and "Playful") are kept on the `direction-2` and `direction-3` branches.
 
 ---
 
