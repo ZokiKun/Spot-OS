@@ -10,6 +10,7 @@ import { TextInput } from "@/components/ui/input";
 import { OptionField, ProjectField } from "@/components/ui/fields";
 import { detectLibraryType, guessNameFromUrl } from "./library-meta";
 import { GooglePickerButton } from "./google-picker";
+import { TagsField } from "@/components/ui/tags-field";
 
 /** Create or edit a Library item. Project links are Library items with project_id set. */
 export function LibraryItemDialog({
@@ -29,7 +30,7 @@ export function LibraryItemDialog({
   const [type, setType] = useState<LibraryItemType>("url");
   const [typeTouched, setTypeTouched] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
-  const [tags, setTags] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [description, setDescription] = useState("");
 
   // Re-initialise the form each time the dialog opens.
@@ -42,7 +43,7 @@ export function LibraryItemDialog({
     setType(item?.type ?? defaults?.type ?? "url");
     setTypeTouched(Boolean(item));
     setProjectId(item?.project_id ?? defaults?.project_id ?? null);
-    setTags((item?.tags ?? defaults?.tags ?? []).join(", "));
+    setTags(item?.tags ?? defaults?.tags ?? []);
       setDescription(item?.description ?? "");
     }
   }
@@ -62,10 +63,7 @@ export function LibraryItemDialog({
       name: name.trim(),
       type,
       project_id: projectId,
-      tags: tags
-        .split(",")
-        .map((t) => t.trim().toLowerCase())
-        .filter(Boolean),
+      tags,
       description: description.trim() || null,
     };
     if (item) await update("library_items", item.id, fields);
@@ -129,7 +127,9 @@ export function LibraryItemDialog({
             <ProjectField variant="property" projects={data.projects} value={projectId} onChange={setProjectId} placeholder="None (studio-wide)" />
           </div>
           <span className="text-fg-2">Tags</span>
-          <TextInput placeholder="brand, template" value={tags} onChange={(e) => setTags(e.target.value)} />
+          <div className="-ml-1.5">
+            <TagsField variant="property" scope="library" value={tags} onChange={setTags} placeholder="Add tags" />
+          </div>
           <span className="text-fg-2">Note</span>
           <TextInput placeholder="What is it for? (optional)" value={description} onChange={(e) => setDescription(e.target.value)} />
         </div>
