@@ -8,6 +8,7 @@ import { CommandPalette } from "./command-palette";
 import { ShellContext } from "./shell-context";
 import { useTheme } from "./theme";
 import { TaskPeekProvider } from "@/components/tasks/task-peek";
+import { NotificationWatcher } from "./inbox";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -60,6 +61,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
       </TaskPeekProvider>
       <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <NotificationWatcher />
     </ShellContext>
   );
 }

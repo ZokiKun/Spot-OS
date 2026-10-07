@@ -18,6 +18,7 @@ import { isSupabaseConfigured } from "./supabase/env";
 import type { AuthUser } from "./data/adapter";
 import { nowISO, uid } from "./utils";
 import { useLatest } from "./hooks";
+import { mentionNotifications } from "./mentions";
 import { useToast } from "@/components/ui/toast";
 
 type State = { data: Snapshot; status: "loading" | "ready" | "error"; error: string | null };
@@ -120,6 +121,20 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     [toast],
   );
 
+  /** Deliver @mention notifications. They belong to the recipient, so they never enter our own snapshot. */
+  const notifyMentions = useCallback(
+    <T extends TableName>(table: T, before: Row<T> | null, after: Row<T>) => {
+      const rows = mentionNotifications(table, before, after, dataRef.current, user?.id ?? null);
+      for (const n of rows) {
+        const ts = nowISO();
+        getAdapter()
+          .insert("notifications", { id: uid(), created_at: ts, updated_at: ts, ...n })
+          .catch((err) => fail(err, "send the mention notification"));
+      }
+    },
+    [dataRef, user, fail],
+  );
+
   const create = useCallback(
     async <T extends TableName>(table: T, row: NewRow<T>) => {
       const ts = nowISO();
@@ -128,6 +143,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       try {
         const saved = await getAdapter().insert(table, full);
         dispatch({ type: "change", change: { type: "upsert", table, row: saved } });
+        notifyMentions(table, null, saved);
         return saved;
       } catch (err) {
         dispatch({ type: "change", change: { type: "delete", table, id: (full as { id: UUID }).id } });
@@ -135,7 +151,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [fail],
+    [fail, notifyMentions],
   );
 
   const update = useCallback(
@@ -147,12 +163,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       try {
         const saved = await getAdapter().update(table, id, patch);
         dispatch({ type: "change", change: { type: "upsert", table, row: saved } });
+        notifyMentions(table, before, saved);
       } catch (err) {
         dispatch({ type: "change", change: { type: "upsert", table, row: before } });
         fail(err, "update");
       }
     },
-    [fail, dataRef],
+    [fail, dataRef, notifyMentions],
   );
 
   const remove = useCallback(

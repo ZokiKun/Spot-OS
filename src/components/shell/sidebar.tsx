@@ -16,6 +16,7 @@ import { Kbd } from "@/components/ui/misc";
 import { NAV_ICONS, SpotMark } from "./icons";
 import { useShell } from "./shell-context";
 import { useTheme } from "./theme";
+import { InboxButton } from "./inbox";
 
 function NavRow({
   href,
@@ -149,6 +150,7 @@ export function Sidebar() {
           <span className="flex-1 text-left">Search</span>
           <Kbd>⌘K</Kbd>
         </button>
+        <InboxButton onNavigate={closeMobileNav} />
         {NAV_ITEMS.map((item) => {
           const Icon = NAV_ICONS[item.icon]!;
           return (

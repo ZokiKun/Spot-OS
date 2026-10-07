@@ -20,6 +20,7 @@ import { Popover, usePopover } from "@/components/ui/popover";
 import { isGooglePickerConfigured } from "@/components/library/google-picker";
 import { isGoogleCalendarConfigured } from "@/lib/google-calendar";
 import { SettingsRow, SettingsSection } from "./settings-ui";
+import { DESKTOP_NOTIFY_PREF } from "@/components/shell/inbox";
 import { FinanceSettings } from "./finance-settings";
 
 const SECTIONS = [
@@ -89,7 +90,42 @@ function Appearance() {
 }
 
 function Notifications() {
-  return <SettingsSection title="In-app" description="Notifications arrive when someone @mentions you.">{null}</SettingsSection>;
+  const [desktop, setDesktop] = useState(() => readPref(DESKTOP_NOTIFY_PREF, false));
+  const supported = typeof window !== "undefined" && "Notification" in window;
+  const [permission, setPermission] = useState(() => (supported ? Notification.permission : "denied"));
+  return (
+    <>
+      <SettingsSection
+        title="Mentions"
+        description="Type @ in a project note, task description, calendar note or project notes to mention a member. They get a notification in their Inbox (sidebar) — live, while Spot OS is open."
+      >
+        <SettingsRow
+          label="Desktop notifications"
+          description={
+            !supported
+              ? "This browser doesn’t support desktop notifications."
+              : permission === "denied"
+                ? "Blocked by the browser. Allow notifications for this site in your browser settings, then reload."
+                : "Also show a system notification when you’re mentioned and Spot OS is in the background. Saved on this device."
+          }
+        >
+          <Toggle
+            label="Desktop notifications"
+            checked={desktop && permission === "granted"}
+            onChange={async (v) => {
+              if (v && supported && Notification.permission !== "granted") {
+                const p = await Notification.requestPermission();
+                setPermission(p);
+                if (p !== "granted") return;
+              }
+              setDesktop(v);
+              writePref(DESKTOP_NOTIFY_PREF, v);
+            }}
+          />
+        </SettingsRow>
+      </SettingsSection>
+    </>
+  );
 }
 
 function WorkspaceSettings() {

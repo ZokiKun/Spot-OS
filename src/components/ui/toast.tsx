@@ -5,7 +5,13 @@ import { createPortal } from "react-dom";
 import { CircleAlert, CircleCheck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Toast = { id: number; title: string; description?: string; tone?: "default" | "error" | "success" };
+type Toast = {
+  id: number;
+  title: string;
+  description?: string;
+  tone?: "default" | "error" | "success";
+  action?: { label: string; onClick: () => void };
+};
 type ToastApi = { show: (t: Omit<Toast, "id">) => void };
 
 const ToastContext = createContext<ToastApi | null>(null);
@@ -24,7 +30,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (t: Omit<Toast, "id">) => {
       const id = ++counter;
       setToasts((ts) => [...ts.slice(-2), { ...t, id }]);
-      setTimeout(() => dismiss(id), t.tone === "error" ? 6000 : 3000);
+      setTimeout(() => dismiss(id), t.tone === "error" || t.action ? 6000 : 3000);
     },
     [dismiss],
   );
@@ -49,6 +55,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   <div className="font-medium">{t.title}</div>
                   {t.description && <div className={cn("mt-0.5 text-white/65")}>{t.description}</div>}
                 </div>
+                {t.action && (
+                  <button
+                    onClick={() => {
+                      t.action!.onClick();
+                      dismiss(t.id);
+                    }}
+                    className="ml-1 shrink-0 rounded px-1.5 py-0.5 font-medium text-[#7cb7ff] hover:bg-white/10"
+                  >
+                    {t.action.label}
+                  </button>
+                )}
                 <button onClick={() => dismiss(t.id)} className="ml-1 rounded p-0.5 text-white/60 hover:bg-white/10" aria-label="Dismiss">
                   <X className="size-3.5" />
                 </button>

@@ -8,6 +8,7 @@ import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
+import Mention from "@tiptap/extension-mention";
 import {
   Bold,
   Code,
@@ -25,6 +26,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLatest } from "@/lib/hooks";
+import { useWorkspace } from "@/lib/store";
+import { mentionSuggestion } from "./mention-suggestion";
 
 export interface RichEditorProps {
   value: string;
@@ -45,6 +48,9 @@ export function RichEditor({ value, onChange, placeholder = "Write something…"
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadRef = useLatest(onUploadImage);
   const onChangeRef = useLatest(onChange);
+  const { data, me } = useWorkspace();
+  const peopleRef = useLatest(data.profiles);
+  const meRef = useLatest(me?.id ?? null);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -59,6 +65,12 @@ export function RichEditor({ value, onChange, placeholder = "Write something…"
       TaskItem.configure({ nested: true }),
       Image.configure({ inline: false }),
       Placeholder.configure({ placeholder }),
+      // @member — the store turns new mentions into notifications for that person.
+      Mention.configure({
+        HTMLAttributes: { class: "mention" },
+        renderText: ({ node }) => `@${node.attrs.label ?? ""}`,
+        suggestion: mentionSuggestion(peopleRef, meRef),
+      }),
     ],
     content: value,
     editorProps: {

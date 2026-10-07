@@ -8,7 +8,8 @@ import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/constants";
 import type { Task, TaskStatus, UUID } from "@/lib/types";
 import { nowISO, timeAgo } from "@/lib/utils";
 import { SidePeek } from "@/components/ui/side-peek";
-import { AutoTextarea, EditableText } from "@/components/ui/input";
+import { EditableText } from "@/components/ui/input";
+import { MentionTextarea } from "@/components/ui/mention-textarea";
 import { DateField, OptionField, PersonField, ProjectField, PropertyRow } from "@/components/ui/fields";
 import { IconButton } from "@/components/ui/button";
 
@@ -122,11 +123,11 @@ function TaskPeek({ taskId, onClose }: { taskId: UUID | null; onClose: () => voi
         </PropertyRow>
       </div>
       <div className="mt-4 border-t border-line pt-4">
-        <AutoTextarea
+        <MentionTextarea
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={setDescription}
           onBlur={() => description !== (task.description ?? "") && set({ description: description || null })}
-          placeholder="Add a description…"
+          placeholder="Add a description… type @ to mention someone"
           className="min-h-24 text-[15px] leading-relaxed"
         />
       </div>

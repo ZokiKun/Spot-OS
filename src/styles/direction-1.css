@@ -210,3 +210,13 @@
     body { background: white; }
   }
 }
+
+/* @mentions in rich text */
+:root[data-direction="1"] .prose-notion .mention {
+  border-radius: 3px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 500;
+  padding: 0 2px;
+  white-space: nowrap;
+}

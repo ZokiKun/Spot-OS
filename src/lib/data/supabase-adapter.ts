@@ -45,6 +45,12 @@ export class SupabaseAdapter implements DataAdapter {
   }
 
   async insert<T extends TableName>(table: T, row: Row<T>): Promise<Row<T>> {
+    // RLS lets you create a notification for someone else but not read it back.
+    if (table === "notifications") {
+      const { error } = await this.sb.from(table).insert(row);
+      if (error) throw new Error(error.message);
+      return row;
+    }
     const { data, error } = await this.sb.from(table).insert(row).select().single();
     if (error) throw new Error(error.message);
     return data as Row<T>;
