@@ -95,3 +95,87 @@ export function MonthGrid({
     </div>
   );
 }
+
+/** Compact month for the quarter and year views: day numbers plus markers. */
+export function MiniMonth({
+  month,
+  selected,
+  onSelect,
+  onOpenMonth,
+  dayData,
+  weekStartsOn = 1,
+  size = "sm",
+}: {
+  month: Date;
+  selected: string;
+  onSelect: (iso: string) => void;
+  onOpenMonth: (month: Date) => void;
+  dayData: (iso: string) => DayData;
+  weekStartsOn?: 0 | 1;
+  size?: "sm" | "md";
+}) {
+  const days = eachDayOfInterval({
+    start: startOfWeek(startOfMonth(month), { weekStartsOn }),
+    end: endOfWeek(endOfMonth(month), { weekStartsOn }),
+  });
+  const today = todayISO();
+  const weekdays = weekStartsOn === 1 ? ["M", "T", "W", "T", "F", "S", "S"] : ["S", "M", "T", "W", "T", "F", "S"];
+  let notes = 0;
+  let deadlines = 0;
+  days.forEach((d) => {
+    if (!isSameMonth(d, month)) return;
+    const x = dayData(toISODate(d));
+    notes += x.notes.length;
+    deadlines += x.deadlines.length;
+  });
+
+  return (
+    <div className={cn("rounded-lg p-2 shadow-[0_0_0_1px_var(--border)]", size === "md" && "p-3")}>
+      <button type="button" onClick={() => onOpenMonth(month)} className="mb-1 flex w-full items-baseline gap-2 rounded-md px-1 py-0.5 text-left hover:bg-hover">
+        <span className={cn("font-semibold", size === "md" ? "text-[16px]" : "text-[14px]")}>{format(month, "MMMM")}</span>
+        <span className="ml-auto text-[11px] text-fg-3 tabular">
+          {deadlines > 0 && <span className="text-danger">◆ {deadlines}</span>}
+          {deadlines > 0 && notes > 0 && " · "}
+          {notes > 0 && `${notes} note${notes === 1 ? "" : "s"}`}
+        </span>
+      </button>
+      <div className="grid grid-cols-7 text-center text-[10.5px] text-fg-3">
+        {weekdays.map((d, i) => (
+          <span key={i} className="py-0.5">
+            {d}
+          </span>
+        ))}
+      </div>
+      <div className="grid grid-cols-7">
+        {days.map((d) => {
+          const iso = toISODate(d);
+          const outside = !isSameMonth(d, month);
+          if (outside) return <span key={iso} className={size === "md" ? "h-10" : "h-7"} />;
+          const x = dayData(iso);
+          const isSel = iso === selected;
+          const isToday = iso === today;
+          return (
+            <button
+              key={iso}
+              type="button"
+              onClick={() => onSelect(iso)}
+              title={[x.deadlines.map((p) => `◆ ${p.name}`).join(", "), x.notes.length ? `${x.notes.length} note(s)` : "", x.due.length ? `${x.due.length} due` : ""].filter(Boolean).join(" · ") || undefined}
+              className={cn(
+                "relative flex flex-col items-center justify-center rounded-md text-[12px] tabular transition-colors",
+                size === "md" ? "h-10" : "h-7",
+                isSel ? "bg-selected font-semibold" : "hover:bg-hover",
+              )}
+            >
+              <span className={cn("flex size-5 items-center justify-center rounded-full", isToday && "bg-[var(--dot-red)] font-semibold text-white")}>{d.getDate()}</span>
+              <span className="flex h-1 gap-0.5">
+                {x.deadlines.length > 0 && <span className="size-1 rounded-full bg-[var(--dot-red)]" />}
+                {x.notes.length > 0 && <span className="size-1 rounded-full bg-fg-2" />}
+                {x.due.length > 0 && <span className="size-1 rounded-full bg-[var(--dot-blue)]" />}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

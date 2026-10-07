@@ -18,6 +18,7 @@ import { EditableText, TextInput, Toggle } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { Popover, usePopover } from "@/components/ui/popover";
 import { isGooglePickerConfigured } from "@/components/library/google-picker";
+import { isGoogleCalendarConfigured } from "@/lib/google-calendar";
 import { SettingsRow, SettingsSection } from "./settings-ui";
 import { FinanceSettings } from "./finance-settings";
 
@@ -189,6 +190,16 @@ function Integrations() {
           description={isGooglePickerConfigured ? "Pick Drive files straight from the Add to Library dialog." : "Optional. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID and NEXT_PUBLIC_GOOGLE_API_KEY to browse Drive from Spot OS."}
         >
           <Status ok={isGooglePickerConfigured}>{isGooglePickerConfigured ? "Enabled" : "Not configured"}</Status>
+        </SettingsRow>
+        <SettingsRow
+          label="Google Calendar"
+          description={
+            isGoogleCalendarConfigured
+              ? "Calendar → Export → Sync pushes deadlines, tasks due and notes for a week, month or year into your own Google Calendar. Re-syncing updates events instead of duplicating them."
+              : "Calendar → Export downloads a week, month or year as an .ics file that Google Calendar imports. For one-click sync, set NEXT_PUBLIC_GOOGLE_CLIENT_ID and enable the Google Calendar API."
+          }
+        >
+          <Status ok>{isGoogleCalendarConfigured ? "Sync enabled" : ".ics import"}</Status>
         </SettingsRow>
         <SettingsRow label="Google Sheets (finance)" description="Configured under Finance.">
           <Status ok={fin?.kind === "google_sheet_csv" && !!fin.url}>{fin?.kind === "google_sheet_csv" && fin.url ? "Connected" : fin?.kind === "demo" ? "Sample data" : "Not connected"}</Status>

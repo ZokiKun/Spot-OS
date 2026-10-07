@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Download, Ellipsis, FileCode, Printer, Trash2 } from "lucide-react";
+import { CalendarPlus, Download, Ellipsis, FileCode, Printer, Trash2 } from "lucide-react";
 import type { CalendarNote } from "@/lib/types";
 import { useProfiles, useWorkspace } from "@/lib/store";
 import { useDebouncedSave } from "@/lib/hooks";
 import { htmlToMarkdown } from "@/lib/markdown";
+import { googleCalendarLink } from "@/lib/calendar-export";
 import { downloadFile, formatLongDate, slugify, timeAgo } from "@/lib/utils";
 import { EditableText } from "@/components/ui/input";
 import { IconButton } from "@/components/ui/button";
@@ -80,6 +81,15 @@ export function NoteCard({ note, focus }: { note: CalendarNote; focus?: boolean 
               }}
             >
               Print / Save as PDF
+            </MenuItem>
+            <MenuItem
+              icon={<CalendarPlus className="size-4" />}
+              onSelect={() => {
+                window.open(googleCalendarLink({ date: note.date, title: note.title || "Note", description: htmlToMarkdown(note.content_html).trim() }), "_blank", "noopener");
+                menu.close();
+              }}
+            >
+              Add to Google Calendar
             </MenuItem>
             <MenuDivider />
             <MenuItem

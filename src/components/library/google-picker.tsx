@@ -3,56 +3,11 @@
 import { useState } from "react";
 import type { LibraryItemType } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { GOOGLE_CLIENT_ID, loadScript, requestGoogleToken } from "@/lib/google";
 
-const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY ?? "";
 const APP_ID = process.env.NEXT_PUBLIC_GOOGLE_APP_ID ?? "";
-export const isGooglePickerConfigured = Boolean(CLIENT_ID && API_KEY);
-
-/* Minimal typings for the Google Picker + Identity Services globals. */
-type PickerDoc = { url: string; name: string; mimeType: string };
-type PickerResult = { action: string; docs?: PickerDoc[] };
-declare global {
-  interface Window {
-    gapi?: { load: (lib: string, cb: () => void) => void };
-    google?: {
-      accounts: {
-        oauth2: {
-          initTokenClient: (cfg: {
-            client_id: string;
-            scope: string;
-            callback: (r: { access_token?: string; error?: string }) => void;
-          }) => { requestAccessToken: (o?: { prompt?: string }) => void };
-        };
-      };
-      picker: {
-        PickerBuilder: new () => {
-          addView: (v: unknown) => unknown;
-          setOAuthToken: (t: string) => unknown;
-          setDeveloperKey: (k: string) => unknown;
-          setAppId: (id: string) => unknown;
-          setCallback: (cb: (r: PickerResult) => void) => unknown;
-          build: () => { setVisible: (v: boolean) => void };
-        };
-        DocsView: new (viewId?: string) => { setIncludeFolders: (b: boolean) => unknown; setSelectFolderEnabled: (b: boolean) => unknown };
-        ViewId: { DOCS: string };
-        Action: { PICKED: string };
-      };
-    };
-  }
-}
-
-function loadScript(src: string) {
-  return new Promise<void>((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) return resolve();
-    const s = document.createElement("script");
-    s.src = src;
-    s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error(`Failed to load ${src}`));
-    document.head.appendChild(s);
-  });
-}
+export const isGooglePickerConfigured = Boolean(GOOGLE_CLIENT_ID && API_KEY);
 
 function typeFromMime(mime: string): LibraryItemType {
   if (mime === "application/vnd.google-apps.document") return "google_doc";
@@ -73,18 +28,9 @@ export function GooglePickerButton({ onPick }: { onPick: (p: { url: string; name
   const open = async () => {
     setBusy(true);
     try {
-      await Promise.all([loadScript("https://apis.google.com/js/api.js"), loadScript("https://accounts.google.com/gsi/client")]);
+      await loadScript("https://apis.google.com/js/api.js");
       await new Promise<void>((r) => window.gapi!.load("picker", r));
-      if (!token) {
-        token = await new Promise<string>((resolve, reject) => {
-          const client = window.google!.accounts.oauth2.initTokenClient({
-            client_id: CLIENT_ID,
-            scope: "https://www.googleapis.com/auth/drive.file",
-            callback: (r) => (r.access_token ? resolve(r.access_token) : reject(new Error(r.error ?? "Google sign-in cancelled"))),
-          });
-          client.requestAccessToken({ prompt: "" });
-        });
-      }
+      if (!token) token = await requestGoogleToken("https://www.googleapis.com/auth/drive.file");
       const g = window.google!.picker;
       const view = new g.DocsView(g.ViewId.DOCS);
       view.setIncludeFolders(true);
