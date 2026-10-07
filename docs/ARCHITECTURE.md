@@ -22,7 +22,10 @@ This document answers the brief's "first task" list: schema, routes, components,
 | `kb_pages` | Spot Base pages (Markdown) | **SPOT.md is derived from these pages**, not stored a second time. |
 | `finance_sources` | Sheet URL + configurable column **mapping** (`jsonb`) | |
 | `finance_snapshots` | Cached, normalized entries | Pruned to the 5 newest rows per source by trigger. |
-| `settings` | Workspace settings (`key` → `jsonb`) | Per-device preferences (theme, finance reveal) stay in `localStorage`. |
+| `settings` | Workspace settings (`key` → `jsonb`) | Per-device preferences (theme, finance reveal) stay in `localStorage`. The `tags` key holds custom tag names + colours for projects and Library. |
+| `notifications` | @mention notifications (0002) | Recipient-only RLS: you read and mark your own; any member can create one for another member. |
+
+`0002_tags_pins_mentions.sql` adds project `tags`, `note`, `cover` (banner) and `cover_position`; Library `pinned` (for everyone) and `pinned_by` (pin for me); `attachments.kb_page_id` (Spot Base brand assets); and the `notifications` table.
 
 **RLS:** `public.is_member()` (security definer) checks that `auth.uid()` has a profile. Every table gets one "members full access" policy. The exceptions: `profiles` allows select and update only, and `activity_log` allows select only. Storage policies apply the same rule to the private `attachments` bucket. The service-role key is never used by the app.
 
@@ -31,14 +34,14 @@ This document answers the brief's "first task" list: schema, routes, components,
 ```
 /login                     email + password or magic link (demo: pick a member)
 /auth/callback             PKCE code exchange for magic links / invites
-/                          Home — ?view=personal|studio|finance|performance
-/calendar                  ?date=YYYY-MM-DD&note=<id>
-/projects                  ?view=table|board
+/                          Home — ?view=personal|studio (old finance/performance links redirect to Library)
+/calendar                  ?date=YYYY-MM-DD&view=month|quarter|year&note=<id>
+/projects                  ?view=table|board — grouped by status: active, blocked, review, backlog, completed, archived
 /projects/tasks            ?filter=all|mine|member:<id>|overdue|today|upcoming|completed
 /projects/[id]             ?tab=overview|tasks|files|links|notes|activity
-/library
+/library                   ?tab=resources|finance|performance
 /reviews, /reviews/[id]
-/spot-base, /spot-base/[slug], /spot-base/spot-md
+/spot-base, /spot-base/[slug], /spot-base/spot-md   (inside Library; overview = Team, What/Why/How/Ethos, Brand assets)
 /settings                  ?section=appearance|notifications|workspace|finance|integrations|data
 /api/finance               server-side Google Sheets CSV fetch (host-allowlisted)
 ```
@@ -84,7 +87,9 @@ src/
 - Cascaded deletes, for example a project's tasks, arrive as their own realtime events.
 - Demo mode mimics this with `BroadcastChannel` across tabs.
 
-## 5. Google Drive & Google Sheets
+## 5. Google Drive, Calendar & Sheets
+
+**Calendar.** Calendar → Export picks a week, month or year around the selected day and downloads an `.ics` file (deadlines, open tasks due, day notes as all-day events with stable UIDs) or a Markdown digest. "Import into Google Calendar…" downloads the file and opens Google Calendar's import page. With `NEXT_PUBLIC_GOOGLE_CLIENT_ID` set (and the Google Calendar API enabled), **Sync** pushes the same events into the signed-in person's primary calendar via `events.import` (scope `calendar.events`), so re-syncing updates instead of duplicating. A live subscription feed isn't offered: demo data lives in the browser, and a Supabase feed would need a server-side token.
 
 **Drive / Library.** Drive stays the main file store. Library only indexes URLs. Pasting a link auto-detects its type (Doc, Sheet, Slides, Folder, File, PDF) and suggests a name. The optional **Google Picker** button appears only when `NEXT_PUBLIC_GOOGLE_CLIENT_ID` and `NEXT_PUBLIC_GOOGLE_API_KEY` are set. It uses the `drive.file` scope and only reads the picked file's URL, name and type. Nothing is copied into Supabase.
 
@@ -117,9 +122,9 @@ src/
 - **Merged** `calendar_attachments` + `project_files` into `attachments`.
 - **SPOT.md** is generated from Spot Base pages, not maintained as a second copy.
 - **Activity** is written by DB triggers, not by client code.
-- **Notifications:** none (by design). The Attention section on Home and an optional sidebar badge cover it.
+- **Notifications:** only @mentions. Typing @ in a project note, task description, calendar note or project notes offers members; the store diffs mentions on save (`src/lib/mentions.ts`) and creates a notification per newly mentioned person. They arrive in the sidebar **Inbox** live (Realtime), with a toast and optional desktop notification.
 - **Kanban:** the project board has fixed status columns and drag to change status. Nothing is configurable.
-- **Performance:** a small period-over-period table, not charts.
+- **Performance:** in Library → Performance — six-period bar charts (monthly or quarterly) per metric, with a table view.
 - **Project notes:** one rich-text field per project instead of a notes table.
 - Not built (per brief): chat, CRM, invoicing, time tracking, collaborative editing, Drive clone, AI assistant, complex permissions, dashboard builder, native app.
 
@@ -130,7 +135,7 @@ src/
 | 1 Foundation: Next.js, Supabase wiring, auth, schema, navigation, layout, theme | ✅ |
 | 2 Projects: projects, tasks, assignments, statuses, filters, realtime | ✅ |
 | 3 Home: personal / studio / finance / performance, attention, next actions, activity | ✅ |
-| 4 Calendar: month grid, date notes, rich text, images, attachments, export (MD / HTML / print-to-PDF) | ✅ |
+| 4 Calendar: month / quarter / year views, date notes, rich text, images, attachments, note export (MD / HTML / PDF), period export (.ics / Markdown), Google Calendar import + optional direct sync | ✅ |
 | 5 Library: links, docs, project association, tags, search, Drive detection, optional Picker | ✅ |
 | 6 Reviews: monthly / quarterly, auto metrics from Spot OS + finance | ✅ |
 | 7 Finance: Sheets source, mapping layer, totals, hide / reveal | ✅ (needs the real sheet URL) |
