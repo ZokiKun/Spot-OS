@@ -131,6 +131,8 @@ export class DemoAdapter implements DataAdapter {
         .filter((l) => l.project_id === id)
         .forEach((l) => this.emit({ type: "upsert", table: "library_items", row: { ...l, project_id: null } }));
     }
+    if (table === "kb_pages")
+      this.db.attachments.filter((a) => a.kb_page_id === id).forEach((a) => this.emit({ type: "delete", table: "attachments", id: a.id }));
     if (table === "calendar_notes")
       this.db.attachments.filter((a) => a.note_id === id).forEach((a) => this.emit({ type: "delete", table: "attachments", id: a.id }));
     this.emit({ type: "delete", table, id });

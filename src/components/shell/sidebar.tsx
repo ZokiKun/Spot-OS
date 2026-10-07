@@ -62,7 +62,8 @@ export function Sidebar() {
 
   const activeProjects = useMemo(() => sortProjects(data.projects.filter(isActiveProject)), [data.projects]);
 
-  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href) || (href === "/library" && pathname.startsWith("/spot-base")); // Spot Base lives in Library
   const demo = getDemoAdapter();
 
   return (

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, Check, Copy, Download, Ellipsis, FileCode2, Pencil, Plus, Trash2 } from "lucide-react";
+import { BookOpen, Check, Copy, Download, Ellipsis, FileCode2, Library, Pencil, Plus, Trash2 } from "lucide-react";
 import type { KbPage } from "@/lib/types";
 import { useProfiles, useWorkspace } from "@/lib/store";
 import { renderMarkdown } from "@/lib/markdown";
@@ -17,6 +17,7 @@ import { AutoTextarea, EditableText } from "@/components/ui/input";
 import { Popover, usePopover } from "@/components/ui/popover";
 import { MenuItem, MenuList } from "@/components/ui/menu";
 import { EmptyState } from "@/components/ui/misc";
+import { BRAND_SLUG, CORE_PAGES, SpotBaseOverview, TEAM_SLUG, findPage } from "./spot-base-overview";
 
 const SPOT_MD = "spot-md";
 
@@ -24,8 +25,16 @@ export function SpotBaseView({ slug }: { slug?: string }) {
   const { data, create, me } = useWorkspace();
   const router = useRouter();
   const pages = useMemo(() => data.kb_pages.slice().sort((a, b) => a.sort_order - b.sort_order), [data.kb_pages]);
-  const current = slug === SPOT_MD ? null : (pages.find((p) => p.slug === slug) ?? (slug ? undefined : pages[0]));
+  const current = slug && slug !== SPOT_MD ? pages.find((p) => p.slug === slug) : null;
   const workspaceName = (data.settings.find((s) => s.key === "workspace")?.value.name as string) ?? "Studio Spot";
+
+  // Side nav: the core pages first, then brand, then everything else.
+  const coreSlugs = new Set<string>([TEAM_SLUG, ...CORE_PAGES.map((c) => findPage(pages, c.slugs)?.slug).filter((x): x is string => !!x)]);
+  const groups = [
+    { label: "Team & what we stand for", pages: [TEAM_SLUG, ...CORE_PAGES.map((c) => findPage(pages, c.slugs)?.slug)].map((sl) => pages.find((p) => p.slug === sl)).filter((p): p is KbPage => !!p) },
+    { label: "Brand", pages: pages.filter((p) => p.slug === BRAND_SLUG) },
+    { label: "More", pages: pages.filter((p) => !coreSlugs.has(p.slug) && p.slug !== BRAND_SLUG) },
+  ];
 
   const addPage = async () => {
     const title = "Untitled";
@@ -44,28 +53,37 @@ export function SpotBaseView({ slug }: { slug?: string }) {
   };
 
   return (
-    <Page width="full" className="max-w-[1180px]" crumbs={[{ label: "Spot Base", href: "/spot-base", icon: <BookOpen className="size-4" /> }, ...(slug === SPOT_MD ? [{ label: "SPOT.md" }] : current ? [{ label: current.title, icon: <span>{current.icon}</span> }] : [])]}>
+    <Page
+      crumbs={[
+        { label: "Library", href: "/library", icon: <Library className="size-4" /> },
+        { label: "Spot Base", href: "/spot-base", icon: <BookOpen className="size-4" /> },
+        ...(slug === SPOT_MD ? [{ label: "SPOT.md" }] : current ? [{ label: current.title, icon: <span>{current.icon}</span> }] : []),
+      ]}
+    >
       <div className="grid grid-cols-1 gap-10 md:grid-cols-[200px_minmax(0,1fr)]">
         <aside className="md:sticky md:top-16 md:self-start">
-          <div className="mb-1 px-2 text-[12px] font-medium text-fg-2">Pages</div>
-          <nav className="flex gap-0.5 overflow-x-auto md:flex-col">
-            {pages.map((p) => (
-              <Link
-                key={p.id}
-                href={`/spot-base/${p.slug}`}
-                className={cn(
-                  "flex h-[30px] shrink-0 items-center gap-2 rounded-md px-2 text-[14px] transition-colors",
-                  current?.id === p.id ? "bg-active font-medium text-fg" : "text-fg-2 hover:bg-hover",
-                )}
-              >
-                <span className="w-5 text-center">{p.icon}</span>
-                <span className="truncate">{p.title}</span>
-              </Link>
-            ))}
-            <button type="button" onClick={() => void addPage()} className="flex h-[30px] shrink-0 items-center gap-2 rounded-md px-2 text-[14px] text-fg-3 hover:bg-hover hover:text-fg-2">
-              <Plus className="size-4" /> Add page
-            </button>
-          </nav>
+          <NavLink href="/spot-base" active={!slug}>
+            <span className="w-5 text-center">🟠</span>
+            <span className="truncate">Overview</span>
+          </NavLink>
+          {groups.map((g) =>
+            g.pages.length ? (
+              <div key={g.label} className="mt-3">
+                <div className="mb-0.5 px-2 text-[12px] font-medium text-fg-2">{g.label}</div>
+                <nav className="flex gap-0.5 overflow-x-auto md:flex-col">
+                  {g.pages.map((p) => (
+                    <NavLink key={p.id} href={`/spot-base/${p.slug}`} active={current?.id === p.id}>
+                      <span className="w-5 text-center">{p.icon}</span>
+                      <span className="truncate">{p.title}</span>
+                    </NavLink>
+                  ))}
+                </nav>
+              </div>
+            ) : null,
+          )}
+          <button type="button" onClick={() => void addPage()} className="mt-1 flex h-[30px] w-full shrink-0 items-center gap-2 rounded-md px-2 text-[14px] text-fg-3 hover:bg-hover hover:text-fg-2">
+            <Plus className="size-4" /> Add page
+          </button>
           <div className="mt-4 border-t border-line pt-3">
             <Link
               href={`/spot-base/${SPOT_MD}`}
@@ -79,7 +97,9 @@ export function SpotBaseView({ slug }: { slug?: string }) {
           </div>
         </aside>
         <div className="min-w-0">
-          {pages.length === 0 && slug !== SPOT_MD ? (
+          {!slug ? (
+            <SpotBaseOverview pages={pages} workspaceName={workspaceName} />
+          ) : pages.length === 0 && slug !== SPOT_MD ? (
             <EmptyState
               title="Spot Base is empty"
               description="Start with the suggested structure: who we are, positioning, brand, methodology, team, services, tools and file conventions."
@@ -106,6 +126,20 @@ export function SpotBaseView({ slug }: { slug?: string }) {
         </div>
       </div>
     </Page>
+  );
+}
+
+function NavLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "flex h-[30px] shrink-0 items-center gap-2 rounded-md px-2 text-[14px] transition-colors",
+        active ? "bg-active font-medium text-fg" : "text-fg-2 hover:bg-hover",
+      )}
+    >
+      {children}
+    </Link>
   );
 }
 

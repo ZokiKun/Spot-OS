@@ -30,6 +30,39 @@ _Location, remote setup, working hours._`,
 _Size, length and shape of a typical project._`,
   },
   {
+    slug: "why-we-exist",
+    title: "Why we exist",
+    icon: "🎯",
+    content_md: `## Our purpose
+_Why does the studio exist? What would be missing if we didn’t?_
+
+## Who we do it for
+_The people and organisations we most want to help._`,
+  },
+  {
+    slug: "how-we-work",
+    title: "How we work",
+    icon: "🧭",
+    content_md: `## Our process
+1. _Discover_
+2. _Define_
+3. _Design_
+4. _Deliver_
+
+## Working together
+- _How we run projects, feedback and handovers._`,
+  },
+  {
+    slug: "ethos",
+    title: "Ethos",
+    icon: "✳️",
+    content_md: `## What we believe
+- _…_
+
+## What we won’t compromise on
+- _…_`,
+  },
+  {
     slug: "positioning",
     title: "Positioning",
     icon: "🎯",
@@ -65,7 +98,7 @@ _The honest reason clients pick us._`,
     title: "Brand",
     icon: "🟠",
     content_md: `## Assets
-Link the logo, type and colour files from **Library**.
+Upload the logo and brand files under **Spot Base → Brand assets**. Link larger files from **Library**.
 
 ## Rules
 - _Clear space, minimum sizes, colour usage._`,
