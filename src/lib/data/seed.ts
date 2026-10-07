@@ -42,6 +42,8 @@ export function buildSeed(): Snapshot {
     next_action: null,
     note: null,
     tags: [],
+    cover: null,
+    cover_position: 50,
     notes_html: null,
     created_by: alex!.id,
     created_at: ago(40),
@@ -59,6 +61,7 @@ export function buildSeed(): Snapshot {
     description: "Full identity refresh: logo system, typography, colour, and launch toolkit.",
     next_action: "Present final logo lockups to Maya",
     tags: ["branding", "retainer"],
+    cover: "gradient:dusk",
     note: "Maya wants the compass mark — keep the wordmark as backup.",
   });
   const kestrel = project("Kestrel Labs website", "🪶", "client", "blocked", {
@@ -79,6 +82,7 @@ export function buildSeed(): Snapshot {
     description: "Packaging system for the autumn ceramics line.",
     next_action: "Collect client feedback on dielines",
     tags: ["packaging", "print"],
+    cover: "gradient:clay",
   });
   const site = project("Studio Spot site v2", "🟠", "in_house", "active", {
     lead_id: jordan!.id,

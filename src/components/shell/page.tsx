@@ -58,9 +58,12 @@ export function Page({
   width = "wide",
   children,
   className,
+  banner,
 }: {
   crumbs: Crumb[];
   actions?: ReactNode;
+  /** Full-bleed area between the top bar and the content (project banners). */
+  banner?: ReactNode;
   width?: keyof typeof widths;
   children: ReactNode;
   className?: string;
@@ -73,6 +76,7 @@ export function Page({
   return (
     <div className="flex min-h-full flex-col">
       <Topbar crumbs={crumbs} actions={actions} />
+      {status === "ready" && banner}
       <main className={cn("mx-auto w-full flex-1 px-6 pb-24 pt-8 sm:px-12 lg:px-16", widths[width], className)}>
         {status === "loading" ? <PageSkeleton /> : status === "error" ? <LoadError message={error} /> : children}
       </main>

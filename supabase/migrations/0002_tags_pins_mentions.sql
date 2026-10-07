@@ -1,8 +1,12 @@
--- Spot OS 0002 — project tags & notes, library pins, Spot Base brand assets, @mention notifications.
+-- Spot OS 0002 — project tags, notes & banners, library pins, Spot Base brand assets, @mention notifications.
 
 -- ─── Projects: custom tags + a short note shown in the table ───
 alter table public.projects add column if not exists tags text[] not null default '{}';
 alter table public.projects add column if not exists note text;
+
+-- ─── Projects: banner (image URL or "gradient:<key>") ───
+alter table public.projects add column if not exists cover text;
+alter table public.projects add column if not exists cover_position smallint not null default 50 check (cover_position between 0 and 100);
 
 -- ─── Library: pin for everyone, or pin for me ───
 alter table public.library_items add column if not exists pinned boolean not null default false;

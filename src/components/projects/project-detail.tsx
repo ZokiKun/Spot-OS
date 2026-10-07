@@ -46,6 +46,7 @@ import { RichEditor } from "@/components/editor/rich-editor";
 import { LibraryItemDialog } from "@/components/library/library-item-dialog";
 import { LibraryRow } from "@/components/library/library-row";
 import { projectStatusPatch } from "./project-views";
+import { AddCoverButton, ProjectCover } from "./project-cover";
 
 type Tab = "overview" | "tasks" | "files" | "links" | "notes" | "activity";
 const ICONS = ["📁", "🧭", "🪶", "🫙", "🟠", "⚙️", "📓", "🔤", "🎨", "📐", "🖼️", "🎬", "📦", "🌱", "✳️", "🔶", "🧪", "💡"];
@@ -82,6 +83,7 @@ export function ProjectDetail({ id }: { id: string }) {
   return (
     <Page
       width="doc"
+      banner={project?.cover ? <ProjectCover project={project} /> : undefined}
       crumbs={[
         { label: "Projects", href: "/projects", icon: <Icon className="size-4" /> },
         { label: project?.name ?? "…", icon: <span>{project?.icon}</span> },
@@ -125,15 +127,18 @@ export function ProjectDetail({ id }: { id: string }) {
     >
       {project && (
         <>
-          <button
-            ref={iconPopAnchorRef}
-            type="button"
-            onClick={iconPop.toggle}
-            className="-ml-1 mb-1 flex size-[72px] items-center justify-center rounded-lg text-[56px] leading-none hover:bg-hover"
-            aria-label="Change icon"
-          >
-            {project.icon ?? "📁"}
-          </button>
+          <div className={cn("group/head flex items-end gap-2", project.cover && "relative z-[1] -mt-[76px]")}>
+            <button
+              ref={iconPopAnchorRef}
+              type="button"
+              onClick={iconPop.toggle}
+              className={cn("-ml-1 mb-1 flex size-[72px] items-center justify-center rounded-lg text-[56px] leading-none hover:bg-hover", project.cover && "hover:bg-bg/60")}
+              aria-label="Change icon"
+            >
+              {project.icon ?? "📁"}
+            </button>
+            {!project.cover && <AddCoverButton project={project} />}
+          </div>
           <Popover open={iconPop.open} onClose={iconPop.close} anchor={iconPop.anchor} width={300}>
             <div className="grid grid-cols-8 gap-0.5 p-2">
               {ICONS.map((i) => (

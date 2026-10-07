@@ -50,6 +50,8 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
       next_action: nextAction.trim() || null,
       note: null,
       tags: [],
+      cover: null,
+      cover_position: 50,
       notes_html: null,
       created_by: me?.id ?? null,
       completed_at: null,

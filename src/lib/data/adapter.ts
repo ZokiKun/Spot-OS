@@ -57,7 +57,7 @@ export function normalizeSnapshot(s: Snapshot): Snapshot {
   return {
     ...emptySnapshot(),
     ...s,
-    projects: s.projects.map((p) => ({ ...p, tags: p.tags ?? [], note: p.note ?? null })),
+    projects: s.projects.map((p) => ({ ...p, tags: p.tags ?? [], note: p.note ?? null, cover: p.cover ?? null, cover_position: p.cover_position ?? 50 })),
     library_items: s.library_items.map((l) => ({ ...l, tags: l.tags ?? [], pinned: l.pinned ?? false, pinned_by: l.pinned_by ?? [] })),
     attachments: s.attachments.map((a) => ({ ...a, kb_page_id: a.kb_page_id ?? null })),
     notifications: s.notifications ?? [],

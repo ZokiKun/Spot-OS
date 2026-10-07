@@ -48,6 +48,10 @@ export interface Project {
   note: string | null;
   /** Custom tags — names; colours live in the "tags" workspace setting. */
   tags: string[];
+  /** Banner: an image URL, or "gradient:<key>" for a preset. */
+  cover: string | null;
+  /** Vertical focus of an image banner, 0–100 (%). */
+  cover_position: number;
   notes_html: string | null;
   created_by: UUID | null;
   created_at: ISODateTime;

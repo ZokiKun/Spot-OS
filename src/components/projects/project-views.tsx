@@ -35,6 +35,7 @@ import { Popover, usePopover } from "@/components/ui/popover";
 import { MenuItem, MenuList } from "@/components/ui/menu";
 import { TagList, TagsField } from "@/components/ui/tags-field";
 import { ProjectNoteField } from "./project-note-field";
+import { coverStyle } from "./project-cover";
 
 export function projectStatusPatch(status: ProjectStatus): Partial<Project> {
   return { status, completed_at: status === "completed" ? nowISO() : null };
@@ -220,8 +221,9 @@ export function ProjectBoard({ projects }: { projects: Project[] }) {
                     href={`/projects/${p.id}`}
                     draggable
                     onDragStart={(e) => e.dataTransfer.setData("text/project", p.id)}
-                    className="block rounded-md bg-elevated px-2.5 py-2 shadow-card transition-colors hover:bg-[color-mix(in_srgb,var(--bg-elevated)_92%,var(--text))]"
+                    className="block overflow-hidden rounded-md bg-elevated px-2.5 py-2 shadow-card transition-colors hover:bg-[color-mix(in_srgb,var(--bg-elevated)_92%,var(--text))]"
                   >
+                    {p.cover && <div className="-mx-2.5 -mt-2 mb-2 h-12" style={coverStyle(p.cover, p.cover_position)} />}
                     <div className="flex items-start gap-2 text-[14px] font-medium">
                       <span>{p.icon ?? "📁"}</span>
                       <span className="min-w-0 flex-1">{p.name}</span>
