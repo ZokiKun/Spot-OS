@@ -1,112 +1,16 @@
 @import "tailwindcss";
+@import "../styles/direction-1.css";
+@import "../styles/direction-2.css";
+@import "../styles/direction-3.css";
 
 /*
-  Spot OS design tokens — derived from Notion's web UI:
-  warm off-white sidebar, warm near-black text, hairline dividers,
-  muted tag palette, a single blue accent, system type.
+  Spot OS ships three design directions in one build. The server sets
+  <html data-direction="1|2|3"> from a cookie; each direction's tokens and styles
+  live in src/styles/direction-N.css, scoped to that attribute.
+  Theme keys that differ between directions point at a per-direction --dir-* variable.
 */
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
-
-:root {
-  --bg: #ffffff;
-  --bg-sidebar: #f8f8f7;
-  --bg-elevated: #ffffff;
-  --bg-subtle: #f7f6f3;
-  --bg-hover: rgba(55, 53, 47, 0.06);
-  --bg-active: rgba(55, 53, 47, 0.09);
-  --bg-input: rgba(242, 241, 238, 0.6);
-  --bg-selected: rgba(35, 131, 226, 0.08);
-
-  --text: #32302c;
-  --text-2: #787774;
-  --text-3: #a5a29c;
-  --text-inverse: #ffffff;
-
-  --border: rgba(55, 53, 47, 0.09);
-  --border-strong: rgba(55, 53, 47, 0.16);
-
-  --accent: #2383e2;
-  --accent-hover: #0077d4;
-  --accent-soft: rgba(35, 131, 226, 0.12);
-  --danger: #e03e3e;
-  --danger-soft: #fdebec;
-  --warning: #cb912f;
-  --success: #448361;
-
-  --shadow-menu: rgba(15, 15, 15, 0.05) 0 0 0 1px, rgba(15, 15, 15, 0.1) 0 3px 6px,
-    rgba(15, 15, 15, 0.2) 0 9px 24px;
-  --shadow-card: rgba(15, 15, 15, 0.04) 0 0 0 1px, rgba(15, 15, 15, 0.03) 0 2px 4px;
-
-  /* Notion tag palette — background / text / dot */
-  --tag-default-bg: rgba(227, 226, 224, 0.5);
-  --tag-gray-bg: #e3e2e0;
-  --tag-brown-bg: #eee0da;
-  --tag-orange-bg: #fadec9;
-  --tag-yellow-bg: #fdecc8;
-  --tag-green-bg: #dbeddb;
-  --tag-blue-bg: #d3e5ef;
-  --tag-purple-bg: #e8deee;
-  --tag-pink-bg: #f5e0e9;
-  --tag-red-bg: #ffe2dd;
-  --tag-text: #32302c;
-
-  --dot-default: #a3a29e;
-  --dot-gray: #91918e;
-  --dot-brown: #a27763;
-  --dot-orange: #cc782f;
-  --dot-yellow: #cb912f;
-  --dot-green: #4f9768;
-  --dot-blue: #2e7cd1;
-  --dot-purple: #8d5bc1;
-  --dot-pink: #c14c8a;
-  --dot-red: #d44c47;
-
-  --callout-bg: #f7f6f3;
-  color-scheme: light;
-}
-
-[data-theme="dark"] {
-  --bg: #191919;
-  --bg-sidebar: #202020;
-  --bg-elevated: #252525;
-  --bg-subtle: #202020;
-  --bg-hover: rgba(255, 255, 255, 0.055);
-  --bg-active: rgba(255, 255, 255, 0.09);
-  --bg-input: rgba(255, 255, 255, 0.055);
-  --bg-selected: rgba(35, 131, 226, 0.15);
-
-  --text: rgba(255, 255, 255, 0.81);
-  --text-2: rgba(255, 255, 255, 0.46);
-  --text-3: rgba(255, 255, 255, 0.28);
-  --text-inverse: #ffffff;
-
-  --border: rgba(255, 255, 255, 0.094);
-  --border-strong: rgba(255, 255, 255, 0.15);
-
-  --accent-soft: rgba(35, 131, 226, 0.2);
-  --danger: #ff7369;
-  --danger-soft: rgba(255, 115, 105, 0.12);
-
-  --shadow-menu: rgba(15, 15, 15, 0.1) 0 0 0 1px, rgba(15, 15, 15, 0.2) 0 3px 6px,
-    rgba(15, 15, 15, 0.4) 0 9px 24px;
-  --shadow-card: rgba(255, 255, 255, 0.06) 0 0 0 1px;
-
-  --tag-default-bg: #373737;
-  --tag-gray-bg: #5a5a5a;
-  --tag-brown-bg: #603b2c;
-  --tag-orange-bg: #854c1d;
-  --tag-yellow-bg: #89632a;
-  --tag-green-bg: #2b593f;
-  --tag-blue-bg: #28456c;
-  --tag-purple-bg: #492f64;
-  --tag-pink-bg: #69314c;
-  --tag-red-bg: #6e3630;
-  --tag-text: rgba(255, 255, 255, 0.85);
-
-  --callout-bg: #252525;
-  color-scheme: dark;
-}
 
 @theme inline {
   --color-bg: var(--bg);
@@ -128,127 +32,43 @@
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-callout: var(--callout-bg);
-  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI",
-    Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
-  --font-mono: "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace;
+  --font-sans: var(--dir-font-sans);
+  --font-mono: var(--dir-font-mono);
   --shadow-menu: var(--shadow-menu);
   --shadow-card: var(--shadow-card);
+  --color-on-accent: var(--on-accent);
+  --color-coral: var(--c-coral);
+  --color-sun: var(--c-sun);
+  --color-lime: var(--c-lime);
+  --color-sky: var(--c-sky);
+  --color-cream: var(--c-cream);
+  --color-lilac: var(--c-lilac);
+  --color-ink: var(--c-ink);
+  --color-on-ink: var(--on-ink);
+  --color-on-chunk: var(--on-chunk);
+  --color-line-selected: var(--border-selected);
+  --color-green: var(--green);
+  --color-green-edge: var(--green-edge);
+  --color-green-soft: var(--green-soft);
+  --color-blue: var(--blue);
+  --color-blue-edge: var(--blue-edge);
+  --color-blue-soft: var(--blue-soft);
+  --color-orange: var(--orange);
+  --color-orange-edge: var(--orange-edge);
+  --color-orange-soft: var(--orange-soft);
+  --color-red: var(--red);
+  --color-red-edge: var(--red-edge);
+  --color-red-soft: var(--red-soft);
+  --color-yellow: var(--yellow);
+  --color-yellow-edge: var(--yellow-edge);
+  --color-yellow-soft: var(--yellow-soft);
+  --color-purple: var(--purple);
+  --color-purple-edge: var(--purple-edge);
+  --color-purple-soft: var(--purple-soft);
+  --color-brand: var(--brand);
 }
 
 html,
 body {
   height: 100%;
-}
-
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-::selection {
-  background: rgba(35, 131, 226, 0.28);
-}
-
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) transparent;
-}
-
-:focus-visible {
-  outline: 2px solid rgba(35, 131, 226, 0.5);
-  outline-offset: 1px;
-  border-radius: 4px;
-}
-
-.tabular {
-  font-variant-numeric: tabular-nums;
-}
-
-/* Tag colours */
-.tag-default { background: var(--tag-default-bg); }
-.tag-gray { background: var(--tag-gray-bg); }
-.tag-brown { background: var(--tag-brown-bg); }
-.tag-orange { background: var(--tag-orange-bg); }
-.tag-yellow { background: var(--tag-yellow-bg); }
-.tag-green { background: var(--tag-green-bg); }
-.tag-blue { background: var(--tag-blue-bg); }
-.tag-purple { background: var(--tag-purple-bg); }
-.tag-pink { background: var(--tag-pink-bg); }
-.tag-red { background: var(--tag-red-bg); }
-
-.dot-default { background: var(--dot-default); }
-.dot-gray { background: var(--dot-gray); }
-.dot-brown { background: var(--dot-brown); }
-.dot-orange { background: var(--dot-orange); }
-.dot-yellow { background: var(--dot-yellow); }
-.dot-green { background: var(--dot-green); }
-.dot-blue { background: var(--dot-blue); }
-.dot-purple { background: var(--dot-purple); }
-.dot-pink { background: var(--dot-pink); }
-.dot-red { background: var(--dot-red); }
-
-/* Rich text (Tiptap + rendered markdown) — Notion document rhythm */
-.prose-notion {
-  font-size: 16px;
-  line-height: 1.6;
-  color: var(--text);
-  word-wrap: break-word;
-}
-.prose-notion > * + * { margin-top: 4px; }
-.prose-notion p { min-height: 1.6em; }
-.prose-notion h1 { font-size: 1.875em; font-weight: 700; line-height: 1.3; margin-top: 1.4em; margin-bottom: 4px; }
-.prose-notion h2 { font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-top: 1.2em; margin-bottom: 2px; }
-.prose-notion h3 { font-size: 1.25em; font-weight: 600; line-height: 1.3; margin-top: 1em; margin-bottom: 2px; }
-.prose-notion > :first-child { margin-top: 0; }
-.prose-notion strong { font-weight: 600; }
-.prose-notion a { color: inherit; text-decoration: underline; text-decoration-color: var(--text-3); text-underline-offset: 2px; }
-.prose-notion a:hover { text-decoration-color: var(--text); }
-.prose-notion ul { list-style: disc; padding-left: 1.6em; }
-.prose-notion ol { list-style: decimal; padding-left: 1.6em; }
-.prose-notion li { padding: 1px 0; }
-.prose-notion li > p { min-height: 0; }
-.prose-notion blockquote { border-left: 3px solid currentColor; padding-left: 14px; margin: 6px 0; }
-.prose-notion code { font-family: var(--font-mono); font-size: 85%; background: rgba(135, 131, 120, 0.15); color: #eb5757; border-radius: 4px; padding: 0.2em 0.4em; }
-.prose-notion pre { font-family: var(--font-mono); font-size: 13px; background: var(--bg-subtle); border-radius: 4px; padding: 16px 20px; overflow-x: auto; }
-.prose-notion pre code { background: none; color: inherit; padding: 0; }
-.prose-notion hr { border: none; border-top: 1px solid var(--border-strong); margin: 14px 0; }
-.prose-notion img { max-width: 100%; border-radius: 4px; margin: 6px 0; }
-.prose-notion img.ProseMirror-selectednode { outline: 3px solid var(--accent-soft); }
-.prose-notion table { border-collapse: collapse; font-size: 14px; }
-.prose-notion th, .prose-notion td { border: 1px solid var(--border-strong); padding: 6px 10px; text-align: left; }
-.prose-notion ul[data-type="taskList"] { list-style: none; padding-left: 2px; }
-.prose-notion ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 8px; }
-.prose-notion ul[data-type="taskList"] li > label { margin-top: 5px; user-select: none; }
-.prose-notion ul[data-type="taskList"] li > div { flex: 1; }
-.prose-notion ul[data-type="taskList"] li[data-checked="true"] > div { color: var(--text-3); text-decoration: line-through; }
-.prose-notion ul[data-type="taskList"] input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; }
-.prose-notion .is-empty::before,
-.prose-notion p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  color: var(--text-3);
-  float: left;
-  height: 0;
-  pointer-events: none;
-}
-.ProseMirror:focus { outline: none; }
-
-@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes pop-in { from { opacity: 0; transform: translateY(-2px) scale(0.99); } to { opacity: 1; transform: none; } }
-@keyframes slide-in-right { from { transform: translateX(16px); opacity: 0; } to { transform: none; opacity: 1; } }
-.anim-fade { animation: fade-in 120ms ease-out; }
-.anim-pop { animation: pop-in 120ms ease-out; }
-.anim-peek { animation: slide-in-right 160ms cubic-bezier(0.2, 0.8, 0.2, 1); }
-
-@media (prefers-reduced-motion: reduce) {
-  .anim-fade, .anim-pop, .anim-peek { animation: none; }
-}
-
-@media print {
-  .no-print { display: none !important; }
-  body { background: white; }
 }

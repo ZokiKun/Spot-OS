@@ -1,7 +1,11 @@
-import { SpotBaseView } from "@/components/spot-base/spot-base-view";
+import { pick } from "@/lib/direction-server";
+import { SpotBaseView as SpotBaseView1 } from "@/components/spot-base/spot-base-view";
+import { SpotBaseView as SpotBaseView2 } from "@/directions/d2/components/spot-base/spot-base-view";
+import { SpotBaseView as SpotBaseView3 } from "@/directions/d3/components/spot-base/spot-base-view";
 
 export const metadata = { title: "Spot Base" };
 
-export default function SpotBasePage() {
-  return <SpotBaseView />;
+export default async function Page() {
+  const View = await pick({ 1: SpotBaseView1, 2: SpotBaseView2, 3: SpotBaseView3 });
+  return <View />;
 }

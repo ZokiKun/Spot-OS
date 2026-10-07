@@ -6,6 +6,18 @@ Studio Spot's internal operating system. Home, Calendar, Projects, Library, Revi
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the schema, realtime design, Google integration and the decisions behind them.
 
+## Design directions
+
+One build ships three design directions. Switch between them in **Settings → Appearance → Design direction**, or with a link: `?direction=1|2|3`. The choice is stored in a cookie, so the same page and the same data re-render in the other design.
+
+| # | Name | Code |
+| --- | --- | --- |
+| 1 | Classic (Notion-style) | `src/components`, `src/lib`, `src/styles/direction-1.css` |
+| 2 | Chunks (colour cards) | `src/directions/d2`, `src/styles/direction-2.css` |
+| 3 | Playful (Duolingo-style) | `src/directions/d3`, `src/styles/direction-3.css` |
+
+The route files in `src/app` pick the active direction's component on the server (`src/lib/direction-server.ts`). Each direction's CSS is scoped to `<html data-direction="N">`. `NEXT_PUBLIC_DEFAULT_DIRECTION` sets the direction first-time visitors see (default 1).
+
 ---
 
 ## Run locally
