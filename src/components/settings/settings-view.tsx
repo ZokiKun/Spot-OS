@@ -20,6 +20,7 @@ import { Popover, usePopover } from "@/components/ui/popover";
 import { isGooglePickerConfigured } from "@/components/library/google-picker";
 import { SettingsRow, SettingsSection } from "./settings-ui";
 import { FinanceSettings } from "./finance-settings";
+import { DirectionSwitcher } from "./direction-switcher";
 
 const SECTIONS = [
   { id: "appearance", label: "Appearance", icon: Palette },
@@ -58,7 +59,12 @@ export function SettingsView() {
         </nav>
         <div className="min-w-0 max-w-[720px]">
           <h1 className="mb-6 text-[24px] font-semibold">{current.label}</h1>
-          {current.id === "appearance" && <Appearance />}
+          {current.id === "appearance" && (
+            <div className="space-y-8">
+              <DirectionSwitcher />
+              <Appearance />
+            </div>
+          )}
           {current.id === "notifications" && <Notifications />}
           {current.id === "workspace" && <WorkspaceSettings />}
           {current.id === "finance" && <FinanceSettings />}
