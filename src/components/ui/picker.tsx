@@ -19,6 +19,7 @@ export function Picker<V>({
   emptyLabel,
   onClear,
   clearLabel = "Clear",
+  selected,
 }: {
   items: PickerItem<V>[];
   value?: V | null;
@@ -27,6 +28,8 @@ export function Picker<V>({
   emptyLabel?: string;
   onClear?: () => void;
   clearLabel?: string;
+  /** Multi-select: every value that should show a check. */
+  selected?: V[];
 }) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -85,10 +88,10 @@ export function Picker<V>({
             )}
           >
             <span className="min-w-0 flex-1 truncate">{item.render ?? item.label}</span>
-            {value != null && item.value === value && <Check className="size-4 shrink-0" />}
+            {((value != null && item.value === value) || selected?.includes(item.value)) && <Check className="size-4 shrink-0" />}
           </button>
         ))}
-        {onClear && value != null && (
+        {onClear && (value != null || !!selected?.length) && (
           <>
             <div className="-mx-1 my-1 h-px bg-line" />
             <button

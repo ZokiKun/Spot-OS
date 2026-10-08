@@ -149,6 +149,7 @@ export function buildSeed(): Snapshot {
     title,
     description,
     assignee_id: assignee,
+    assignee_ids: assignee ? [assignee] : [],
     status,
     priority,
     due_date: due == null ? null : addDaysISO(t, due),

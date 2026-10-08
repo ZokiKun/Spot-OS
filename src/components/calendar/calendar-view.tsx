@@ -8,7 +8,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import type { CalendarNote, Project, Task } from "@/lib/types";
 import { useWorkspace } from "@/lib/store";
 import { isOpen } from "@/lib/selectors";
-import { cn, formatDay, formatLongDate, parseDate, todayISO, toISODate } from "@/lib/utils";
+import { cn, formatLongDate, parseDate, todayISO, toISODate } from "@/lib/utils";
 import { Page } from "@/components/shell/page";
 import { Button, IconButton } from "@/components/ui/button";
 import { EmptyState, SectionHeading } from "@/components/ui/misc";
@@ -120,7 +120,7 @@ export function CalendarView() {
   return (
     <Page crumbs={[{ label: "Calendar", icon: <CalendarDays className="size-4" /> }]}>
       <div className={cn("grid grid-cols-1 gap-10", view === "month" ? "xl:grid-cols-[minmax(0,1.75fr)_minmax(420px,1fr)]" : "xl:grid-cols-[minmax(0,2.2fr)_minmax(340px,1fr)]")}>
-        <section>
+        <section className="@container min-w-0">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <h1 className="text-[28px] font-bold tracking-[-0.01em]">{title[0]}</h1>
             {title[1] && <span className="text-[28px] font-bold text-fg-3">{title[1]}</span>}
@@ -155,44 +155,49 @@ export function CalendarView() {
           </div>
           {view === "month" ? (
             <MonthGrid month={month} selected={selected} onSelect={select} dayData={dayData} weekStartsOn={weekStartsOn} />
+          ) : view === "quarter" ? (
+            // Three equal columns when there's room; narrower, each month sits beside its list.
+            <div className="grid grid-cols-1 gap-6 @2xl:grid-cols-3 @2xl:gap-5">
+              {months.map((m) => {
+                const items = agenda.filter((a) => a.date.slice(0, 7) === format(m, "yyyy-MM"));
+                return (
+                  <div key={m.toISOString()} className="flex min-w-0 flex-col gap-3 @md:flex-row @md:items-start @2xl:flex-col @2xl:items-stretch">
+                    <div className="@md:w-[320px] @md:shrink-0 @2xl:w-auto">
+                      <MiniMonth month={m} selected={selected} onSelect={select} onOpenMonth={openMonth} dayData={dayData} weekStartsOn={weekStartsOn} size="lg" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      {items.length === 0 ? (
+                        <p className="px-2 py-1.5 text-[13px] text-fg-3">No deadlines or notes</p>
+                      ) : (
+                        items.map((a) => (
+                          <Link
+                            key={a.id}
+                            href={a.note ? href({ date: a.date, note: a.note }) : `/projects/${a.id.slice(2)}`}
+                            scroll={false}
+                            className="flex min-h-9 items-center gap-2.5 rounded-md px-2 py-1 hover:bg-hover"
+                          >
+                            <span className="w-12 shrink-0 text-[12.5px] text-fg-2 tabular">{format(parseDate(a.date)!, "MMM d")}</span>
+                            <span className="shrink-0">{a.icon}</span>
+                            <span className={cn("line-clamp-2 min-w-0 flex-1 text-[14px] leading-snug", a.deadline && "text-danger")} title={a.label}>
+                              {a.label}
+                              {a.deadline && <span className="text-[12px] opacity-80"> · deadline</span>}
+                            </span>
+                          </Link>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
-            <div className={cn("grid gap-3", view === "quarter" ? "grid-cols-[repeat(auto-fill,minmax(172px,1fr))]" : "grid-cols-[repeat(auto-fill,minmax(164px,1fr))]")}>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(164px,1fr))] gap-3">
               {months.map((m) => (
-                <MiniMonth
-                  key={m.toISOString()}
-                  month={m}
-                  selected={selected}
-                  onSelect={select}
-                  onOpenMonth={openMonth}
-                  dayData={dayData}
-                  weekStartsOn={weekStartsOn}
-                  size={view === "quarter" ? "md" : "sm"}
-                />
+                <MiniMonth key={m.toISOString()} month={m} selected={selected} onSelect={select} onOpenMonth={openMonth} dayData={dayData} weekStartsOn={weekStartsOn} />
               ))}
             </div>
           )}
-          {view === "quarter" && (
-            <div className="mt-6">
-              <SectionHeading>This quarter · deadlines and notes</SectionHeading>
-              {agenda.length === 0 ? (
-                <EmptyState title="Nothing scheduled this quarter" className="py-6" />
-              ) : (
-                agenda.map((a) => (
-                  <Link
-                    key={a.id}
-                    href={a.note ? href({ date: a.date, note: a.note }) : `/projects/${a.id.slice(2)}`}
-                    scroll={false}
-                    className="flex h-9 items-center gap-3 rounded-md px-2 hover:bg-hover"
-                  >
-                    <span className="w-24 shrink-0 text-[13px] text-fg-2 tabular">{formatDay(a.date)}</span>
-                    <span>{a.icon}</span>
-                    <span className={cn("min-w-0 flex-1 truncate text-[14px]", a.deadline && "text-danger")}>{a.deadline ? `${a.label} — deadline` : a.label}</span>
-                  </Link>
-                ))
-              )}
-            </div>
-          )}
-          <p className="mt-2 text-[12px] text-fg-3">
+          <p className={cn("text-[12px] text-fg-3", view === "quarter" ? "mt-5" : "mt-2")}>
             {view === "month"
               ? "Notes are per day. Red diamonds are project deadlines; “due” counts open tasks."
               : "Red dot: deadline · grey dot: notes · blue dot: tasks due. Click a month name to open it."}

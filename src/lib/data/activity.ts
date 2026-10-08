@@ -35,6 +35,9 @@ export function deriveActivity<T extends TableName>(
         if (a.status === "done") return { ...base, action: "completed", meta: {} };
         return { ...base, action: "status_changed", meta: { from: b.status, to: a.status } };
       }
+      // Someone was added to the task (the first newcomer is logged).
+      const added = (a.assignee_ids ?? []).find((id) => !(b.assignee_ids ?? (b.assignee_id ? [b.assignee_id] : [])).includes(id));
+      if (added) return { ...base, action: "assigned", meta: { to: added } };
       if (a.assignee_id !== b.assignee_id && a.assignee_id)
         return { ...base, action: "assigned", meta: { to: a.assignee_id } };
       return null;

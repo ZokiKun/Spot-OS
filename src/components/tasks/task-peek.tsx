@@ -2,7 +2,7 @@
 
 import { createContext, Suspense, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { CalendarDays, CircleDot, Flag, FolderKanban, Milestone as MilestoneIcon, Trash2, User, Clock } from "lucide-react";
+import { CalendarDays, CircleDot, Flag, FolderKanban, Milestone as MilestoneIcon, Trash2, Users, Clock } from "lucide-react";
 import { useWorkspace, useProfiles } from "@/lib/store";
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/constants";
 import type { Task, TaskStatus, UUID } from "@/lib/types";
@@ -10,9 +10,11 @@ import { nowISO, timeAgo } from "@/lib/utils";
 import { SidePeek } from "@/components/ui/side-peek";
 import { EditableText } from "@/components/ui/input";
 import { MentionTextarea } from "@/components/ui/mention-textarea";
-import { DateField, MilestoneField, OptionField, PersonField, ProjectField, PropertyRow } from "@/components/ui/fields";
+import { DateField, MilestoneField, OptionField, PeopleField, ProjectField, PropertyRow } from "@/components/ui/fields";
+import { assigneesPatch, taskAssignees } from "@/lib/selectors";
 import { sortMilestones } from "@/lib/milestones";
 import { IconButton } from "@/components/ui/button";
+import { AttachmentList, NOTE_FILE_LIMIT } from "@/components/attachments";
 
 interface TaskPeekApi {
   openTask: (id: UUID) => void;
@@ -62,6 +64,7 @@ function TaskPeek({ taskId, onClose }: { taskId: UUID | null; onClose: () => voi
   const people = useProfiles();
   const task = data.tasks.find((t) => t.id === taskId);
   const project = task?.project_id ? data.projects.find((p) => p.id === task.project_id) : undefined;
+  const attachments = useMemo(() => (taskId ? data.attachments.filter((a) => a.task_id === taskId) : []), [data.attachments, taskId]);
   const [description, setDescription] = useState(task?.description ?? "");
   // Reset the draft when switching tasks or when someone else edits the description.
   const sourceKey = `${task?.id}:${task?.description ?? ""}`;
@@ -104,8 +107,8 @@ function TaskPeek({ taskId, onClose }: { taskId: UUID | null; onClose: () => voi
         <PropertyRow icon={<CircleDot className="size-4" />} label="Status">
           <OptionField variant="property" options={TASK_STATUSES} value={task.status} onChange={(s) => set(statusPatch(s))} />
         </PropertyRow>
-        <PropertyRow icon={<User className="size-4" />} label="Assignee">
-          <PersonField variant="property" people={people.list} value={task.assignee_id} onChange={(assignee_id) => set({ assignee_id })} />
+        <PropertyRow icon={<Users className="size-4" />} label="Assignees">
+          <PeopleField variant="property" people={people.list} value={taskAssignees(task)} onChange={(ids) => set(assigneesPatch(ids))} />
         </PropertyRow>
         <PropertyRow icon={<CalendarDays className="size-4" />} label="Due date">
           <DateField variant="property" value={task.due_date} highlightOverdue={task.status !== "done"} onChange={(due_date) => set({ due_date })} />
@@ -146,6 +149,10 @@ function TaskPeek({ taskId, onClose }: { taskId: UUID | null; onClose: () => voi
           placeholder="Add a description… type @ to mention someone"
           className="min-h-24 text-[15px] leading-relaxed"
         />
+      </div>
+      <div className="mt-4 border-t border-line pt-3">
+        <div className="mb-1 px-2 text-[12px] font-medium uppercase tracking-wide text-fg-3">Files &amp; links</div>
+        <AttachmentList items={attachments} owner={{ task_id: task.id }} folder={`tasks/${task.id}`} compact {...NOTE_FILE_LIMIT} />
       </div>
     </SidePeek>
   );

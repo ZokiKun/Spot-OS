@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -42,77 +42,97 @@ export function projectStatusPatch(status: ProjectStatus): Partial<Project> {
   return { status, completed_at: status === "completed" ? nowISO() : null };
 }
 
-const COLS = "minmax(230px,1.2fr) 120px 108px 170px 150px 104px 110px minmax(200px,1.2fr) minmax(220px,1.3fr)";
+type ColKey = "name" | "status" | "type" | "tags" | "lead" | "deadline" | "progress" | "next" | "note";
+
+// Columns in the order they appear. `min` is the narrowest the column can get; `from` is the
+// table width (px) at which it starts showing, so the table always fits without sideways scroll.
+const COLUMNS: { key: ColKey; label: string; icon: React.ReactNode; track: string; min: number; from: number }[] = [
+  { key: "name", label: "Name", icon: <Type className="size-3.5" />, track: "minmax(180px,1.6fr)", min: 180, from: 0 },
+  { key: "status", label: "Status", icon: <CircleDot className="size-3.5" />, track: "120px", min: 120, from: 560 },
+  { key: "type", label: "Type", icon: <Shapes className="size-3.5" />, track: "108px", min: 108, from: 1080 },
+  { key: "tags", label: "Tags", icon: <TagIcon className="size-3.5" />, track: "minmax(130px,1fr)", min: 130, from: 1180 },
+  { key: "lead", label: "Lead", icon: <User className="size-3.5" />, track: "minmax(120px,0.9fr)", min: 120, from: 640 },
+  { key: "deadline", label: "Deadline", icon: <CalendarDays className="size-3.5" />, track: "100px", min: 100, from: 0 },
+  { key: "progress", label: "Progress", icon: <Percent className="size-3.5" />, track: "104px", min: 104, from: 420 },
+  { key: "next", label: "Next step", icon: <Flag className="size-3.5" />, track: "minmax(150px,1.3fr)", min: 150, from: 800 },
+  { key: "note", label: "Note", icon: <StickyNote className="size-3.5" />, track: "minmax(160px,1.2fr)", min: 160, from: 1380 },
+];
+
+/** Width of an element, kept up to date as it resizes. */
+function useWidth<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, width] as const;
+}
 
 export function ProjectTable({ projects, grouped = true }: { projects: Project[]; grouped?: boolean }) {
   const [collapsed, setCollapsed] = useState<ProjectStatus[]>(() => readPref<ProjectStatus[]>("project-groups-collapsed", []));
+  const [ref, width] = useWidth<HTMLDivElement>();
   const toggleGroup = (s: ProjectStatus) => {
     const next = collapsed.includes(s) ? collapsed.filter((x) => x !== s) : [...collapsed, s];
     setCollapsed(next);
     writePref("project-groups-collapsed", next);
   };
-  const head = [
-    { icon: <Type className="size-3.5" />, label: "Name" },
-    { icon: <CircleDot className="size-3.5" />, label: "Status" },
-    { icon: <Shapes className="size-3.5" />, label: "Type" },
-    { icon: <TagIcon className="size-3.5" />, label: "Tags" },
-    { icon: <User className="size-3.5" />, label: "Lead" },
-    { icon: <CalendarDays className="size-3.5" />, label: "Deadline" },
-    { icon: <Percent className="size-3.5" />, label: "Progress" },
-    { icon: <Flag className="size-3.5" />, label: "Next step" },
-    { icon: <StickyNote className="size-3.5" />, label: "Note" },
-  ];
+  // Grouped rows already sit under their status, so the Status column would repeat it.
+  // Before the first measurement (width 0) show the core columns only.
+  const cols = COLUMNS.filter((c) => (c.key !== "status" || !grouped) && (width || 700) >= c.from);
+  const template = cols.map((c) => c.track).join(" ");
   if (!projects.length) return <EmptyState title="No projects match" description="Try a different filter, or create a new project." />;
   const groups = grouped
     ? PROJECT_STATUS_ORDER.map((status) => ({ status, items: projects.filter((p) => p.status === status) })).filter((g) => g.items.length)
     : [{ status: null, items: projects }];
   return (
-    <div className="-mx-2 overflow-x-auto px-2">
-      <div className="min-w-[1420px] text-[14px]">
-        <div className="grid border-y border-line text-[13px] text-fg-2" style={{ gridTemplateColumns: COLS }}>
-          {head.map((h, i) => (
-            <div key={h.label} className={cn("flex h-8 items-center gap-1.5 px-2", i > 0 && "border-l border-line", i === 0 && "sticky left-0 z-[1] bg-bg")}>
-              <span className="text-fg-3">{h.icon}</span>
-              {h.label}
-            </div>
-          ))}
-        </div>
-        {groups.map((g) => {
-          const opt = g.status ? optionFor(PROJECT_STATUSES, g.status)! : null;
-          const isCollapsed = g.status != null && collapsed.includes(g.status);
-          return (
-            <div key={g.status ?? "all"}>
-              {opt && (
-                <button
-                  type="button"
-                  onClick={() => toggleGroup(g.status!)}
-                  aria-expanded={!isCollapsed}
-                  className="sticky left-0 flex h-9 items-center gap-1.5 px-1 pt-2 text-[13px] text-fg-2 hover:text-fg"
-                >
-                  <ChevronRight className={cn("size-3.5 transition-transform", !isCollapsed && "rotate-90")} />
-                  <StatusTag color={opt.color}>{opt.label}</StatusTag>
-                  <span className="text-fg-3">{g.items.length}</span>
-                </button>
-              )}
-              {!isCollapsed && g.items.map((p) => <ProjectRow key={p.id} project={p} />)}
-            </div>
-          );
-        })}
+    <div ref={ref} className="text-[14px]">
+      <div className="grid border-y border-line text-[13px] text-fg-2" style={{ gridTemplateColumns: template }}>
+        {cols.map((h, i) => (
+          <div key={h.key} className={cn("flex h-8 min-w-0 items-center gap-1.5 px-2", i > 0 && "border-l border-line")}>
+            <span className="shrink-0 text-fg-3">{h.icon}</span>
+            <span className="truncate">{h.label}</span>
+          </div>
+        ))}
       </div>
+      {groups.map((g) => {
+        const opt = g.status ? optionFor(PROJECT_STATUSES, g.status)! : null;
+        const isCollapsed = g.status != null && collapsed.includes(g.status);
+        return (
+          <div key={g.status ?? "all"}>
+            {opt && (
+              <button
+                type="button"
+                onClick={() => toggleGroup(g.status!)}
+                aria-expanded={!isCollapsed}
+                className="flex h-9 items-center gap-1.5 px-1 pt-2 text-[13px] text-fg-2 hover:text-fg"
+              >
+                <ChevronRight className={cn("size-3.5 transition-transform", !isCollapsed && "rotate-90")} />
+                <StatusTag color={opt.color}>{opt.label}</StatusTag>
+                <span className="text-fg-3">{g.items.length}</span>
+              </button>
+            )}
+            {!isCollapsed && g.items.map((p) => <ProjectRow key={p.id} project={p} cols={cols.map((c) => c.key)} template={template} />)}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-function ProjectRow({ project: p }: { project: Project }) {
+function ProjectRow({ project: p, cols, template }: { project: Project; cols: ColKey[]; template: string }) {
   const { data, update } = useWorkspace();
   const people = useProfiles();
   const router = useRouter();
   const { setAnchor, ...menu } = usePopover();
   const prog = projectProgress(p.id, data.tasks);
   const closed = p.status === "completed" || p.status === "archived";
-  return (
-    <div className={cn("group grid border-b border-line hover:bg-subtle", p.status === "archived" && "text-fg-2")} style={{ gridTemplateColumns: COLS }}>
-      <div className="sticky left-0 z-[1] flex min-w-0 items-center bg-bg group-hover:bg-subtle">
+  const cell: Record<ColKey, React.ReactNode> = {
+    name: (
+      <div className="flex min-w-0 items-center">
         <Link href={`/projects/${p.id}`} className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 font-medium">
           <span className={cn("w-5 shrink-0 text-center text-[15px]", p.status === "archived" && "opacity-60")}>{p.icon ?? "📁"}</span>
           <span className="truncate">{p.name}</span>
@@ -139,22 +159,34 @@ function ProjectRow({ project: p }: { project: Project }) {
           </MenuList>
         </Popover>
       </div>
-      <div className="flex border-l border-line">
+    ),
+    status: (
+      <div className="flex min-w-0 border-l border-line">
         <OptionField options={PROJECT_STATUSES} value={p.status} onChange={(s) => void update("projects", p.id, projectStatusPatch(s))} />
       </div>
-      <div className="flex border-l border-line">
+    ),
+    type: (
+      <div className="flex min-w-0 border-l border-line">
         <OptionField kind="select" options={PROJECT_TYPES} value={p.type} onChange={(type) => void update("projects", p.id, { type })} />
       </div>
+    ),
+    tags: (
       <div className="flex min-w-0 border-l border-line">
         <TagsField scope="project" value={p.tags} onChange={(tags) => void update("projects", p.id, { tags })} />
       </div>
-      <div className="flex border-l border-line">
+    ),
+    lead: (
+      <div className="flex min-w-0 border-l border-line">
         <PersonField people={people.list} value={p.lead_id} onChange={(lead_id) => void update("projects", p.id, { lead_id })} />
       </div>
-      <div className="flex border-l border-line">
+    ),
+    deadline: (
+      <div className="flex min-w-0 border-l border-line">
         <DateField value={p.deadline} highlightOverdue={!closed} onChange={(deadline) => void update("projects", p.id, { deadline })} />
       </div>
-      <div className="flex items-center gap-2 border-l border-line px-2">
+    ),
+    progress: (
+      <div className="flex min-w-0 items-center gap-2 border-l border-line px-2">
         {prog.total ? (
           <>
             <ProgressBar value={prog.ratio} tone={prog.ratio === 1 ? "green" : "default"} className="w-12" />
@@ -166,12 +198,23 @@ function ProjectRow({ project: p }: { project: Project }) {
           <span className="text-[12px] text-fg-3">No tasks</span>
         )}
       </div>
+    ),
+    next: (
       <button type="button" onClick={() => router.push(`/projects/${p.id}`)} className="flex min-w-0 items-center border-l border-line px-2 text-left">
         <NextStepText project={p} />
       </button>
+    ),
+    note: (
       <div className="flex min-w-0 border-l border-line">
         <ProjectNoteField project={p} />
       </div>
+    ),
+  };
+  return (
+    <div className={cn("group grid border-b border-line hover:bg-subtle", p.status === "archived" && "text-fg-2")} style={{ gridTemplateColumns: template }}>
+      {cols.map((k) => (
+        <Fragment key={k}>{cell[k]}</Fragment>
+      ))}
     </div>
   );
 }

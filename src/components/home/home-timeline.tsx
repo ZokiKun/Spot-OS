@@ -6,7 +6,8 @@ import { addDays, format, startOfWeek } from "date-fns";
 import { ChevronLeft, ChevronRight, Flag } from "lucide-react";
 import { useProfiles, useWorkspace } from "@/lib/store";
 import { addDaysISO, cn, parseDate, toISODate } from "@/lib/utils";
-import { Avatar } from "@/components/ui/avatar";
+import { Avatar, AvatarStack } from "@/components/ui/avatar";
+import { taskAssignees } from "@/lib/selectors";
 import { Button, IconButton } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/misc";
 import { useTaskPeek } from "@/components/tasks/task-peek";
@@ -204,7 +205,7 @@ function WeekChip({ item, showAssignee, late }: { item: DatedItem; showAssignee?
       {project?.icon && <span className="shrink-0">{project.icon}</span>}
       <span className={cn("min-w-0 flex-1", late ? "truncate" : "line-clamp-2 break-words")}>{t.title}</span>
       {late && <span className="shrink-0 font-medium text-danger tabular">{relativeDue(item.date)}</span>}
-      {showAssignee && <Avatar profile={people.get(t.assignee_id)} size={16} />}
+      {showAssignee && (taskAssignees(t).length ? <AvatarStack profiles={taskAssignees(t).map((id) => people.get(id))} size={16} /> : <Avatar profile={null} size={16} />)}
     </button>
   );
 }

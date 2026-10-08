@@ -41,3 +41,26 @@ export function PersonChip({ profile, size = 20 }: { profile: Profile | null | u
     </span>
   );
 }
+
+/** Overlapping avatars for several people; shows "+N" past `max`. */
+export function AvatarStack({ profiles, size = 20, max = 3 }: { profiles: (Profile | null | undefined)[]; size?: number; max?: number }) {
+  const list = profiles.filter((p): p is Profile => !!p);
+  if (!list.length) return null;
+  const shown = list.length > max ? list.slice(0, max - 1) : list;
+  const extra = list.length - shown.length;
+  return (
+    <span className="inline-flex shrink-0 items-center" title={list.map((p) => p.full_name).join(", ")}>
+      {shown.map((p, i) => (
+        <Avatar key={p.id} profile={p} size={size} className={cn("ring-2 ring-[var(--bg)]", i > 0 && "-ml-1.5")} />
+      ))}
+      {extra > 0 && (
+        <span
+          className="-ml-1.5 inline-flex shrink-0 items-center justify-center rounded-full bg-elevated font-medium text-fg-2 ring-2 ring-[var(--bg)]"
+          style={{ width: size, height: size, fontSize: Math.max(9, Math.round(size * 0.42)) }}
+        >
+          +{extra}
+        </span>
+      )}
+    </span>
+  );
+}

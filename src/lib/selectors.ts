@@ -9,6 +9,12 @@ export const isUpcoming = (t: Task, today = todayISO(), days = 7) =>
   isOpen(t) && !!t.due_date && t.due_date > today && t.due_date <= addDaysISO(today, days);
 export const isActiveProject = (p: Project) => ACTIVE_PROJECT_STATUSES.includes(p.status);
 
+/** Everyone assigned to a task, primary first (falls back to the single assignee on old rows). */
+export const taskAssignees = (t: Task): UUID[] => (t.assignee_ids?.length ? t.assignee_ids : t.assignee_id ? [t.assignee_id] : []);
+export const isAssignedTo = (t: Task, id: UUID | null) => !!id && taskAssignees(t).includes(id);
+/** Patch that sets a task's assignees and keeps the primary assignee in sync. */
+export const assigneesPatch = (ids: UUID[]): Pick<Task, "assignee_ids" | "assignee_id"> => ({ assignee_ids: ids, assignee_id: ids[0] ?? null });
+
 /** I lead it, direct it, am a member, or have an open task on it. */
 export function isMyProject(p: Project, data: Pick<Snapshot, "project_members" | "tasks">, meId: UUID | null) {
   if (!meId) return false;
@@ -16,7 +22,7 @@ export function isMyProject(p: Project, data: Pick<Snapshot, "project_members" |
     p.lead_id === meId ||
     p.creative_director_id === meId ||
     data.project_members.some((m) => m.project_id === p.id && m.profile_id === meId) ||
-    data.tasks.some((t) => t.project_id === p.id && t.assignee_id === meId && isOpen(t))
+    data.tasks.some((t) => t.project_id === p.id && isAssignedTo(t, meId) && isOpen(t))
   );
 }
 
@@ -64,9 +70,9 @@ export function filterTasks(tasks: Task[], filter: TaskFilter, meId: UUID | null
     case "all":
       return tasks.filter(isOpen);
     case "mine":
-      return tasks.filter((t) => isOpen(t) && t.assignee_id === meId);
+      return tasks.filter((t) => isOpen(t) && isAssignedTo(t, meId));
     case "member":
-      return tasks.filter((t) => isOpen(t) && t.assignee_id === filter.id);
+      return tasks.filter((t) => isOpen(t) && isAssignedTo(t, filter.id));
     case "overdue":
       return tasks.filter((t) => isOverdue(t, today));
     case "today":
@@ -92,7 +98,7 @@ export interface Workload {
 export function workload(data: Snapshot): Workload[] {
   const today = todayISO();
   return data.profiles.map((profile) => {
-    const mine = data.tasks.filter((t) => t.assignee_id === profile.id && isOpen(t));
+    const mine = data.tasks.filter((t) => isAssignedTo(t, profile.id) && isOpen(t));
     return {
       profile,
       open: mine.length,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ImagePlus, MoveVertical, Trash2, Upload } from "lucide-react";
+import { ImagePlus, Link2, MoveVertical, Trash2, Upload } from "lucide-react";
 import type { Project } from "@/lib/types";
 import { useWorkspace } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -26,10 +26,53 @@ export const coverStyle = (cover: string, position = 50): React.CSSProperties =>
     ? { background: COVER_GRADIENTS[cover.slice(9)] ?? COVER_GRADIENTS.dusk }
     : { backgroundImage: `url("${cover.replace(/"/g, "%22")}")`, backgroundSize: "cover", backgroundPosition: `center ${position}%` };
 
+/**
+ * Turns a pasted link into a direct image URL. Giphy page links ("giphy.com/gifs/cat-abc123")
+ * map to the GIF itself; anything else is used as-is. Returns null for non-web links.
+ */
+export function coverImageUrl(raw: string) {
+  const v = raw.trim();
+  if (!v) return null;
+  let u: URL;
+  try {
+    u = new URL(/^https?:\/\//i.test(v) ? v : `https://${v}`);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+  const host = u.hostname.replace(/^www\./, "");
+  const giphy = host === "giphy.com" && u.pathname.match(/^\/(?:gifs|stickers)\/(?:.*-)?([A-Za-z0-9]+)\/?$/);
+  if (giphy) return `https://media.giphy.com/media/${giphy[1]}/giphy.gif`;
+  return u.toString();
+}
+
+/** Resolves once the browser can actually load the URL as an image. */
+const loadsAsImage = (url: string) =>
+  new Promise<boolean>((resolve) => {
+    const img = new Image();
+    const timer = setTimeout(() => resolve(false), 12000);
+    img.onload = () => (clearTimeout(timer), resolve(true));
+    img.onerror = () => (clearTimeout(timer), resolve(false));
+    img.src = url;
+  });
+
 function CoverPicker({ project, onDone }: { project: Project; onDone: () => void }) {
   const { update, upload } = useWorkspace();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [link, setLink] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const addLink = async () => {
+    const url = coverImageUrl(link);
+    if (!url) return setLinkError("Paste a full web address.");
+    setChecking(true);
+    setLinkError(null);
+    const ok = await loadsAsImage(url);
+    setChecking(false);
+    if (ok) set(url);
+    else setLinkError("Couldn't load an image from that link. Right-click the GIF and choose “Copy image address”, then paste that.");
+  };
   const set = (cover: string | null) => {
     void update("projects", project.id, { cover, cover_position: 50 });
     onDone();
@@ -50,6 +93,31 @@ function CoverPicker({ project, onDone }: { project: Project; onDone: () => void
           />
         ))}
       </div>
+      <div className="-mx-2 my-2 h-px bg-line" />
+      <div className="mb-1.5 px-1 text-[12px] font-medium text-fg-2">GIF or image link</div>
+      <form
+        className="flex items-center gap-1"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void addLink();
+        }}
+      >
+        <div className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 shadow-[inset_0_0_0_1px_var(--border)] focus-within:shadow-[inset_0_0_0_1px_var(--accent)]">
+          <Link2 className="size-3.5 shrink-0 text-fg-3" />
+          <input
+            value={link}
+            onChange={(e) => (setLink(e.target.value), setLinkError(null))}
+            placeholder="Paste a Giphy, Tenor or image link…"
+            className="h-full min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-fg-3"
+          />
+        </div>
+        <Button type="submit" variant="primary" disabled={!link.trim() || checking}>
+          {checking ? "Checking…" : "Add"}
+        </Button>
+      </form>
+      <p className={cn("mt-1.5 px-1 text-[11.5px]", linkError ? "text-danger" : "text-fg-3")}>
+        {linkError ?? "Shown straight from the source, so it doesn't use any storage."}
+      </p>
       <div className="-mx-2 my-2 h-px bg-line" />
       <div className="flex items-center gap-1">
         <Button variant="secondary" disabled={busy} onClick={() => input.current?.click()}>

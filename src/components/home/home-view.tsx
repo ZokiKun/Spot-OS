@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Building2, House, User } from "lucide-react";
 import { useWorkspace } from "@/lib/store";
-import { isActiveProject, isDueToday, isOverdue } from "@/lib/selectors";
+import { isActiveProject, isAssignedTo, isDueToday, isOverdue } from "@/lib/selectors";
 import { firstName, formatLongDate, greeting, plural, todayISO } from "@/lib/utils";
 import { Page } from "@/components/shell/page";
 import { ViewTabs } from "@/components/ui/tabs";
@@ -48,7 +48,7 @@ export function HomeView() {
 
   // The 10-second summary: one sentence that says how things stand.
   const summary = useMemo(() => {
-    const mine = data.tasks.filter((t) => t.assignee_id === me?.id);
+    const mine = data.tasks.filter((t) => isAssignedTo(t, me?.id ?? null));
     const overdue = mine.filter((t) => isOverdue(t, today)).length;
     const dueToday = mine.filter((t) => isDueToday(t, today)).length;
     const active = data.projects.filter(isActiveProject).length;

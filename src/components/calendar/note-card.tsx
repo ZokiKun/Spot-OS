@@ -13,7 +13,7 @@ import { IconButton } from "@/components/ui/button";
 import { Popover, usePopover } from "@/components/ui/popover";
 import { MenuDivider, MenuItem, MenuList } from "@/components/ui/menu";
 import { RichEditor } from "@/components/editor/rich-editor";
-import { AttachmentList } from "@/components/attachments";
+import { AttachmentList, NOTE_FILE_LIMIT } from "@/components/attachments";
 
 function exportHtml(note: CalendarNote) {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${note.title || note.date}</title>
@@ -118,7 +118,7 @@ export function NoteCard({ note, focus }: { note: CalendarNote; focus?: boolean 
         className="min-h-[96px]"
       />
       <div className="mt-3">
-        <AttachmentList items={attachments} owner={{ note_id: note.id }} folder={`calendar/${note.date}`} compact />
+        <AttachmentList items={attachments} owner={{ note_id: note.id }} folder={`calendar/${note.date}`} compact {...NOTE_FILE_LIMIT} />
       </div>
     </article>
   );

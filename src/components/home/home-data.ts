@@ -3,7 +3,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import type { Project, Task } from "@/lib/types";
 import { useWorkspace } from "@/lib/store";
-import { isActiveProject, isDueToday, isMyProject, isOpen, isOverdue, isUpcoming, sortProjects, sortTasks, workload } from "@/lib/selectors";
+import { isActiveProject, isAssignedTo, isDueToday, isMyProject, isOpen, isOverdue, isUpcoming, sortProjects, sortTasks, workload } from "@/lib/selectors";
 import { ACTIVE_PROJECT_STATUSES } from "@/lib/constants";
 import { readPref, writePref } from "@/lib/hooks";
 import { addDaysISO, todayISO } from "@/lib/utils";
@@ -53,7 +53,7 @@ export function usePersonalData() {
   const meId = me?.id ?? null;
   return useMemo(() => {
     const today = todayISO();
-    const mine = data.tasks.filter((t) => t.assignee_id === meId);
+    const mine = data.tasks.filter((t) => isAssignedTo(t, meId));
     const myOpen = mine.filter(isOpen);
     const projects = sortProjects(data.projects.filter((p) => ACTIVE_PROJECT_STATUSES.includes(p.status) && isMyProject(p, data, meId)));
     return {

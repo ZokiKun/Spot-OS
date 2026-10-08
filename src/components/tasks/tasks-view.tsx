@@ -47,7 +47,7 @@ export function TasksView() {
   const tasks = filter.kind === "completed" ? list : sortTasks(list);
 
   const defaults =
-    filter.kind === "member" ? { assignee_id: filter.id } : filter.kind === "today" ? { due_date: todayISO() } : {};
+    filter.kind === "member" ? { assignee_id: filter.id, assignee_ids: [filter.id] } : filter.kind === "today" ? { due_date: todayISO() } : {};
 
   const Icon = NAV_ICONS.projects!;
   return (

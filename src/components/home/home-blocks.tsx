@@ -6,10 +6,10 @@ import { CalendarClock, CalendarRange, Flag, LayoutDashboard, LayoutGrid, List, 
 import type { Project } from "@/lib/types";
 import type { Workload } from "@/lib/selectors";
 import { PROJECT_STATUSES, PROJECT_TYPES, optionFor } from "@/lib/constants";
-import { projectProgress } from "@/lib/selectors";
+import { projectProgress, taskAssignees } from "@/lib/selectors";
 import { useProfiles, useWorkspace } from "@/lib/store";
 import { cn, daysUntil, formatDay } from "@/lib/utils";
-import { Avatar } from "@/components/ui/avatar";
+import { Avatar, AvatarStack } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/input";
 import { EmptyState, ProgressBar } from "@/components/ui/misc";
 import { StatusTag, Tag } from "@/components/ui/tag";
@@ -157,7 +157,7 @@ export function DatedRow({ item, showDate, showAssignee }: { item: DatedItem; sh
       </button>
       {late && <span className="shrink-0 text-[12px] font-medium text-danger tabular">{relativeDue(item.date)}</span>}
       {showDate && !late && <span className="w-16 shrink-0 text-right text-[12px] text-fg-2 tabular">{formatDay(item.date)}</span>}
-      {showAssignee && <Avatar profile={people.get(t.assignee_id)} size={20} />}
+      {showAssignee && (taskAssignees(t).length ? <AvatarStack profiles={taskAssignees(t).map((id) => people.get(id))} size={20} /> : <Avatar profile={null} size={20} />)}
     </div>
   );
 }

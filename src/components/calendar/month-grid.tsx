@@ -112,7 +112,7 @@ export function MiniMonth({
   onOpenMonth: (month: Date) => void;
   dayData: (iso: string) => DayData;
   weekStartsOn?: 0 | 1;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
 }) {
   const days = eachDayOfInterval({
     start: startOfWeek(startOfMonth(month), { weekStartsOn }),
@@ -130,16 +130,16 @@ export function MiniMonth({
   });
 
   return (
-    <div className={cn("rounded-lg p-2 shadow-[0_0_0_1px_var(--border)]", size === "md" && "p-3")}>
-      <button type="button" onClick={() => onOpenMonth(month)} className="mb-1 flex w-full items-baseline gap-2 rounded-md px-1 py-0.5 text-left hover:bg-hover">
-        <span className={cn("font-semibold", size === "md" ? "text-[16px]" : "text-[14px]")}>{format(month, "MMMM")}</span>
-        <span className="ml-auto text-[11px] text-fg-3 tabular">
+    <div className={cn("rounded-lg p-2 shadow-[0_0_0_1px_var(--border)]", size === "md" && "p-3", size === "lg" && "p-4")}>
+      <button type="button" onClick={() => onOpenMonth(month)} className={cn("flex w-full items-baseline gap-2 rounded-md px-1 py-0.5 text-left hover:bg-hover", size === "lg" ? "mb-3" : "mb-1")}>
+        <span className={cn("font-semibold", size === "lg" ? "text-[18px]" : size === "md" ? "text-[16px]" : "text-[14px]")}>{format(month, "MMMM")}</span>
+        <span className={cn("ml-auto text-fg-3 tabular", size === "lg" ? "text-[12px]" : "text-[11px]")}>
           {deadlines > 0 && <span className="text-danger">◆ {deadlines}</span>}
           {deadlines > 0 && notes > 0 && " · "}
           {notes > 0 && `${notes} note${notes === 1 ? "" : "s"}`}
         </span>
       </button>
-      <div className="grid grid-cols-7 text-center text-[10.5px] text-fg-3">
+      <div className={cn("grid grid-cols-7 text-center text-fg-3", size === "lg" ? "mb-1 text-[11.5px]" : "text-[10.5px]")}>
         {weekdays.map((d, i) => (
           <span key={i} className="py-0.5">
             {d}
@@ -150,7 +150,7 @@ export function MiniMonth({
         {days.map((d) => {
           const iso = toISODate(d);
           const outside = !isSameMonth(d, month);
-          if (outside) return <span key={iso} className={size === "md" ? "h-10" : "h-7"} />;
+          if (outside) return <span key={iso} className={size === "lg" ? "h-12" : size === "md" ? "h-10" : "h-7"} />;
           const x = dayData(iso);
           const isSel = iso === selected;
           const isToday = iso === today;
@@ -161,12 +161,12 @@ export function MiniMonth({
               onClick={() => onSelect(iso)}
               title={[x.deadlines.map((p) => `◆ ${p.name}`).join(", "), x.notes.length ? `${x.notes.length} note(s)` : "", x.due.length ? `${x.due.length} due` : ""].filter(Boolean).join(" · ") || undefined}
               className={cn(
-                "relative flex flex-col items-center justify-center rounded-md text-[12px] tabular transition-colors",
-                size === "md" ? "h-10" : "h-7",
+                "relative flex flex-col items-center justify-center rounded-md tabular transition-colors",
+                size === "lg" ? "h-12 gap-0.5 text-[13.5px]" : size === "md" ? "h-10 text-[12px]" : "h-7 text-[12px]",
                 isSel ? "bg-selected font-semibold" : "hover:bg-hover",
               )}
             >
-              <span className={cn("flex size-5 items-center justify-center rounded-full", isToday && "bg-[var(--dot-red)] font-semibold text-white")}>{d.getDate()}</span>
+              <span className={cn("flex items-center justify-center rounded-full", size === "lg" ? "size-7" : "size-5", isToday && "bg-[var(--dot-red)] font-semibold text-white")}>{d.getDate()}</span>
               <span className="flex h-1 gap-0.5">
                 {x.deadlines.length > 0 && <span className="size-1 rounded-full bg-[var(--dot-red)]" />}
                 {x.notes.length > 0 && <span className="size-1 rounded-full bg-fg-2" />}

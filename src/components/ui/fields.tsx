@@ -7,7 +7,7 @@ import type { Milestone, Profile, Project, UUID } from "@/lib/types";
 import { Popover, usePopover } from "./popover";
 import { Picker } from "./picker";
 import { StatusTag, Tag } from "./tag";
-import { Avatar, PersonChip } from "./avatar";
+import { Avatar, AvatarStack, PersonChip } from "./avatar";
 import { MiniCalendar } from "./mini-calendar";
 
 /** Button that looks like a cell value and opens a popover editor. */
@@ -126,6 +126,59 @@ export function PersonField({
             pop.close();
           }}
           clearLabel="Remove person"
+        />
+      </Popover>
+    </>
+  );
+}
+
+/** Several people (e.g. task assignees). The picker stays open so you can tick more than one. */
+export function PeopleField({
+  people,
+  value,
+  onChange,
+  variant = "cell",
+  placeholder = "Empty",
+}: {
+  people: Profile[];
+  value: UUID[];
+  onChange: (v: UUID[]) => void;
+  variant?: "cell" | "property";
+  placeholder?: string;
+}) {
+  const pop = usePopover();
+  const current = value.map((id) => people.find((p) => p.id === id)).filter((p): p is Profile => !!p);
+  return (
+    <>
+      <FieldButton setAnchor={pop.setAnchor} onClick={pop.toggle} variant={variant}>
+        {current.length === 0 ? (
+          <span className="text-fg-3">{placeholder}</span>
+        ) : current.length === 1 ? (
+          <PersonChip profile={current[0]} />
+        ) : variant === "property" ? (
+          <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+            {current.map((p) => (
+              <PersonChip key={p.id} profile={p} />
+            ))}
+          </span>
+        ) : (
+          <span className="flex min-w-0 items-center gap-1.5">
+            <AvatarStack profiles={current} />
+            <span className="truncate">{current.length} people</span>
+          </span>
+        )}
+      </FieldButton>
+      <Popover open={pop.open} onClose={pop.close} anchor={pop.anchor} width={240}>
+        <Picker
+          items={people.map((p) => ({ value: p.id, label: p.full_name, render: <PersonChip profile={p} /> }))}
+          selected={value}
+          placeholder="Add people…"
+          onSelect={(id) => onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id])}
+          onClear={() => {
+            onChange([]);
+            pop.close();
+          }}
+          clearLabel="Remove everyone"
         />
       </Popover>
     </>

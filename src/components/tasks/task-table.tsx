@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays, CircleDot, Flag, FolderKanban, Plus, Type, User, PanelRightOpen } from "lucide-react";
+import { CalendarDays, CircleDot, Flag, FolderKanban, Plus, Type, Users, PanelRightOpen } from "lucide-react";
 import type { Profile, Project, Task } from "@/lib/types";
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/constants";
 import { useWorkspace, useProfiles } from "@/lib/store";
 import { cn, daysUntil, formatDay } from "@/lib/utils";
-import { Avatar } from "@/components/ui/avatar";
+import { AvatarStack } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/input";
-import { DateField, OptionField, PersonField, ProjectField } from "@/components/ui/fields";
+import { DateField, OptionField, PeopleField, ProjectField } from "@/components/ui/fields";
+import { assigneesPatch, taskAssignees } from "@/lib/selectors";
 import { EmptyState } from "@/components/ui/misc";
 import { statusPatch, useTaskPeek } from "./task-peek";
 
@@ -37,7 +38,7 @@ export function TaskTable({
   const head = [
     { icon: <Type className="size-3.5" />, label: "Name" },
     { icon: <CircleDot className="size-3.5" />, label: "Status" },
-    { icon: <User className="size-3.5" />, label: "Assignee" },
+    { icon: <Users className="size-3.5" />, label: "Assignees" },
     { icon: <CalendarDays className="size-3.5" />, label: "Due" },
     { icon: <Flag className="size-3.5" />, label: "Priority" },
     ...(showProject ? [{ icon: <FolderKanban className="size-3.5" />, label: "Project" }] : []),
@@ -92,7 +93,7 @@ export function TaskTable({
               <OptionField options={TASK_STATUSES} value={t.status} onChange={(s) => void update("tasks", t.id, statusPatch(s))} />
             </Cell>
             <Cell>
-              <PersonField people={people.list} value={t.assignee_id} onChange={(assignee_id) => void update("tasks", t.id, { assignee_id })} />
+              <PeopleField people={people.list} value={taskAssignees(t)} onChange={(ids) => void update("tasks", t.id, assigneesPatch(ids))} />
             </Cell>
             <Cell>
               <DateField value={t.due_date} highlightOverdue={t.status !== "done"} onChange={(due_date) => void update("tasks", t.id, { due_date })} />
@@ -115,7 +116,7 @@ export function TaskTable({
               description: null,
               project_id: null,
               milestone_id: null,
-              assignee_id: me?.id ?? null,
+              ...assigneesPatch(me ? [me.id] : []),
               status: "todo",
               priority: "medium",
               due_date: null,
@@ -139,13 +140,15 @@ export function NewTaskRow({ onCreate, label = "New task" }: { onCreate: (title:
   const [title, setTitle] = useState("");
   if (!editing)
     return (
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="flex h-8 w-full items-center gap-1.5 px-2 text-[14px] text-fg-3 transition-colors hover:bg-hover hover:text-fg-2"
-      >
-        <Plus className="size-4" /> {label}
-      </button>
+      <div className="flex h-10 items-center px-1">
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[14px] font-medium text-accent transition-colors hover:bg-accent-soft"
+        >
+          <Plus className="size-4" strokeWidth={2.25} /> {label}
+        </button>
+      </div>
     );
   return (
     <form
@@ -188,7 +191,7 @@ export function TaskList({ tasks, showAssignee = true, limit }: { tasks: Task[];
           key={t.id}
           task={t}
           projectLabel={t.project_id ? projects.get(t.project_id) : undefined}
-          assignee={showAssignee ? people.get(t.assignee_id) : undefined}
+          assignees={showAssignee ? taskAssignees(t).map((id) => people.get(id)!).filter(Boolean) : undefined}
           onOpen={() => openTask(t.id)}
           onToggle={(done) => void update("tasks", t.id, statusPatch(done ? "done" : "todo"))}
         />
@@ -201,13 +204,13 @@ export function TaskList({ tasks, showAssignee = true, limit }: { tasks: Task[];
 function TaskListRow({
   task,
   projectLabel,
-  assignee,
+  assignees,
   onOpen,
   onToggle,
 }: {
   task: Task;
   projectLabel?: Project;
-  assignee?: Profile;
+  assignees?: Profile[];
   onOpen: () => void;
   onToggle: (done: boolean) => void;
 }) {
@@ -229,7 +232,7 @@ function TaskListRow({
       {task.due_date && (
         <span className={cn("shrink-0 text-[12px] tabular", overdue ? "text-danger" : "text-fg-2")}>{formatDay(task.due_date)}</span>
       )}
-      {assignee && <Avatar profile={assignee} size={20} />}
+      {assignees && <AvatarStack profiles={assignees} size={20} />}
     </div>
   );
 }

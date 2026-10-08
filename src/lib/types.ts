@@ -88,7 +88,10 @@ export interface Task {
   milestone_id: UUID | null;
   title: string;
   description: string | null;
+  /** Primary assignee — always assignee_ids[0]; kept for the activity trigger and old data. */
   assignee_id: UUID | null;
+  /** Everyone on the task, primary first. */
+  assignee_ids: UUID[];
   status: TaskStatus;
   priority: TaskPriority;
   due_date: ISODate | null;
@@ -116,6 +119,7 @@ export interface Attachment {
   project_id: UUID | null;
   review_id: UUID | null;
   kb_page_id: UUID | null; // Spot Base brand assets (logo, files)
+  task_id: UUID | null;
   name: string;
   mime_type: string;
   size: number;

@@ -24,7 +24,7 @@ import {
 import type { Project } from "@/lib/types";
 import { PROJECT_STATUSES, PROJECT_TYPES } from "@/lib/constants";
 import { useProfiles, useWorkspace } from "@/lib/store";
-import { isOpen, isOverdue, projectProgress, sortTasks } from "@/lib/selectors";
+import { isAssignedTo, isOpen, isOverdue, projectProgress, sortTasks } from "@/lib/selectors";
 import { useDebouncedSave } from "@/lib/hooks";
 import { cn, formatDay, timeAgo } from "@/lib/utils";
 import { Page } from "@/components/shell/page";
@@ -317,7 +317,7 @@ function Overview({
   const overdue = open.filter((t) => isOverdue(t)).length;
   const blocked = open.filter((t) => t.status === "blocked").length;
   const byPerson = data.profiles
-    .map((p) => ({ p, n: open.filter((t) => t.assignee_id === p.id).length }))
+    .map((p) => ({ p, n: open.filter((t) => isAssignedTo(t, p.id)).length }))
     .filter((x) => x.n > 0);
 
   return (
