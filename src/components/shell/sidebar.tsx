@@ -144,7 +144,7 @@ export function Sidebar() {
           onClick={menu.toggle}
           className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-left hover:bg-hover"
         >
-          <SpotMark size={22} />
+          <SpotMark size={24} />
           <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">{workspaceName}</span>
           {!canEdit && <span className="shrink-0 rounded-[3px] bg-active px-1.5 text-[11px] text-fg-2">View only</span>}
           <ChevronDown className="size-3.5 text-fg-3" />

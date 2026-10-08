@@ -18,7 +18,7 @@ export function LoginView() {
     <div className="flex min-h-dvh items-center justify-center bg-bg px-4">
       <div className="w-full max-w-[340px]">
         <div className="mb-8 flex flex-col items-center text-center">
-          <SpotMark size={40} />
+          <SpotMark size={88} />
           <h1 className="mt-4 text-[22px] font-semibold">Spot OS</h1>
           <p className="mt-1 text-[14px] text-fg-2">Studio Spot’s operating system</p>
         </div>

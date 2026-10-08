@@ -23,13 +23,13 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
 
 /** Studio Spot mark — an orange spot. */
 export function SpotMark({ size = 20 }: { size?: number }) {
+  // The Studio Spot logo, painted in currentColor via a mask so it follows light/dark mode.
+  const mask = "url(/logo.png) center / contain no-repeat";
   return (
     <span
-      className="inline-flex shrink-0 items-center justify-center rounded-[5px] bg-[#e16f24] text-white"
-      style={{ width: size, height: size }}
+      className="inline-block shrink-0 bg-current text-fg"
+      style={{ width: size, height: size, mask, WebkitMask: mask }}
       aria-hidden
-    >
-      <span className="rounded-full bg-white" style={{ width: size * 0.36, height: size * 0.36 }} />
-    </span>
+    />
   );
 }
