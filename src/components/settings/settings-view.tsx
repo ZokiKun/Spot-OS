@@ -12,7 +12,7 @@ import { SUPABASE_URL } from "@/lib/supabase/env";
 import { readPref, writePref } from "@/lib/hooks";
 import { cn, downloadFile, timeAgo } from "@/lib/utils";
 import { Page } from "@/components/shell/page";
-import { PALETTES, useTheme } from "@/components/shell/theme";
+import { PALETTES, TYPEFACES, useTheme } from "@/components/shell/theme";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { EditableText, TextInput, Toggle } from "@/components/ui/input";
@@ -75,7 +75,7 @@ export function SettingsView() {
 }
 
 function Appearance() {
-  const { pref, setPref, palette, setPalette } = useTheme();
+  const { pref, setPref, palette, setPalette, typeface, setTypeface } = useTheme();
   return (
     <SettingsSection title="Theme" description="Saved on this device.">
       <SettingsRow label="Interface theme">
@@ -113,6 +113,40 @@ function Appearance() {
                   </span>
                 </span>
                 {p.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="py-3">
+        <div className="text-[14px]">Typeface</div>
+        <div className="mt-0.5 text-[12px] text-fg-2">The fonts used for headings and body text.</div>
+        <div role="radiogroup" aria-label="Typeface" className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {TYPEFACES.map((t) => {
+            const selected = t.id === typeface;
+            const studio = t.id === "studio";
+            const system = "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => setTypeface(t.id)}
+                className={cn(
+                  "flex flex-col items-start gap-1 rounded-lg p-3 text-left transition-shadow",
+                  selected ? "shadow-[inset_0_0_0_2px_var(--accent)]" : "shadow-[inset_0_0_0_1px_var(--border-strong)] hover:bg-hover",
+                )}
+              >
+                <span className="text-[26px] leading-tight" style={{ fontFamily: studio ? `"Projekt Blackbird", ${system}` : system, fontWeight: studio ? 400 : 700 }}>
+                  Studio Spot
+                </span>
+                <span className="text-[13px] text-fg-2" style={{ fontFamily: studio ? `"Red Hat Text", ${system}` : system }}>
+                  The quick brown fox jumps over the lazy dog.
+                </span>
+                <span className={cn("mt-1 text-[12px] text-fg-3", selected && "font-medium text-fg")} style={{ fontFamily: system }}>
+                  {t.label} · {t.heading === t.body ? t.heading : `${t.heading} + ${t.body}`}
+                </span>
               </button>
             );
           })}

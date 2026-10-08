@@ -243,3 +243,25 @@
 :root[data-direction="1"][data-palette="rose"][data-theme="dark"] { --accent: #d9568a; --accent-hover: #e86d9c; --bg-sidebar: #241a1e; --bg-subtle: #241a1e; --callout-bg: #2c2026; --bg: #1b1417; --bg-elevated: #2c2026; }
 :root[data-direction="1"][data-palette="graphite"] { --accent: #37352f; --accent-hover: #1f1e1b; --bg-sidebar: #f3f3f2; --bg-subtle: #f5f5f4; --callout-bg: #f5f5f4; --bg: #ffffff; --bg-elevated: #ffffff; }
 :root[data-direction="1"][data-palette="graphite"][data-theme="dark"] { --accent: #5c5b57; --accent-hover: #6e6d68; --bg-sidebar: #1d1d1d; --bg-subtle: #1d1d1d; --callout-bg: #262626; --bg: #151515; --bg-elevated: #262626; }
+
+/* ─── Typefaces (Settings → Appearance). Files are in public/fonts; nothing downloads until a
+   typeface that uses them is picked. Projekt Blackbird has a single weight, so headings never fake bold. ─── */
+@font-face { font-family: "Projekt Blackbird"; src: url(/fonts/ProjektBlackbird-Regular.woff2) format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Red Hat Text"; src: url(/fonts/RedHatText-Light.woff2) format("woff2"); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: "Red Hat Text"; src: url(/fonts/RedHatText-LightItalic.woff2) format("woff2"); font-weight: 300; font-style: italic; font-display: swap; }
+@font-face { font-family: "Red Hat Text"; src: url(/fonts/RedHatText-Regular.woff2) format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Red Hat Text"; src: url(/fonts/RedHatText-Italic.woff2) format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Red Hat Text"; src: url(/fonts/RedHatText-Medium.woff2) format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "Red Hat Text"; src: url(/fonts/RedHatText-MediumItalic.woff2) format("woff2"); font-weight: 500; font-style: italic; font-display: swap; }
+@font-face { font-family: "Red Hat Text"; src: url(/fonts/RedHatText-SemiBold.woff2) format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Red Hat Text"; src: url(/fonts/RedHatText-SemiBoldItalic.woff2) format("woff2"); font-weight: 600; font-style: italic; font-display: swap; }
+@font-face { font-family: "Red Hat Text"; src: url(/fonts/RedHatText-Bold.woff2) format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Red Hat Text"; src: url(/fonts/RedHatText-BoldItalic.woff2) format("woff2"); font-weight: 700; font-style: italic; font-display: swap; }
+:root[data-direction="1"][data-typeface="studio"] {
+  --dir-font-sans: "Red Hat Text", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-heading: "Projekt Blackbird", var(--dir-font-sans);
+  h1, h2, h3 {
+    font-family: var(--font-heading);
+    font-synthesis: none;
+  }
+}
