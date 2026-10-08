@@ -9,6 +9,8 @@ import { ShellContext } from "./shell-context";
 import { useTheme } from "./theme";
 import { TaskPeekProvider } from "@/components/tasks/task-peek";
 import { NotificationWatcher } from "./inbox";
+import { markPopState, recordVisit } from "./nav-history";
+import { QuickAddProvider } from "./quick-add";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -27,6 +29,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  useEffect(() => {
+    window.addEventListener("popstate", markPopState);
+    return () => window.removeEventListener("popstate", markPopState);
+  }, []);
+  useEffect(() => recordVisit(pathname), [pathname]);
+
   const [seenPath, setSeenPath] = useState(pathname);
   if (pathname !== seenPath) {
     setSeenPath(pathname);
@@ -44,6 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <ShellContext value={shell}>
       <TaskPeekProvider>
+      <QuickAddProvider>
       <div className="flex h-dvh overflow-hidden">
         <aside className="no-print hidden w-60 shrink-0 border-r border-line md:block">
           <Sidebar />
@@ -59,6 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </div>
       </div>
+      </QuickAddProvider>
       </TaskPeekProvider>
       <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
       <NotificationWatcher />

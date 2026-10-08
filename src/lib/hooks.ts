@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
 /** Ref that always holds the latest value — updated after render, read in handlers/effects. */
 export function useLatest<T>(value: T) {
@@ -54,8 +54,50 @@ export function readPref<T>(key: string, fallback: T): T {
 
 export function writePref<T>(key: string, value: T) {
   try {
-    localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
+    if (value === undefined) localStorage.removeItem(STORAGE_PREFIX + key);
+    else localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
   } catch {
     /* ignore */
   }
+  prefListeners.forEach((l) => l());
+}
+
+const prefListeners = new Set<() => void>();
+function subscribePrefs(cb: () => void) {
+  prefListeners.add(cb);
+  window.addEventListener("storage", cb); // other tabs
+  return () => {
+    prefListeners.delete(cb);
+    window.removeEventListener("storage", cb);
+  };
+}
+
+/**
+ * A per-device preference as React state: hydration-safe (the server and first paint use the
+ * fallback) and shared live by every component reading the same key. Set `undefined` to clear.
+ */
+export function usePref<T>(key: string, fallback: T) {
+  const raw = useSyncExternalStore(
+    subscribePrefs,
+    () => {
+      try {
+        return localStorage.getItem(STORAGE_PREFIX + key);
+      } catch {
+        return null;
+      }
+    },
+    () => null,
+  );
+  // Parse only when the stored text changes, so the value keeps its identity between renders.
+  const parsed = useMemo(() => {
+    if (raw == null) return undefined;
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return undefined;
+    }
+  }, [raw]);
+  const value = parsed === undefined ? fallback : parsed;
+  const set = useCallback((v: T | undefined) => writePref(key, v), [key]);
+  return [value, set] as const;
 }

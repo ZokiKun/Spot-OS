@@ -18,6 +18,7 @@ import { Tag } from "@/components/ui/tag";
 import { NAV_ICONS } from "@/components/shell/icons";
 import { ProjectBoard, ProjectTable } from "./project-views";
 import { NewProjectDialog } from "./new-project-dialog";
+import { usePageAdd } from "@/components/shell/quick-add";
 
 type View = "table" | "board" | "tasks";
 
@@ -32,6 +33,7 @@ export function ProjectsView() {
   const [tags, setTags] = useState<string[]>([]);
   const [newOpen, setNewOpen] = useState(false);
   const { setAnchor: filterAnchorRef, ...filter } = usePopover();
+  usePageAdd("New project", () => setNewOpen(true));
 
   const setView = (v: View) => {
     if (v === "tasks") return router.push("/projects/tasks");
@@ -58,7 +60,7 @@ export function ProjectsView() {
     <Page
       crumbs={[{ label: "Projects", icon: <Icon className="size-4" /> }]}
       actions={
-        <Button variant="primary" onClick={() => setNewOpen(true)}>
+        <Button variant="primary" onClick={() => setNewOpen(true)} title="New project (Shift+A)">
           <Plus className="size-3.5" /> New project
         </Button>
       }

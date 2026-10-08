@@ -9,6 +9,7 @@ import { ViewTabs } from "@/components/ui/tabs";
 import { Avatar } from "@/components/ui/avatar";
 import { NAV_ICONS } from "@/components/shell/icons";
 import { TaskTable } from "./task-table";
+import { usePageAdd, useQuickAdd } from "@/components/shell/quick-add";
 
 function parseFilter(raw: string | null): TaskFilter {
   if (!raw) return { kind: "mine" };
@@ -48,6 +49,9 @@ export function TasksView() {
 
   const defaults =
     filter.kind === "member" ? { assignee_id: filter.id, assignee_ids: [filter.id] } : filter.kind === "today" ? { due_date: todayISO() } : {};
+
+  const quick = useQuickAdd();
+  usePageAdd("New task", () => quick.openTask(defaults));
 
   const Icon = NAV_ICONS.projects!;
   return (

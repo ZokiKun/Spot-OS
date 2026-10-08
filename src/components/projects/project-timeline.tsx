@@ -12,7 +12,7 @@ import { Button, IconButton } from "@/components/ui/button";
 import { Popover, usePopover } from "@/components/ui/popover";
 import { MenuDivider, MenuItem, MenuList } from "@/components/ui/menu";
 import { ProgressBar } from "@/components/ui/misc";
-import { TaskTable } from "@/components/tasks/task-table";
+import { TaskDndContext, TaskTable, type TaskDnd } from "@/components/tasks/task-table";
 
 export function useTimeline(projectId: string): Timeline {
   const { data } = useWorkspace();
@@ -139,6 +139,54 @@ export function ProjectTimeline({ project }: { project: Project }) {
   // Drag-to-reorder: which milestone is being dragged, and where it would land.
   const [drag, setDrag] = useState<{ id: string; over: string | null; after: boolean } | null>(null);
 
+  // Dragging tasks: within a milestone, between milestones, and in or out of "Not in a milestone".
+  const [taskDrag, setTaskDrag] = useState<{ id: string; over: { group: string; index: number } | null } | null>(null);
+  const groupTasks = (group: string) => (group === LOOSE ? loose : (steps.find((s) => s.milestone.id === group)?.tasks ?? []));
+  const dropTask = () => {
+    const d = taskDrag;
+    setTaskDrag(null);
+    if (!d?.over) return;
+    const task = timeline.steps.flatMap((s) => s.tasks).concat(loose).find((t) => t.id === d.id);
+    if (!task) return;
+    const { group, index } = d.over;
+    const target = groupTasks(group);
+    const from = target.findIndex((t) => t.id === d.id);
+    const order = target.filter((t) => t.id !== d.id);
+    order.splice(from >= 0 && from < index ? index - 1 : index, 0, task);
+    const milestoneId = group === LOOSE ? null : group;
+    // Number the whole group 0..n so the hand-set order sticks for everyone.
+    order.forEach((t, i) => {
+      const patch: { sort_order?: number; milestone_id?: string | null } = {};
+      if (t.sort_order !== i) patch.sort_order = i;
+      if (t.id === task.id && (t.milestone_id ?? null) !== milestoneId) patch.milestone_id = milestoneId;
+      if (Object.keys(patch).length) void update("tasks", t.id, patch);
+    });
+  };
+  const taskDnd: TaskDnd = {
+    dragging: taskDrag?.id ?? null,
+    over: taskDrag?.over ?? null,
+    start: (id) => setTaskDrag({ id, over: null }),
+    hover: (group, index) =>
+      setTaskDrag((d) => (d && (d.over?.group !== group || d.over.index !== index) ? { ...d, over: { group, index } } : d)),
+    drop: dropTask,
+    end: () => setTaskDrag(null),
+  };
+  /** Dropping on a milestone's header (e.g. a folded one) puts the task at its end. */
+  const dropOnGroup = (group: string) => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (!taskDrag) return;
+      e.preventDefault();
+      e.stopPropagation();
+      taskDnd.hover(group, groupTasks(group).length);
+    },
+    onDrop: (e: React.DragEvent) => {
+      if (!taskDrag) return;
+      e.preventDefault();
+      e.stopPropagation();
+      dropTask();
+    },
+  });
+
   /** Move a milestone to `to` (0-based) and rewrite sort_order 0..n. */
   const moveTo = (id: string, to: number) => {
     const order = steps.map((s) => s.milestone);
@@ -158,6 +206,7 @@ export function ProjectTimeline({ project }: { project: Project }) {
   };
 
   return (
+    <TaskDndContext value={taskDnd}>
     <div className="space-y-6">
       {steps.map((step, i) => (
         <MilestoneSection
@@ -176,11 +225,13 @@ export function ProjectTimeline({ project }: { project: Project }) {
           onDragOver={(after) => drag && (drag.over !== step.milestone.id || drag.after !== after) && setDrag({ ...drag, over: step.milestone.id, after })}
           onDrop={drop}
           onDragEnd={() => setDrag(null)}
+          taskDrop={dropOnGroup(step.milestone.id)}
+          taskOver={!!taskDrag && taskDrag.over?.group === step.milestone.id}
         />
       ))}
       <AddMilestone projectId={project.id} empty={!steps.length} />
-      {(loose.length > 0 || !steps.length) && (
-        <section>
+      {(loose.length > 0 || !steps.length || taskDrag) && (
+        <section {...dropOnGroup(LOOSE)}>
           <div className="mb-1 flex h-7 items-center gap-2 text-[13px] font-medium text-fg-2">
             {steps.length ? "Not in a milestone" : "Tasks"} <span className="font-normal text-fg-3">{loose.length}</span>
           </div>
@@ -189,12 +240,17 @@ export function ProjectTimeline({ project }: { project: Project }) {
             showProject={false}
             newTaskDefaults={{ project_id: project.id }}
             emptyLabel={steps.length ? "Every task is in a milestone" : "No tasks yet"}
+            dndGroup={LOOSE}
           />
         </section>
       )}
     </div>
+    </TaskDndContext>
   );
 }
+
+/** Drop-group id for tasks outside every milestone. */
+const LOOSE = "loose";
 
 function MilestoneSection({
   step,
@@ -211,6 +267,8 @@ function MilestoneSection({
   onDragOver,
   onDrop,
   onDragEnd,
+  taskDrop,
+  taskOver,
 }: {
   step: TimelineStep;
   first: boolean;
@@ -226,6 +284,10 @@ function MilestoneSection({
   onDragOver: (after: boolean) => void;
   onDrop: () => void;
   onDragEnd: () => void;
+  /** Handlers that take a dragged task at the end of this milestone. */
+  taskDrop: { onDragOver: (e: React.DragEvent) => void; onDrop: (e: React.DragEvent) => void };
+  /** A dragged task would land in this milestone. */
+  taskOver: boolean;
 }) {
   const { update, remove } = useWorkspace();
   const { setAnchor, ...menu } = usePopover();
@@ -255,7 +317,14 @@ function MilestoneSection({
         dropEdge === "after" && "after:absolute after:inset-x-0 after:-bottom-3 after:h-0.5 after:rounded-full after:bg-accent",
       )}
     >
-      <div className={cn("group flex min-h-9 items-center gap-1.5 rounded-md pr-1", step.state === "current" && "bg-[color-mix(in_srgb,var(--tag-blue-bg)_45%,transparent)]")}>
+      <div
+        {...taskDrop}
+        className={cn(
+          "group flex min-h-9 items-center gap-1.5 rounded-md pr-1",
+          step.state === "current" && "bg-[color-mix(in_srgb,var(--tag-blue-bg)_45%,transparent)]",
+          taskOver && "shadow-[inset_0_0_0_1.5px_var(--accent)]",
+        )}
+      >
         <span
           draggable
           onDragStart={(e) => {
@@ -339,6 +408,7 @@ function MilestoneSection({
             showHeader={showHeader}
             newTaskDefaults={{ project_id: project.id, milestone_id: m.id }}
             emptyLabel="No tasks yet — add the first one below"
+            dndGroup={m.id}
           />
         </div>
       )}

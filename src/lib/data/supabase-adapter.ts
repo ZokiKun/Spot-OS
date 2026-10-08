@@ -90,7 +90,10 @@ export class SupabaseAdapter implements DataAdapter {
     // updated_at is set by the `touch_updated_at` trigger
     const { updated_at: _ignored, ...rest } = patch as Record<string, unknown>;
     void _ignored;
-    const { data, error } = await withoutMissingColumns(rest, (v) => this.sb.from(table).update(v).eq("id", id).select().single());
+    // If every column was dropped (e.g. only tasks.sort_order before 0008), just read the row back.
+    const { data, error } = await withoutMissingColumns(rest, (v) =>
+      Object.keys(v).length ? this.sb.from(table).update(v).eq("id", id).select().single() : this.sb.from(table).select("*").eq("id", id).single(),
+    );
     if (error) throw new Error(error.message);
     return data as Row<T>;
   }

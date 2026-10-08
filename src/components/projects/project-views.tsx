@@ -23,7 +23,7 @@ import {
 import type { Project, ProjectStatus } from "@/lib/types";
 import { PROJECT_STATUSES, PROJECT_TYPES, optionFor } from "@/lib/constants";
 import { useProfiles, useWorkspace } from "@/lib/store";
-import { PROJECT_STATUS_ORDER, projectProgress } from "@/lib/selectors";
+import { PROJECT_STATUS_ORDER, hasClient, projectProgress } from "@/lib/selectors";
 import { readPref, writePref } from "@/lib/hooks";
 import { cn, formatDay, daysUntil, nowISO } from "@/lib/utils";
 import { DateField, OptionField, PersonField } from "@/components/ui/fields";
@@ -268,7 +268,7 @@ export function ProjectBoard({ projects }: { projects: Project[] }) {
                     </div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                       <Tag color={optionFor(PROJECT_TYPES, p.type)?.color}>{optionFor(PROJECT_TYPES, p.type)?.label}</Tag>
-                      {p.client && <span className="truncate text-[12px] text-fg-2">{p.client}</span>}
+                      {hasClient(p) && p.client && <span className="truncate text-[12px] text-fg-2">{p.client}</span>}
                     </div>
                     {p.tags.length > 0 && <TagList scope="project" tags={p.tags} className="mt-1.5" />}
                     <BoardNextStep projectId={p.id} />

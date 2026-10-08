@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { BookOpen, Check, Copy, Download, Ellipsis, FileCode2, Library, Pencil, Plus, Trash2 } from "lucide-react";
 import type { KbPage } from "@/lib/types";
 import { useProfiles, useWorkspace } from "@/lib/store";
+import { usePageAdd } from "@/components/shell/quick-add";
 import { renderMarkdown } from "@/lib/markdown";
 import { buildSpotMd } from "@/lib/spot-md";
 import { useDebouncedSave } from "@/lib/hooks";
@@ -51,6 +52,7 @@ export function SpotBaseView({ slug }: { slug?: string }) {
     });
     router.push(`/spot-base/${page.slug}?edit=1`);
   };
+  usePageAdd("New page", () => void addPage());
 
   return (
     <Page

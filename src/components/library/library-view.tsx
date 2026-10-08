@@ -24,6 +24,7 @@ import { useTags } from "@/lib/tags";
 import { readPref, writePref } from "@/lib/hooks";
 import { LIBRARY_TYPES } from "@/lib/constants";
 import { useWorkspace } from "@/lib/store";
+import { usePageAdd } from "@/components/shell/quick-add";
 import { cn } from "@/lib/utils";
 import { Page, PageTitle } from "@/components/shell/page";
 import { Button } from "@/components/ui/button";
@@ -47,13 +48,14 @@ export function LibraryView() {
   const requested = params.get("tab");
   const tab: Tab = requested === "finance" || requested === "performance" ? requested : "resources";
   const [adding, setAdding] = useState(false);
+  usePageAdd("Add to Library", () => setAdding(true), tab === "resources");
 
   return (
     <Page
       crumbs={[{ label: "Library", icon: <LibraryIconLucide className="size-4" /> }]}
       actions={
         tab === "resources" && (
-          <Button variant="primary" onClick={() => setAdding(true)}>
+          <Button variant="primary" onClick={() => setAdding(true)} title="Add (Shift+A)">
             <Plus className="size-3.5" /> Add
           </Button>
         )

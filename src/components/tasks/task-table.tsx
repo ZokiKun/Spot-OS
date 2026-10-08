@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { CalendarDays, CircleDot, Flag, FolderKanban, Plus, Type, Users, PanelRightOpen } from "lucide-react";
-import type { Profile, Project, Task } from "@/lib/types";
+import { createContext, useContext, useState } from "react";
+import { CalendarDays, CircleDot, Flag, FolderKanban, GripVertical, Plus, Type, Users, PanelRightOpen } from "lucide-react";
+import type { Profile, Project, Task, UUID } from "@/lib/types";
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/constants";
 import { useWorkspace, useProfiles } from "@/lib/store";
 import { cn, daysUntil, formatDay } from "@/lib/utils";
@@ -13,6 +13,21 @@ import { assigneesPatch, taskAssignees } from "@/lib/selectors";
 import { EmptyState } from "@/components/ui/misc";
 import { statusPatch, useTaskPeek } from "./task-peek";
 
+/**
+ * Drag-and-drop between stacked task tables (the project timeline). Each table is a "group"
+ * (a milestone id, or "loose" for tasks outside every milestone); `over` is where the dragged
+ * task would land: before row `index` of that group (index = length means at the end).
+ */
+export interface TaskDnd {
+  dragging: UUID | null;
+  over: { group: string; index: number } | null;
+  start: (id: UUID) => void;
+  hover: (group: string, index: number) => void;
+  drop: () => void;
+  end: () => void;
+}
+export const TaskDndContext = createContext<TaskDnd | null>(null);
+
 const COLS_WITH_PROJECT = "minmax(220px,1fr) 124px 150px 96px 92px 180px";
 const COLS = "minmax(200px,1fr) 124px 146px 92px 88px";
 
@@ -22,6 +37,7 @@ export function TaskTable({
   newTaskDefaults,
   emptyLabel = "No tasks here",
   showHeader = true,
+  dndGroup,
 }: {
   tasks: Task[];
   showProject?: boolean;
@@ -29,11 +45,32 @@ export function TaskTable({
   emptyLabel?: string;
   /** Off when several tables stack (e.g. one per milestone) under a shared header. */
   showHeader?: boolean;
+  /** Makes rows draggable inside a <TaskDndContext> — this table's group id. */
+  dndGroup?: string;
 }) {
   const { data, update, create, me } = useWorkspace();
   const people = useProfiles();
   const { openTask } = useTaskPeek();
   const cols = showProject ? COLS_WITH_PROJECT : COLS;
+  const dndCtx = useContext(TaskDndContext);
+  const dnd = dndGroup != null ? dndCtx : null;
+  const group = dndGroup ?? "";
+  const dropAt = dnd?.dragging && dnd.over?.group === group ? dnd.over.index : null;
+  // Rows report "before me / after me"; the rest of the table (empty state, new-task row) means "at the end".
+  const tableDrag = dnd && {
+    onDragOver: (e: React.DragEvent) => {
+      if (!dnd.dragging) return;
+      e.preventDefault();
+      e.stopPropagation();
+      dnd.hover(group, tasks.length);
+    },
+    onDrop: (e: React.DragEvent) => {
+      if (!dnd.dragging) return;
+      e.preventDefault();
+      e.stopPropagation();
+      dnd.drop();
+    },
+  };
 
   const head = [
     { icon: <Type className="size-3.5" />, label: "Name" },
@@ -45,7 +82,7 @@ export function TaskTable({
   ];
 
   return (
-    <div className="-mx-2 overflow-x-auto px-2">
+    <div className="-mx-2 overflow-x-auto px-2" {...tableDrag}>
       <div className={cn("text-[14px]", showProject ? "min-w-[860px]" : "min-w-[660px]")}>
         {showHeader ? (
           <div className="grid border-y border-line text-[13px] text-fg-2" style={{ gridTemplateColumns: cols }}>
@@ -59,13 +96,48 @@ export function TaskTable({
         ) : (
           <div className="border-t border-line" />
         )}
-        {tasks.map((t) => (
+        {tasks.map((t, i) => (
           <div
             key={t.id}
-            className="group grid border-b border-line transition-colors duration-75 hover:bg-subtle"
+            onDragOver={
+              dnd
+                ? (e) => {
+                    if (!dnd.dragging) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const r = e.currentTarget.getBoundingClientRect();
+                    dnd.hover(group, i + (e.clientY > r.top + r.height / 2 ? 1 : 0));
+                  }
+                : undefined
+            }
+            onDrop={tableDrag?.onDrop}
+            className={cn(
+              "group relative grid border-b border-line transition-colors duration-75 hover:bg-subtle",
+              dnd?.dragging === t.id && "opacity-40",
+              dropAt === i && "before:absolute before:inset-x-0 before:-top-px before:z-[1] before:h-0.5 before:bg-accent",
+              dropAt === tasks.length && i === tasks.length - 1 && "after:absolute after:inset-x-0 after:-bottom-px after:z-[1] after:h-0.5 after:bg-accent",
+            )}
             style={{ gridTemplateColumns: cols }}
           >
-            <div className="flex min-w-0 items-center gap-2 px-2">
+            <div className={cn("flex min-w-0 items-center gap-2 px-2", dnd && "pl-0")}>
+              {dnd && (
+                <span
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", t.title);
+                    const row = e.currentTarget.closest(".grid");
+                    if (row instanceof HTMLElement) e.dataTransfer.setDragImage(row, 24, 16);
+                    dnd.start(t.id);
+                  }}
+                  onDragEnd={dnd.end}
+                  title="Drag to move — into another milestone, or up and down"
+                  aria-hidden
+                  className="-mr-1.5 flex h-7 w-3.5 shrink-0 cursor-grab items-center justify-center text-fg-3 opacity-0 hover:text-fg-2 active:cursor-grabbing group-hover:opacity-100 max-sm:opacity-60"
+                >
+                  <GripVertical className="size-3.5" />
+                </span>
+              )}
               <Checkbox
                 checked={t.status === "done"}
                 onChange={(done) => void update("tasks", t.id, statusPatch(done ? "done" : "todo"))}
@@ -108,7 +180,12 @@ export function TaskTable({
             )}
           </div>
         ))}
-        {tasks.length === 0 && <EmptyState title={emptyLabel} className="border-b border-line py-8" />}
+        {tasks.length === 0 && (
+          <EmptyState
+            title={dropAt != null ? "Drop here" : emptyLabel}
+            className={cn("border-b border-line py-8", dropAt != null && "bg-accent-soft shadow-[inset_0_0_0_1px_var(--accent)]")}
+          />
+        )}
         <NewTaskRow
           onCreate={(title) =>
             void create("tasks", {

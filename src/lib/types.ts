@@ -97,6 +97,8 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   due_date: ISODate | null;
+  /** Hand-set position inside its milestone (drag to reorder); null until dragged. Migration 0008. */
+  sort_order?: number | null;
   created_by: UUID | null;
   created_at: ISODateTime;
   updated_at: ISODateTime;

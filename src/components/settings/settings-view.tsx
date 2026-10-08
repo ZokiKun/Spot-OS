@@ -12,7 +12,7 @@ import { SUPABASE_URL } from "@/lib/supabase/env";
 import { readPref, writePref } from "@/lib/hooks";
 import { cn, downloadFile } from "@/lib/utils";
 import { Page } from "@/components/shell/page";
-import { useTheme } from "@/components/shell/theme";
+import { PALETTES, useTheme } from "@/components/shell/theme";
 import { Button } from "@/components/ui/button";
 import { EditableText, TextInput, Toggle } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
@@ -73,7 +73,7 @@ export function SettingsView() {
 }
 
 function Appearance() {
-  const { pref, setPref } = useTheme();
+  const { pref, setPref, palette, setPalette } = useTheme();
   return (
     <SettingsSection title="Theme" description="Saved on this device.">
       <SettingsRow label="Interface theme">
@@ -85,6 +85,37 @@ function Appearance() {
           ))}
         </div>
       </SettingsRow>
+      <div className="py-3">
+        <div className="text-[14px]">Colour theme</div>
+        <div className="mt-0.5 text-[12px] text-fg-2">Sets the accent colour and tints the sidebar and surfaces. Works in light and dark.</div>
+        <div role="radiogroup" aria-label="Colour theme" className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+          {PALETTES.map((p) => {
+            const selected = p.id === palette;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => setPalette(p.id)}
+                className={cn(
+                  "flex flex-col items-start gap-2 rounded-lg p-2 text-left text-[13px] transition-shadow",
+                  selected ? "font-medium shadow-[inset_0_0_0_2px_var(--accent)]" : "shadow-[inset_0_0_0_1px_var(--border-strong)] hover:bg-hover",
+                )}
+              >
+                <span className="flex h-10 w-full overflow-hidden rounded-md shadow-[inset_0_0_0_1px_var(--border)]">
+                  <span className="w-1/3" style={{ background: p.swatch[1] }} />
+                  <span className="flex flex-1 flex-col justify-center gap-1 bg-white px-1.5">
+                    <span className="h-1.5 w-3/4 rounded-full" style={{ background: p.swatch[0] }} />
+                    <span className="h-1 w-1/2 rounded-full bg-[#e3e2e0]" />
+                  </span>
+                </span>
+                {p.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </SettingsSection>
   );
 }

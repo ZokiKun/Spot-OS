@@ -45,7 +45,7 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
       icon,
       type,
       status: "active",
-      client: client.trim() || null,
+      client: type === "client" ? client.trim() || null : null,
       client_contact: null,
       creative_director_id: null,
       lead_id: lead,
@@ -113,8 +113,12 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
           <div className="-ml-1.5">
             <OptionField variant="property" kind="select" options={PROJECT_TYPES} value={type} onChange={setType} />
           </div>
-          <span className="text-fg-2">Client</span>
-          <TextInput placeholder="Optional" value={client} onChange={(e) => setClient(e.target.value)} />
+          {type === "client" && (
+            <>
+              <span className="text-fg-2">Client</span>
+              <TextInput placeholder="Optional" value={client} onChange={(e) => setClient(e.target.value)} />
+            </>
+          )}
           <span className="text-fg-2">Lead</span>
           <div className="-ml-1.5">
             <PersonField variant="property" people={people.list} value={lead} onChange={setLead} />

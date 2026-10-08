@@ -14,7 +14,7 @@ This document answers the brief's "first task" list: schema, routes, components,
 | `projects` | Project, type, status, client, CD, lead, dates, description, **next_action**, `notes_html` | `type` / `status` are text + `check` (easier to evolve than PG enums). |
 | `milestones` | A project's timeline: ordered steps (`sort_order`), optional `due_date`; tasks point at one via `tasks.milestone_id` | A milestone is done when it has tasks and all are done. The project's **next step** is derived (`lib/milestones.ts`): the first unfinished milestone. `projects.next_action` is legacy and no longer edited. |
 | `project_members` | People associated with a project | `unique(project_id, profile_id)` |
-| `tasks` | Title, description, assignee, status, priority, due date, project | `project_id` nullable (studio-level tasks such as invoicing). `completed_at` set on Done. |
+| `tasks` | Title, description, assignee, status, priority, due date, project | `project_id` nullable (studio-level tasks such as invoicing). `completed_at` set on Done. `sort_order` (0008) is the hand-dragged position inside a milestone; null = not dragged yet (those follow, by due date). |
 | `calendar_notes` | Rich-text notes per date | Several notes per day. HTML from the editor. |
 | `attachments` | **Native uploads**: calendar, project and review files | One table with three nullable FKs + `check (num_nonnulls(...) = 1)`. Replaces `calendar_attachments` and `project_files`. |
 | `library_items` | Indexed links and docs (Drive, Docs, Sheets, PDFs, templates, URLs) | `project_id` nullable. This replaces `links`, `documents` **and** `project_links`. A project's Links tab is just a filtered view. |
@@ -71,12 +71,17 @@ src/
     supabase/               env, browser + server clients
   components/
     ui/                     design system: Button, Tag/StatusTag, Popover, Picker, fields, Dialog, SidePeek, Tabs…
-    shell/                  Sidebar, Topbar/Page, CommandPalette (⌘K), theme
+    shell/                  Sidebar (drag to reorder its top buttons), Topbar/Page (back button via nav-history),
+                            CommandPalette (⌘K), theme + colour themes, quick-add (Home + button, Shift+A per page)
     home/ projects/ tasks/ calendar/ library/ reviews/ spot-base/ settings/
     editor/rich-editor.tsx  Tiptap (headings, bold/italic, lists, checklists, links, images)
 ```
 
-**Design system:** the tokens in `globals.css` are derived from Notion's web UI. That means a warm off-white sidebar (`#F8F8F7`), warm near-black text (`#32302C`), hairline dividers (`rgba(55,53,47,.09)`), Notion's muted tag palette with status dots, one blue accent (`#2383E2`), the system font stack, 30px rows, and layered menu shadows. Light and dark themes are both supported.
+**Design system:** the tokens in `globals.css` are derived from Notion's web UI. That means a warm off-white sidebar (`#F8F8F7`), warm near-black text (`#32302C`), hairline dividers (`rgba(55,53,47,.09)`), Notion's muted tag palette with status dots, one blue accent (`#2383E2`), the system font stack, 30px rows, and layered menu shadows. Light and dark themes are both supported, and Settings → Appearance offers colour themes (Ocean, Forest, Sunset, Grape, Rose, Graphite) that override the accent and surface tokens via `data-palette` (end of `direction-1.css`).
+
+**Per-device preferences** (`usePref` in `lib/hooks.ts`, localStorage): theme and colour theme, sidebar order, the project page layout (1 = details under the title, 2 = details in a right-hand panel) and each member's pinned Home view (`home-pin:<profile id>`).
+
+**Shift+A** runs the current page's add action (`usePageAdd`): Projects → new project, Tasks and a project → new task (in its current milestone), Calendar → note, Library → link, Reviews → new review, Spot Base → page, Home → the Quick Add menu. Elsewhere it opens the Quick Add chooser. It's ignored while typing or with a dialog/menu open.
 
 ## 4. Realtime architecture
 

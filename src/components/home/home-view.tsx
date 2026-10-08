@@ -2,16 +2,19 @@
 
 import { useEffect, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Building2, House, User } from "lucide-react";
+import { Building2, House, Pin, User } from "lucide-react";
 import { useWorkspace } from "@/lib/store";
 import { isActiveProject, isAssignedTo, isDueToday, isOverdue } from "@/lib/selectors";
-import { firstName, formatLongDate, greeting, plural, todayISO } from "@/lib/utils";
+import { cn, firstName, formatLongDate, greeting, plural, todayISO } from "@/lib/utils";
+import { usePref } from "@/lib/hooks";
+import { useToast } from "@/components/ui/toast";
 import { Page } from "@/components/shell/page";
 import { ViewTabs } from "@/components/ui/tabs";
 import { LayoutSwitcher } from "./home-blocks";
 import { HOME_LAYOUTS, isHomeLayout, useSavedLayout, type HomeLayout } from "./home-data";
 import { PersonalView } from "./personal-view";
 import { StudioView } from "./studio-view";
+import { QuickAddFab } from "@/components/shell/quick-add";
 
 type View = "personal" | "studio";
 
@@ -20,24 +23,43 @@ export function HomeView() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
+  const toast = useToast();
   const requested = params.get("view");
-  const view: View = requested === "studio" ? "studio" : "personal";
 
-  // Layout: ?layout= wins (shareable), otherwise the last one picked on this device.
+  // Each person can pin their favourite view (tab + layout): Home then always opens on it.
+  const [pinned, setPinned] = usePref<{ view: View; layout: HomeLayout } | null>(`home-pin:${me?.id ?? "anon"}`, null);
+  const pin = pinned && isHomeLayout(pinned.layout) ? pinned : null;
+
+  // Without a pin, the layout is the last one picked on this device. ?view= / ?layout= win (shareable).
   const [savedLayout, saveLayout] = useSavedLayout();
+  const defaultView: View = pin?.view ?? "personal";
+  const defaultLayout: HomeLayout = pin?.layout ?? savedLayout;
+  const view: View = requested === "studio" || requested === "personal" ? requested : defaultView;
   const requestedLayout = params.get("layout");
-  const layout: HomeLayout = isHomeLayout(requestedLayout) ? requestedLayout : savedLayout;
+  const layout: HomeLayout = isHomeLayout(requestedLayout) ? requestedLayout : defaultLayout;
+  const isPinned = !!pin && pin.view === view && pin.layout === layout;
 
   const navigate = (nextView: View, nextLayout: HomeLayout) => {
     const q = new URLSearchParams();
-    if (nextView !== "personal") q.set("view", nextView);
-    if (nextLayout !== "table") q.set("layout", nextLayout);
+    if (nextView !== defaultView) q.set("view", nextView);
+    if (nextLayout !== defaultLayout) q.set("layout", nextLayout);
     const qs = q.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
   const changeLayout = (l: HomeLayout) => {
-    saveLayout(l);
+    if (!pin) saveLayout(l);
     navigate(view, l);
+  };
+  const togglePin = () => {
+    if (isPinned) {
+      setPinned(undefined);
+      saveLayout(layout);
+      toast.show({ title: "Unpinned", description: "Home opens on the last layout you picked." });
+    } else {
+      setPinned({ view, layout });
+      router.replace(pathname, { scroll: false });
+      toast.show({ title: "Pinned as your Home", description: `${view === "studio" ? "Studio" : "Personal"} · ${layout[0]!.toUpperCase()}${layout.slice(1)} — only for you.`, tone: "success" });
+    }
   };
 
   // Finance and Performance moved to Library — keep old links working.
@@ -81,9 +103,23 @@ export function HomeView() {
           ]}
         />
         <LayoutSwitcher value={layout} onChange={changeLayout} layouts={HOME_LAYOUTS} />
+        <button
+          type="button"
+          onClick={togglePin}
+          aria-pressed={isPinned}
+          title={isPinned ? "This is your pinned Home — click to unpin" : "Pin this view: Home will always open on it (just for you)"}
+          className={cn(
+            "flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-[13px] transition-colors",
+            isPinned ? "bg-accent-soft font-medium text-accent" : "text-fg-2 hover:bg-hover hover:text-fg",
+          )}
+        >
+          <Pin className={cn("size-4", isPinned && "fill-current")} />
+          <span className="hidden sm:inline">{isPinned ? "Pinned" : pin ? "Pin instead" : "Pin view"}</span>
+        </button>
       </div>
       {view === "personal" && <PersonalView layout={layout} />}
       {view === "studio" && <StudioView layout={layout} />}
+      <QuickAddFab />
     </Page>
   );
 }

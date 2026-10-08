@@ -13,6 +13,8 @@ import {
   Ellipsis,
   Link2,
   Palette,
+  PanelRight,
+  PanelTop,
   Plus,
   StickyNote,
   Tag as TagIcon,
@@ -24,8 +26,8 @@ import {
 import type { Project } from "@/lib/types";
 import { PROJECT_STATUSES, PROJECT_TYPES } from "@/lib/constants";
 import { useProfiles, useWorkspace } from "@/lib/store";
-import { isAssignedTo, isOpen, isOverdue, projectProgress, sortTasks } from "@/lib/selectors";
-import { useDebouncedSave } from "@/lib/hooks";
+import { hasClient, isAssignedTo, isOpen, isOverdue, projectProgress, sortTasks } from "@/lib/selectors";
+import { useDebouncedSave, usePref } from "@/lib/hooks";
 import { cn, formatDay, timeAgo } from "@/lib/utils";
 import { Page } from "@/components/shell/page";
 import { NAV_ICONS } from "@/components/shell/icons";
@@ -47,13 +49,13 @@ import { LibraryRow } from "@/components/library/library-row";
 import { projectStatusPatch } from "./project-views";
 import { AddCoverButton, ProjectCover } from "./project-cover";
 import { NextStepCallout, ProjectTimeline, TimelineStepper, useTimeline } from "./project-timeline";
+import { usePageAdd, useQuickAdd } from "@/components/shell/quick-add";
 
 type Tab = "overview" | "tasks" | "files" | "links" | "notes" | "activity";
 const ICONS = ["📁", "🧭", "🪶", "🫙", "🟠", "⚙️", "📓", "🔤", "🎨", "📐", "🖼️", "🎬", "📦", "🌱", "✳️", "🔶", "🧪", "💡"];
 
 export function ProjectDetail({ id }: { id: string }) {
   const { data, update, remove, status } = useWorkspace();
-  const people = useProfiles();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -62,6 +64,12 @@ export function ProjectDetail({ id }: { id: string }) {
   const { setAnchor: moreAnchorRef, ...more } = usePopover();
   const { setAnchor: iconPopAnchorRef, ...iconPop } = usePopover();
   const [description, setDescription] = useState<string | null>(null);
+  // Layout option 2 (details on the right) — per device, so each teammate can try it.
+  const [layout, setLayout] = usePref<"stacked" | "split">("project-layout", "stacked");
+  const split = layout === "split";
+  // Shift+A: a task in this project, in its current milestone.
+  const quick = useQuickAdd();
+  usePageAdd("New task", () => quick.openTask({ project_id: id }), !!project);
 
   const tasks = useMemo(() => sortTasks(data.tasks.filter((t) => t.project_id === id)), [data.tasks, id]);
   const files = useMemo(() => data.attachments.filter((a) => a.project_id === id), [data.attachments, id]);
@@ -91,6 +99,7 @@ export function ProjectDetail({ id }: { id: string }) {
         project && (
           <>
             <span className="mr-1 hidden text-[13px] text-fg-3 sm:inline">Edited {timeAgo(project.updated_at)}</span>
+            <LayoutToggle split={split} onChange={(v) => setLayout(v ? "split" : "stacked")} />
             <IconButton ref={moreAnchorRef} label="More" onClick={more.toggle} size="md">
               <Ellipsis className="size-4" />
             </IconButton>
@@ -125,7 +134,8 @@ export function ProjectDetail({ id }: { id: string }) {
       }
     >
       {project && (
-        <>
+        <div className={cn(split && "lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-x-10 xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-x-14")}>
+          <div className="min-w-0 lg:col-start-1">
           <div className={cn("group/head flex items-end gap-2", project.cover && "relative z-[1] -mt-[76px]")}>
             <button
               ref={iconPopAnchorRef}
@@ -163,47 +173,24 @@ export function ProjectDetail({ id }: { id: string }) {
             className="text-[32px] font-bold leading-tight tracking-[-0.01em] sm:text-[40px]"
           />
 
-          <div className="mt-4 space-y-0.5">
-            <PropertyRow icon={<CircleDot className="size-4" />} label="Status">
-              <OptionField variant="property" options={PROJECT_STATUSES} value={project.status} onChange={(s) => set(projectStatusPatch(s))} />
-            </PropertyRow>
-            <PropertyRow icon={<TagIcon className="size-4" />} label="Type">
-              <OptionField variant="property" kind="select" options={PROJECT_TYPES} value={project.type} onChange={(type) => set({ type })} />
-            </PropertyRow>
-            <PropertyRow icon={<Tags className="size-4" />} label="Tags">
-              <TagsField variant="property" scope="project" value={project.tags} onChange={(tags) => set({ tags })} />
-            </PropertyRow>
-            <PropertyRow icon={<StickyNote className="size-4" />} label="Note">
-              <TextProperty value={project.note} onCommit={(note) => set({ note })} />
-            </PropertyRow>
-            <PropertyRow icon={<Building2 className="size-4" />} label="Client">
-              <TextProperty value={project.client} onCommit={(client) => set({ client })} />
-            </PropertyRow>
-            <PropertyRow icon={<Contact className="size-4" />} label="Client contact">
-              <TextProperty value={project.client_contact} onCommit={(client_contact) => set({ client_contact })} />
-            </PropertyRow>
-            <PropertyRow icon={<Palette className="size-4" />} label="Creative director">
-              <PersonField variant="property" people={people.list} value={project.creative_director_id} onChange={(v) => set({ creative_director_id: v })} />
-            </PropertyRow>
-            <PropertyRow icon={<User className="size-4" />} label="Project lead">
-              <PersonField variant="property" people={people.list} value={project.lead_id} onChange={(lead_id) => set({ lead_id })} />
-            </PropertyRow>
-            <PropertyRow icon={<CalendarPlus className="size-4" />} label="Start date">
-              <DateField variant="property" value={project.start_date} onChange={(start_date) => set({ start_date })} />
-            </PropertyRow>
-            <PropertyRow icon={<CalendarDays className="size-4" />} label="Deadline">
-              <DateField
-                variant="property"
-                value={project.deadline}
-                highlightOverdue={!["completed", "archived"].includes(project.status)}
-                onChange={(deadline) => set({ deadline })}
-              />
-            </PropertyRow>
-            <PropertyRow icon={<Users className="size-4" />} label="People">
-              <MembersProperty projectId={project.id} />
-            </PropertyRow>
+          {!split && (
+            <div className="mt-4">
+              <ProjectProperties project={project} />
+            </div>
+          )}
           </div>
 
+          {/* Option 2: the properties sit in a panel on the right (stacked under the title on small screens). */}
+          {split && (
+            <aside className="mt-5 lg:sticky lg:top-14 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-0 lg:max-h-[calc(100dvh-4.5rem)] lg:self-start lg:overflow-y-auto">
+              <div className="rounded-lg px-2 pb-2 pt-3 shadow-[inset_0_0_0_1px_var(--border)]">
+                <div className="mb-1.5 px-1.5 text-[12px] font-medium text-fg-2">Details</div>
+                <ProjectProperties project={project} narrow />
+              </div>
+            </aside>
+          )}
+
+          <div className="min-w-0 lg:col-start-1">
           <NextStepCallout project={project} onOpenTimeline={() => setTab("tasks")} onComplete={() => set(projectStatusPatch("completed"))} />
 
           <AutoTextarea
@@ -239,9 +226,93 @@ export function ProjectDetail({ id }: { id: string }) {
               {tab === "activity" && <ActivityFeed entries={activity} limit={50} compact />}
             </div>
           </div>
-        </>
+          </div>
+        </div>
       )}
     </Page>
+  );
+}
+
+/** The project's properties — under the title (classic) or in the right-hand panel (option 2). */
+function ProjectProperties({ project, narrow = false }: { project: Project; narrow?: boolean }) {
+  const { update } = useWorkspace();
+  const people = useProfiles();
+  const set = (patch: Partial<Project>) => void update("projects", project.id, patch);
+  return (
+    <div className="space-y-0.5">
+      <PropertyRow narrow={narrow} icon={<CircleDot className="size-4" />} label="Status">
+        <OptionField variant="property" options={PROJECT_STATUSES} value={project.status} onChange={(s) => set(projectStatusPatch(s))} />
+      </PropertyRow>
+      <PropertyRow narrow={narrow} icon={<TagIcon className="size-4" />} label="Type">
+        <OptionField variant="property" kind="select" options={PROJECT_TYPES} value={project.type} onChange={(type) => set({ type })} />
+      </PropertyRow>
+      <PropertyRow narrow={narrow} icon={<Tags className="size-4" />} label="Tags">
+        <TagsField variant="property" scope="project" value={project.tags} onChange={(tags) => set({ tags })} />
+      </PropertyRow>
+      <PropertyRow narrow={narrow} icon={<StickyNote className="size-4" />} label="Note">
+        <TextProperty value={project.note} onCommit={(note) => set({ note })} />
+      </PropertyRow>
+      {hasClient(project) && (
+        <>
+          <PropertyRow narrow={narrow} icon={<Building2 className="size-4" />} label="Client">
+            <TextProperty value={project.client} onCommit={(client) => set({ client })} />
+          </PropertyRow>
+          <PropertyRow narrow={narrow} icon={<Contact className="size-4" />} label="Client contact">
+            <TextProperty value={project.client_contact} onCommit={(client_contact) => set({ client_contact })} />
+          </PropertyRow>
+        </>
+      )}
+      <PropertyRow narrow={narrow} icon={<Palette className="size-4" />} label="Creative director">
+        <PersonField variant="property" people={people.list} value={project.creative_director_id} onChange={(v) => set({ creative_director_id: v })} />
+      </PropertyRow>
+      <PropertyRow narrow={narrow} icon={<User className="size-4" />} label="Project lead">
+        <PersonField variant="property" people={people.list} value={project.lead_id} onChange={(lead_id) => set({ lead_id })} />
+      </PropertyRow>
+      <PropertyRow narrow={narrow} icon={<CalendarPlus className="size-4" />} label="Start date">
+        <DateField variant="property" value={project.start_date} onChange={(start_date) => set({ start_date })} />
+      </PropertyRow>
+      <PropertyRow narrow={narrow} icon={<CalendarDays className="size-4" />} label="Deadline">
+        <DateField
+          variant="property"
+          value={project.deadline}
+          highlightOverdue={!["completed", "archived"].includes(project.status)}
+          onChange={(deadline) => set({ deadline })}
+        />
+      </PropertyRow>
+      <PropertyRow narrow={narrow} icon={<Users className="size-4" />} label="People">
+        <MembersProperty projectId={project.id} />
+      </PropertyRow>
+    </div>
+  );
+}
+
+/** Two-way switch between layout 1 (details under the title) and layout 2 (details on the right). */
+function LayoutToggle({ split, onChange }: { split: boolean; onChange: (split: boolean) => void }) {
+  const options = [
+    { value: false, label: "Layout 1 — details under the title", icon: <PanelTop className="size-4" /> },
+    { value: true, label: "Layout 2 — details on the right", icon: <PanelRight className="size-4" /> },
+  ];
+  return (
+    <div role="radiogroup" aria-label="Project layout" className="mr-1 hidden items-center gap-0.5 rounded-md p-0.5 shadow-[inset_0_0_0_1px_var(--border)] lg:flex">
+      {options.map((o) => (
+        <button
+          key={String(o.value)}
+          type="button"
+          role="radio"
+          aria-checked={split === o.value}
+          aria-label={o.label}
+          title={o.label}
+          onClick={() => onChange(o.value)}
+          className={cn(
+            "flex h-6 items-center gap-1 rounded-[5px] px-1.5 text-[12px] transition-colors",
+            split === o.value ? "bg-active font-medium text-fg" : "text-fg-3 hover:bg-hover hover:text-fg-2",
+          )}
+        >
+          {o.icon}
+          {o.value ? "2" : "1"}
+        </button>
+      ))}
+    </div>
   );
 }
 

@@ -7,6 +7,7 @@ import { addMonths, addQuarters, addYears, format, startOfMonth, startOfQuarter,
 import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import type { CalendarNote, Project, Task } from "@/lib/types";
 import { useWorkspace } from "@/lib/store";
+import { usePageAdd } from "@/components/shell/quick-add";
 import { isOpen } from "@/lib/selectors";
 import { cn, formatLongDate, parseDate, todayISO, toISODate } from "@/lib/utils";
 import { Page } from "@/components/shell/page";
@@ -116,6 +117,7 @@ export function CalendarView() {
     });
     router.replace(href({ note: n.id }), { scroll: false });
   };
+  usePageAdd("New note", () => void addNote());
 
   return (
     <Page crumbs={[{ label: "Calendar", icon: <CalendarDays className="size-4" /> }]}>

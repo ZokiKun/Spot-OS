@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { Fragment, useEffect, type ReactNode } from "react";
-import { Menu } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { ArrowLeft, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/lib/store";
 import { IconButton } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { useShell } from "./shell-context";
+import { recordTitle, useBackTarget } from "./nav-history";
 
 export interface Crumb {
   label: string;
@@ -17,11 +19,18 @@ export interface Crumb {
 
 export function Topbar({ crumbs, actions }: { crumbs: Crumb[]; actions?: ReactNode }) {
   const { openMobileNav } = useShell();
+  const back = useBackTarget();
+  const router = useRouter();
   return (
     <header className="no-print sticky top-0 z-20 flex h-11 shrink-0 items-center gap-1 bg-bg/95 px-3 backdrop-blur-sm">
       <IconButton label="Open navigation" className="md:hidden" onClick={openMobileNav}>
         <Menu className="size-4" />
       </IconButton>
+      {back && (
+        <IconButton label={`Back to ${back.label}`} size="md" onClick={() => router.back()}>
+          <ArrowLeft className="size-4" />
+        </IconButton>
+      )}
       <nav aria-label="Breadcrumb" className="flex min-w-0 items-center text-[14px]">
         {crumbs.map((c, i) => (
           <Fragment key={i}>
@@ -61,10 +70,13 @@ export function Page({
   className?: string;
 }) {
   const { status, error } = useWorkspace();
+  const pathname = usePathname();
   const title = crumbs.at(-1)?.label;
   useEffect(() => {
-    if (title && title !== "…") document.title = `${title} · Spot OS`;
-  }, [title]);
+    if (!title || title === "…") return;
+    document.title = `${title} · Spot OS`;
+    recordTitle(pathname, title);
+  }, [title, pathname]);
   return (
     <div className="flex min-h-full flex-col">
       <Topbar crumbs={crumbs} actions={actions} />

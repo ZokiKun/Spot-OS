@@ -284,10 +284,10 @@ export function ProjectField({
 }
 
 /** Notion page property row: icon + muted label on the left, editable value on the right. */
-export function PropertyRow({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
+export function PropertyRow({ icon, label, children, narrow = false }: { icon: ReactNode; label: string; children: ReactNode; narrow?: boolean }) {
   return (
     <div className="flex min-h-[34px] items-start gap-1">
-      <div className="flex h-[30px] w-40 shrink-0 items-center gap-1.5 px-1.5 text-[14px] text-fg-2 max-sm:w-32">
+      <div className={cn("flex h-[30px] w-40 shrink-0 items-center gap-1.5 px-1.5 text-[14px] text-fg-2 max-sm:w-32", narrow && "w-32 lg:w-[9.75rem]")}>
         <span className="flex size-4 items-center justify-center text-fg-3">{icon}</span>
         <span className="truncate">{label}</span>
       </div>

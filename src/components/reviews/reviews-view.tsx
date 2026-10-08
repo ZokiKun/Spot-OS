@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ClipboardCheck, Plus } from "lucide-react";
 import type { ReviewPeriod } from "@/lib/types";
 import { useProfiles, useWorkspace } from "@/lib/store";
+import { usePageAdd } from "@/components/shell/quick-add";
 import { isReviewStarted, periodLabel, recentPeriods } from "@/lib/reviews";
 import { timeAgo } from "@/lib/utils";
 import { Page, PageTitle } from "@/components/shell/page";
@@ -20,6 +21,7 @@ export function ReviewsView() {
   const people = useProfiles();
   const router = useRouter();
   const { setAnchor: popAnchorRef, ...pop } = usePopover();
+  usePageAdd("New review", () => pop.setOpen(true));
 
   const existing = new Set(data.reviews.map((r) => `${r.period}:${r.period_start}`));
   const open = async (period: ReviewPeriod, start: string) => {
@@ -52,7 +54,7 @@ export function ReviewsView() {
       crumbs={[{ label: "Reviews", icon: <ClipboardCheck className="size-4" /> }]}
       actions={
         <>
-          <Button ref={popAnchorRef} variant="primary" onClick={pop.toggle}>
+          <Button ref={popAnchorRef} variant="primary" onClick={pop.toggle} title="New review (Shift+A)">
             <Plus className="size-3.5" /> New review
           </Button>
           <Popover open={pop.open} onClose={pop.close} anchor={pop.anchor} align="end" width={240}>

@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo } from "react";
-import { ChevronDown, LogOut, Monitor, Moon, Search, Sun, Users } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+import { ChevronDown, LogOut, Monitor, Moon, Palette, RotateCcw, Search, Sun, Users } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/constants";
 import { useWorkspace } from "@/lib/store";
 import { isActiveProject, sortProjects } from "@/lib/selectors";
 import { cn } from "@/lib/utils";
+import { usePref } from "@/lib/hooks";
 import { getDemoAdapter } from "@/lib/data";
 import { Avatar } from "@/components/ui/avatar";
 import { Popover, usePopover } from "@/components/ui/popover";
@@ -37,6 +38,7 @@ function NavRow({
     <Link
       href={href}
       onClick={onNavigate}
+      draggable={false}
       className={cn(
         "group flex h-[30px] items-center gap-2 rounded-md px-2 text-[14px] transition-colors duration-75",
         active ? "bg-active font-medium text-fg" : "text-fg-2 hover:bg-hover",
@@ -51,6 +53,71 @@ function NavRow({
   );
 }
 
+/** The sidebar's top buttons, in the default order. Each person can drag them into their own order. */
+const TOP_ITEMS = ["search", "inbox", ...NAV_ITEMS.map((i) => i.href)];
+const ORDER_PREF = "sidebar-order";
+
+function useTopOrder() {
+  const [saved, setSaved] = usePref<string[] | null>(ORDER_PREF, null);
+  // Keep known items only, and append any added since the order was saved.
+  const order = useMemo(() => {
+    const known = (saved ?? []).filter((k) => TOP_ITEMS.includes(k));
+    return [...known, ...TOP_ITEMS.filter((k) => !known.includes(k))];
+  }, [saved]);
+  return { order, custom: saved != null, save: setSaved, reset: () => setSaved(undefined) };
+}
+
+/** Drag-to-reorder list of the sidebar's top buttons; the moved row shows where it will land. */
+function ReorderableTop({ order, onReorder, render }: { order: string[]; onReorder: (next: string[]) => void; render: (key: string) => ReactNode }) {
+  const [drag, setDrag] = useState<{ key: string; over: string | null; after: boolean } | null>(null);
+  const drop = () => {
+    if (drag?.over && drag.over !== drag.key) {
+      const next = order.filter((k) => k !== drag.key);
+      const at = next.indexOf(drag.over) + (drag.after ? 1 : 0);
+      next.splice(at, 0, drag.key);
+      onReorder(next);
+    }
+    setDrag(null);
+  };
+  return (
+    <>
+      {order.map((key) => (
+        <div
+          key={key}
+          draggable
+          title="Drag to reorder"
+          onDragStart={(e) => {
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", key);
+            setDrag({ key, over: null, after: false });
+          }}
+          onDragOver={(e) => {
+            if (!drag) return;
+            e.preventDefault();
+            const r = e.currentTarget.getBoundingClientRect();
+            const after = e.clientY > r.top + r.height / 2;
+            if (drag.over !== key || drag.after !== after) setDrag({ ...drag, over: key, after });
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            drop();
+          }}
+          onDragEnd={() => setDrag(null)}
+          className={cn(
+            "relative cursor-grab active:cursor-grabbing",
+            drag?.key === key && "opacity-40",
+            drag?.over === key && drag.key !== key && (drag.after
+              ? "after:absolute after:inset-x-1 after:-bottom-px after:h-0.5 after:rounded-full after:bg-accent"
+              : "before:absolute before:inset-x-1 before:-top-px before:h-0.5 before:rounded-full before:bg-accent"),
+          )}
+        >
+          {render(key)}
+        </div>
+      ))}
+    </>
+  );
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -60,6 +127,7 @@ export function Sidebar() {
   const { setAnchor: menuAnchorRef, ...menu } = usePopover<HTMLButtonElement>();
   const workspaceName = (data.settings.find((s) => s.key === "workspace")?.value.name as string) ?? "Studio Spot";
 
+  const top = useTopOrder();
   const activeProjects = useMemo(() => sortProjects(data.projects.filter(isActiveProject)), [data.projects]);
 
   const isActive = (href: string) =>
@@ -101,6 +169,26 @@ export function Sidebar() {
             <MenuItem icon={<Moon className="size-4" />} selected={pref === "dark"} onSelect={() => setPref("dark")}>
               Dark
             </MenuItem>
+            <MenuItem
+              icon={<Palette className="size-4" />}
+              onSelect={() => {
+                menu.close();
+                router.push("/settings?section=appearance");
+              }}
+            >
+              Colour theme…
+            </MenuItem>
+            {top.custom && (
+              <MenuItem
+                icon={<RotateCcw className="size-4" />}
+                onSelect={() => {
+                  top.reset();
+                  menu.close();
+                }}
+              >
+                Reset sidebar order
+              </MenuItem>
+            )}
             {demo && (
               <>
                 <MenuDivider />
@@ -138,34 +226,41 @@ export function Sidebar() {
       </div>
 
       <div className="px-2 pt-1">
-        <button
-          type="button"
-          onClick={() => {
-            closeMobileNav();
-            openSearch();
+        <ReorderableTop
+          order={top.order}
+          onReorder={top.save}
+          render={(key) => {
+            if (key === "search")
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeMobileNav();
+                    openSearch();
+                  }}
+                  className="flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-[14px] text-fg-2 hover:bg-hover"
+                >
+                  <span className="flex size-[22px] items-center justify-center">
+                    <Search className="size-[18px]" strokeWidth={1.8} />
+                  </span>
+                  <span className="flex-1 text-left">Search</span>
+                  <Kbd>⌘K</Kbd>
+                </button>
+              );
+            if (key === "inbox") return <InboxButton onNavigate={closeMobileNav} />;
+            const item = NAV_ITEMS.find((i) => i.href === key)!;
+            const Icon = NAV_ICONS[item.icon]!;
+            return (
+              <NavRow
+                href={item.href}
+                label={item.label}
+                icon={<Icon className="size-[18px]" strokeWidth={1.8} />}
+                active={isActive(item.href)}
+                onNavigate={closeMobileNav}
+              />
+            );
           }}
-          className="flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-[14px] text-fg-2 hover:bg-hover"
-        >
-          <span className="flex size-[22px] items-center justify-center">
-            <Search className="size-[18px]" strokeWidth={1.8} />
-          </span>
-          <span className="flex-1 text-left">Search</span>
-          <Kbd>⌘K</Kbd>
-        </button>
-        <InboxButton onNavigate={closeMobileNav} />
-        {NAV_ITEMS.map((item) => {
-          const Icon = NAV_ICONS[item.icon]!;
-          return (
-            <NavRow
-              key={item.href}
-              href={item.href}
-              label={item.label}
-              icon={<Icon className="size-[18px]" strokeWidth={1.8} />}
-              active={isActive(item.href)}
-              onNavigate={closeMobileNav}
-            />
-          );
-        })}
+        />
       </div>
 
       <div className="mt-5 min-h-0 flex-1 overflow-y-auto px-2">

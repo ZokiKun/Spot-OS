@@ -6,7 +6,7 @@ import { CalendarClock, CalendarRange, Flag, LayoutDashboard, LayoutGrid, List, 
 import type { Project } from "@/lib/types";
 import type { Workload } from "@/lib/selectors";
 import { PROJECT_STATUSES, PROJECT_TYPES, optionFor } from "@/lib/constants";
-import { projectProgress, taskAssignees } from "@/lib/selectors";
+import { hasClient, projectProgress, taskAssignees } from "@/lib/selectors";
 import { useProfiles, useWorkspace } from "@/lib/store";
 import { cn, daysUntil, formatDay } from "@/lib/utils";
 import { Avatar, AvatarStack } from "@/components/ui/avatar";
@@ -193,7 +193,7 @@ export function ProjectCard({ project: p }: { project: Project }) {
         </span>
       </div>
       <div className="mt-2.5 line-clamp-2 text-[15px] font-semibold leading-snug">{p.name}</div>
-      {p.client && <div className="truncate text-[12px] text-fg-3">{p.client}</div>}
+      {hasClient(p) && p.client && <div className="truncate text-[12px] text-fg-3">{p.client}</div>}
       <div className="mt-1.5 line-clamp-2 min-h-[2lh] text-[13px] text-fg-2">
         <span className="flex min-w-0 items-center gap-1">
           → <NextStepText project={p} />

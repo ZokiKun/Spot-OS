@@ -1,4 +1,5 @@
 import type { Milestone, Snapshot, Task, UUID } from "./types";
+import { sortTasks } from "./selectors";
 
 export type MilestoneState = "done" | "current" | "upcoming";
 
@@ -22,6 +23,12 @@ export interface Timeline {
   complete: boolean;
 }
 
+/** Tasks in a timeline group: hand-ordered ones first (by sort_order), the rest by due date and priority. */
+export function orderTasks(tasks: Task[]) {
+  const rank = new Map(sortTasks(tasks).map((t, i) => [t.id, i]));
+  return tasks.slice().sort((a, b) => (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity) || rank.get(a.id)! - rank.get(b.id)!);
+}
+
 export function sortMilestones(milestones: Milestone[]) {
   return milestones.slice().sort((a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at));
 }
@@ -37,7 +44,7 @@ export function projectTimeline(projectId: UUID, data: Pick<Snapshot, "milestone
   const projectTasks = data.tasks.filter((t) => t.project_id === projectId);
   let current: TimelineStep | null = null;
   const steps = milestones.map((milestone, i): TimelineStep => {
-    const tasks = projectTasks.filter((t) => t.milestone_id === milestone.id);
+    const tasks = orderTasks(projectTasks.filter((t) => t.milestone_id === milestone.id));
     const done = tasks.filter((t) => t.status === "done").length;
     const finished = tasks.length > 0 && done === tasks.length;
     const step: TimelineStep = { milestone, index: i + 1, tasks, done, total: tasks.length, state: "upcoming" };
@@ -51,7 +58,7 @@ export function projectTimeline(projectId: UUID, data: Pick<Snapshot, "milestone
   return {
     steps,
     current,
-    loose: projectTasks.filter((t) => !t.milestone_id || !ids.has(t.milestone_id)),
+    loose: orderTasks(projectTasks.filter((t) => !t.milestone_id || !ids.has(t.milestone_id))),
     complete: steps.length > 0 && !current,
   };
 }
