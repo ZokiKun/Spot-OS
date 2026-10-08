@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconButton } from "./button";
+import { pressDismissedPopover } from "./popover";
 
 export function Dialog({
   open,
@@ -32,11 +33,11 @@ export function Dialog({
 
   if (!open || typeof document === "undefined") return null;
   return createPortal(
-    <div className="anim-fade fixed inset-0 z-40 flex items-start justify-center bg-[rgba(15,15,15,0.6)] px-4 pt-[12vh]" onMouseDown={onClose}>
+    <div className="anim-fade fixed inset-0 z-40 flex items-start justify-center bg-[rgba(15,15,15,0.6)] px-4 pt-[12vh]" onPointerDown={(e) => !pressDismissedPopover(e.nativeEvent) && onClose()}>
       <div
         role="dialog"
         aria-modal="true"
-        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         className={cn("anim-pop flex max-h-[76vh] w-full flex-col overflow-hidden rounded-xl bg-elevated shadow-menu", className)}
         style={{ maxWidth: width }}
       >

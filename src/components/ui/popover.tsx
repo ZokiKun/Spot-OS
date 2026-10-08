@@ -15,6 +15,49 @@ interface PopoverProps {
   offset?: number;
 }
 
+// ─── Open popovers form a stack ───
+// One capture-phase listener closes popovers from the top down until it reaches the one the
+// press landed in (or its anchor). Capture phase matters: dialogs and rows stop mousedown from
+// bubbling, which used to leave popovers stuck open. Opening a popover elsewhere therefore
+// closes any unrelated one, while a popover opened from inside another keeps its parent.
+type Layer = { panel: () => HTMLElement | null; anchor: () => HTMLElement | null; close: () => void };
+const layers: Layer[] = [];
+const dismissed = new WeakSet<Event>();
+
+/** True when this press closed a popover — other "click outside" handlers should ignore it. */
+export const pressDismissedPopover = (e: Event) => dismissed.has(e);
+export const hasOpenPopover = () => layers.length > 0;
+
+function onLayerPress(e: PointerEvent) {
+  const t = e.target as Node;
+  for (let i = layers.length - 1; i >= 0; i--) {
+    const l = layers[i];
+    if (l.panel()?.contains(t) || l.anchor()?.contains(t)) break;
+    dismissed.add(e);
+    l.close();
+  }
+}
+function onLayerKey(e: KeyboardEvent) {
+  if (e.key !== "Escape" || !layers.length) return;
+  e.stopPropagation();
+  layers[layers.length - 1].close();
+}
+function pushLayer(l: Layer) {
+  if (!layers.length) {
+    document.addEventListener("pointerdown", onLayerPress, true);
+    document.addEventListener("keydown", onLayerKey, true);
+  }
+  layers.push(l);
+  return () => {
+    const i = layers.indexOf(l);
+    if (i >= 0) layers.splice(i, 1);
+    if (!layers.length) {
+      document.removeEventListener("pointerdown", onLayerPress, true);
+      document.removeEventListener("keydown", onLayerKey, true);
+    }
+  };
+}
+
 /** Floating menu surface anchored to an element (Notion menus: white, 6px radius, layered shadow). */
 export function Popover({ open, onClose, anchor, children, align = "start", width, className, offset = 4 }: PopoverProps) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -42,34 +85,33 @@ export function Popover({ open, onClose, anchor, children, align = "start", widt
     if (open) place();
   }, [open, place]);
 
+  // Read through a ref so the layer keeps its place in the stack across re-renders.
+  const closeRef = useRef(onClose);
+  useLayoutEffect(() => {
+    closeRef.current = onClose;
+  });
+  const anchorRef = useRef(anchor);
+  useLayoutEffect(() => {
+    anchorRef.current = anchor;
+  });
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (panelRef.current?.contains(t) || anchor?.contains(t)) return;
-      onClose();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        onClose();
-      }
-    };
+    return pushLayer({ panel: () => panelRef.current, anchor: () => anchorRef.current, close: () => closeRef.current() });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     const onMove = () => place();
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey, true);
     window.addEventListener("resize", onMove);
     window.addEventListener("scroll", onMove, true);
     const ro = new ResizeObserver(onMove);
     if (panelRef.current) ro.observe(panelRef.current);
     return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey, true);
       window.removeEventListener("resize", onMove);
       window.removeEventListener("scroll", onMove, true);
       ro.disconnect();
     };
-  }, [open, onClose, anchor, place]);
+  }, [open, place]);
 
   if (!open || typeof document === "undefined") return null;
   return createPortal(

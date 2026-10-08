@@ -182,7 +182,7 @@ export function ProjectCover({ project }: { project: Project }) {
       {repositioning && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/25 text-[13px] font-medium text-white">Drag the image up or down</div>
       )}
-      <div className={cn("absolute bottom-3 right-4 flex gap-1 transition-opacity sm:right-10", repositioning || pop.open ? "opacity-100" : "opacity-0 group-hover/cover:opacity-100")}>
+      <div className="absolute bottom-3 right-4 z-[2] flex gap-1 sm:right-10">
         {repositioning ? (
           <>
             <CoverButton

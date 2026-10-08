@@ -80,6 +80,7 @@ function TaskPeek({ taskId, onClose }: { taskId: UUID | null; onClose: () => voi
   return (
     <SidePeek
       open
+      peekKey={task.id}
       onClose={onClose}
       expandHref={project ? `/projects/${project.id}?tab=tasks&task=${task.id}` : undefined}
       actions={

@@ -14,6 +14,29 @@ const MISSING_TABLE = ["42P01", "PGRST205"];
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365; // 1 year — see docs/ARCHITECTURE.md §6
 
 /**
+ * Columns from newer migrations: if the database hasn't been migrated yet, PostgREST rejects the
+ * write ("Could not find the 'x' column…", PGRST204). Drop that column and retry so the app keeps
+ * saving — e.g. tasks keep their primary assignee until 0006 adds assignee_ids.
+ */
+const MISSING_COLUMN = /Could not find the '([^']+)' column/;
+async function withoutMissingColumns<R>(
+  values: Record<string, unknown>,
+  run: (values: Record<string, unknown>) => PromiseLike<{ data: R; error: { code?: string; message: string } | null }>,
+) {
+  let current = values;
+  for (let tries = 0; tries < 5; tries++) {
+    const res = await run(current);
+    const col = res.error?.message.match(MISSING_COLUMN)?.[1];
+    if (!col || !(col in current)) return res;
+    console.warn(`Spot OS: column "${col}" is missing — run the latest supabase/migrations.`);
+    const { [col]: _dropped, ...rest } = current;
+    void _dropped;
+    current = rest;
+  }
+  return run(current);
+}
+
+/**
  * Supabase backend. RLS restricts every table to studio members;
  * activity_log rows are written by database triggers, not by the client.
  */
@@ -54,11 +77,11 @@ export class SupabaseAdapter implements DataAdapter {
   async insert<T extends TableName>(table: T, row: Row<T>): Promise<Row<T>> {
     // RLS lets you create a notification for someone else but not read it back.
     if (table === "notifications") {
-      const { error } = await this.sb.from(table).insert(row);
+      const { error } = await withoutMissingColumns(row as unknown as Record<string, unknown>, (v) => this.sb.from(table).insert(v));
       if (error) throw new Error(error.message);
       return row;
     }
-    const { data, error } = await this.sb.from(table).insert(row).select().single();
+    const { data, error } = await withoutMissingColumns(row as unknown as Record<string, unknown>, (v) => this.sb.from(table).insert(v).select().single());
     if (error) throw new Error(error.message);
     return data as Row<T>;
   }
@@ -67,7 +90,7 @@ export class SupabaseAdapter implements DataAdapter {
     // updated_at is set by the `touch_updated_at` trigger
     const { updated_at: _ignored, ...rest } = patch as Record<string, unknown>;
     void _ignored;
-    const { data, error } = await this.sb.from(table).update(rest).eq("id", id).select().single();
+    const { data, error } = await withoutMissingColumns(rest, (v) => this.sb.from(table).update(v).eq("id", id).select().single());
     if (error) throw new Error(error.message);
     return data as Row<T>;
   }

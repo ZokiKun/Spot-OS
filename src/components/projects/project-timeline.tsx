@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronRight, Circle, CircleCheck, CircleDot, Ellipsis, Flag, Plus, Trash2 } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, ChevronRight, Circle, CircleCheck, CircleDot, Ellipsis, Flag, GripVertical, Plus, Trash2 } from "lucide-react";
 import type { Project } from "@/lib/types";
 import { useWorkspace } from "@/lib/store";
 import { nextSortOrder, projectTimeline, type MilestoneState, type Timeline, type TimelineStep } from "@/lib/milestones";
@@ -135,19 +135,47 @@ export function ProjectTimeline({ project }: { project: Project }) {
   const [toggled, setToggled] = useState<Record<string, boolean>>({});
   const isOpen = (s: TimelineStep) => toggled[s.milestone.id] ?? s.state !== "done";
   const headerAt = steps.find(isOpen)?.milestone.id;
+  const { update } = useWorkspace();
+  // Drag-to-reorder: which milestone is being dragged, and where it would land.
+  const [drag, setDrag] = useState<{ id: string; over: string | null; after: boolean } | null>(null);
+
+  /** Move a milestone to `to` (0-based) and rewrite sort_order 0..n. */
+  const moveTo = (id: string, to: number) => {
+    const order = steps.map((s) => s.milestone);
+    const from = order.findIndex((x) => x.id === id);
+    if (from < 0) return;
+    const [m] = order.splice(from, 1);
+    order.splice(Math.max(0, Math.min(to, order.length)), 0, m!);
+    order.forEach((x, idx) => x.sort_order !== idx && void update("milestones", x.id, { sort_order: idx }));
+  };
+  const drop = () => {
+    if (drag?.over && drag.over !== drag.id) {
+      const rest = steps.filter((s) => s.milestone.id !== drag.id);
+      const target = rest.findIndex((s) => s.milestone.id === drag.over);
+      moveTo(drag.id, target + (drag.after ? 1 : 0));
+    }
+    setDrag(null);
+  };
+
   return (
     <div className="space-y-6">
       {steps.map((step, i) => (
         <MilestoneSection
           key={step.milestone.id}
           step={step}
-          steps={steps}
           first={i === 0}
           last={i === steps.length - 1}
           project={project}
           open={isOpen(step)}
           onToggle={() => setToggled((t) => ({ ...t, [step.milestone.id]: !isOpen(step) }))}
           showHeader={step.milestone.id === headerAt}
+          onMove={(dir) => moveTo(step.milestone.id, i + dir)}
+          dragging={drag?.id === step.milestone.id}
+          dropEdge={drag && drag.over === step.milestone.id && drag.id !== step.milestone.id ? (drag.after ? "after" : "before") : null}
+          onDragStart={() => setDrag({ id: step.milestone.id, over: null, after: false })}
+          onDragOver={(after) => drag && (drag.over !== step.milestone.id || drag.after !== after) && setDrag({ ...drag, over: step.milestone.id, after })}
+          onDrop={drop}
+          onDragEnd={() => setDrag(null)}
         />
       ))}
       <AddMilestone projectId={project.id} empty={!steps.length} />
@@ -170,41 +198,79 @@ export function ProjectTimeline({ project }: { project: Project }) {
 
 function MilestoneSection({
   step,
-  steps,
   first,
   last,
   project,
   open,
   onToggle,
   showHeader,
+  onMove,
+  dragging,
+  dropEdge,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: {
   step: TimelineStep;
-  steps: TimelineStep[];
   first: boolean;
   last: boolean;
   project: Project;
   open: boolean;
   onToggle: () => void;
   showHeader: boolean;
+  onMove: (dir: -1 | 1) => void;
+  dragging: boolean;
+  dropEdge: "before" | "after" | null;
+  onDragStart: () => void;
+  onDragOver: (after: boolean) => void;
+  onDrop: () => void;
+  onDragEnd: () => void;
 }) {
   const { update, remove } = useWorkspace();
   const { setAnchor, ...menu } = usePopover();
+  const sectionRef = useRef<HTMLElement>(null);
   const m = step.milestone;
-
-  // Reorder by rewriting sort_order 0..n with the two neighbours swapped.
   const move = (dir: -1 | 1) => {
-    const order = steps.map((s) => s.milestone);
-    const i = order.findIndex((x) => x.id === m.id);
-    const j = i + dir;
-    if (j < 0 || j >= order.length) return;
-    [order[i], order[j]] = [order[j]!, order[i]!];
-    order.forEach((x, idx) => x.sort_order !== idx && void update("milestones", x.id, { sort_order: idx }));
+    onMove(dir);
     menu.close();
   };
 
   return (
-    <section>
-      <div className={cn("group flex min-h-9 items-center gap-2 rounded-md pr-1", step.state === "current" && "bg-[color-mix(in_srgb,var(--tag-blue-bg)_45%,transparent)]")}>
+    <section
+      ref={sectionRef}
+      onDragOver={(e) => {
+        e.preventDefault();
+        const r = e.currentTarget.getBoundingClientRect();
+        onDragOver(e.clientY > r.top + Math.min(r.height / 2, 24));
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        onDrop();
+      }}
+      className={cn(
+        "relative transition-opacity",
+        dragging && "opacity-40",
+        dropEdge === "before" && "before:absolute before:inset-x-0 before:-top-3 before:h-0.5 before:rounded-full before:bg-accent",
+        dropEdge === "after" && "after:absolute after:inset-x-0 after:-bottom-3 after:h-0.5 after:rounded-full after:bg-accent",
+      )}
+    >
+      <div className={cn("group flex min-h-9 items-center gap-1.5 rounded-md pr-1", step.state === "current" && "bg-[color-mix(in_srgb,var(--tag-blue-bg)_45%,transparent)]")}>
+        <span
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", m.title);
+            if (sectionRef.current) e.dataTransfer.setDragImage(sectionRef.current, 24, 18);
+            onDragStart();
+          }}
+          onDragEnd={onDragEnd}
+          title="Drag to reorder"
+          aria-hidden
+          className="-mr-1 flex h-7 w-4 shrink-0 cursor-grab items-center justify-center text-fg-3 opacity-50 hover:opacity-100 active:cursor-grabbing group-hover:opacity-100"
+        >
+          <GripVertical className="size-4" />
+        </span>
         <button
           type="button"
           onClick={onToggle}
@@ -232,6 +298,14 @@ function MilestoneSection({
         <div className="w-24 shrink-0 text-[13px]">
           <DateField value={m.due_date} placeholder="Due date" onChange={(due_date) => void update("milestones", m.id, { due_date })} />
         </div>
+        <span className="flex shrink-0 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 max-sm:opacity-100">
+          <IconButton label={`Move ${m.title} up`} disabled={first} onClick={() => onMove(-1)}>
+            <ArrowUp className="size-3.5" />
+          </IconButton>
+          <IconButton label={`Move ${m.title} down`} disabled={last} onClick={() => onMove(1)}>
+            <ArrowDown className="size-3.5" />
+          </IconButton>
+        </span>
         <IconButton ref={setAnchor} label={`More for ${m.title}`} onClick={menu.toggle}>
           <Ellipsis className="size-4" />
         </IconButton>
