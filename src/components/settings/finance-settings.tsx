@@ -5,7 +5,7 @@ import { CircleCheck, FileSpreadsheet, TriangleAlert, Upload } from "lucide-reac
 import type { FinanceMapping, FinanceSource } from "@/lib/types";
 import { useWorkspace } from "@/lib/store";
 import { DEMO_MAPPING } from "@/lib/finance/sample";
-import { normalizeSheet, summarize } from "@/lib/finance/normalize";
+import { detectSplitTabs, normalizeWorkbook, summarize } from "@/lib/finance/normalize";
 import { FINANCE_FILE_ACCEPT, readFinanceFile, type FinanceFileSheet } from "@/lib/finance/read-file";
 import { cn, formatMoney, timeAgo } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -43,15 +43,14 @@ export function FinanceSettings() {
 
   const m = draft.mapping;
   const setM = (patch: Partial<FinanceMapping>) => setDraft((d) => ({ ...d, mapping: { ...d.mapping, ...patch } }));
-  const mode: "single" | "split" = m.amount ? "single" : "split";
+  const mode: "tabs" | "single" | "split" = m.income_sheet || m.expense_sheet ? "tabs" : m.amount ? "single" : "split";
 
   // Preview updates live as the file, tab or mapping changes.
-  const rows = picked?.sheets[picked.sheet]?.rows ?? null;
   const preview = useMemo(() => {
-    if (!rows) return null;
-    const result = normalizeSheet(rows, m);
+    if (!picked) return null;
+    const result = normalizeWorkbook(picked.sheets, m, picked.sheet);
     return { result, summary: summarize(result.entries, result.balance, m) };
-  }, [rows, m]);
+  }, [picked, m]);
 
   const pickFile = async (file: File | undefined) => {
     if (!file) return;
@@ -64,6 +63,24 @@ export function FinanceSettings() {
       const want = m.date.trim().toLowerCase();
       const withDate = sheets.findIndex((s) => s.rows.slice(0, 20).some((r) => r.some((c) => c.trim().toLowerCase() === want)));
       setPicked({ fileName: file.name, sheets, sheet: withDate >= 0 ? withDate : sheets.findIndex((s) => s.rows.length) });
+      // Income and expenses on their own tabs (like the studio's sheet): read both, no setup needed.
+      const split = detectSplitTabs(sheets, m.date);
+      if (split && mode !== "tabs")
+        setM({
+          ...split,
+          amount: m.amount || "Amount",
+          type: undefined,
+          income: undefined,
+          expense: undefined,
+          category: m.category || "Category",
+          description: m.description || "Description",
+          // The tabs have no status or running-balance column: "available" = opening balance + entries.
+          status: undefined,
+          balance: undefined,
+          opening_balance: m.opening_balance ?? 0,
+          // EUR was only the template default; the studio's books are in rupees.
+          currency: m.currency && m.currency !== "EUR" ? m.currency : "INR",
+        });
     } catch (err) {
       setPicked(null);
       setReadError(err instanceof Error ? err.message : String(err));
@@ -105,8 +122,6 @@ export function FinanceSettings() {
       <TextInput className="w-56" placeholder={placeholder} value={(m[key] as string | undefined) ?? ""} onChange={(e) => setM({ [key]: e.target.value || undefined })} />
     </SettingsRow>
   );
-
-  const sheet = picked?.sheets[picked.sheet];
 
   return (
     <>
@@ -157,7 +172,7 @@ export function FinanceSettings() {
             <span className="text-[12px] text-fg-2">{picked ? "Choose a different file" : "Excel (.xlsx) or CSV · up to 10 MB"}</span>
           </label>
 
-          {picked && picked.sheets.length > 1 && (
+          {picked && picked.sheets.length > 1 && mode !== "tabs" && (
             <SettingsRow label="Tab" description="Which tab of the workbook holds the transactions.">
               <select
                 value={picked.sheet}
@@ -187,13 +202,13 @@ export function FinanceSettings() {
             </p>
           )}
 
-          {preview && sheet && (
+          {preview && (
             <PreviewBox
               ok={preview.result.entries.length > 0}
               text={
                 preview.result.entries.length
-                  ? `Found ${preview.result.entries.length} entries in “${sheet.name}”. Available: ${formatMoney(preview.summary.available, m.currency)} · This month net: ${formatMoney(preview.summary.currentMonth?.net ?? 0, m.currency)}`
-                  : `No entries matched the column mapping in “${sheet.name}”. Check the column names below.`
+                  ? `Found ${preview.result.entries.length} entries in ${preview.result.tabs.map((t) => `“${t}”`).join(" + ")}. Available: ${formatMoney(preview.summary.available, m.currency)} · This month net: ${formatMoney(preview.summary.currentMonth?.net ?? 0, m.currency)}`
+                  : `No entries matched the column mapping in ${preview.result.tabs.map((t) => `“${t}”`).join(" + ") || "this file"}. Check the mapping below.`
               }
               headers={preview.result.headers}
               lines={[...preview.result.warnings, ...preview.result.entries.slice(-3).map((e) => `${e.date} · ${e.description ?? e.category ?? ""} · ${formatMoney(e.amount, m.currency)}`)]}
@@ -206,15 +221,30 @@ export function FinanceSettings() {
         {field("Date column", "date")}
         <SettingsRow label="Amount layout">
           <div className="flex gap-1">
-            <Button variant={mode === "single" ? "primary" : "secondary"} onClick={() => setM({ amount: m.amount || "Amount", income: undefined, expense: undefined })}>
+            <Button
+              variant={mode === "tabs" ? "primary" : "secondary"}
+              onClick={() => setM({ income_sheet: m.income_sheet || "Income", expense_sheet: m.expense_sheet || "Expenses", amount: m.amount || "Amount", type: undefined, income: undefined, expense: undefined })}
+            >
+              Separate tabs
+            </Button>
+            <Button variant={mode === "single" ? "primary" : "secondary"} onClick={() => setM({ amount: m.amount || "Amount", income: undefined, expense: undefined, income_sheet: undefined, expense_sheet: undefined })}>
               One amount column
             </Button>
-            <Button variant={mode === "split" ? "primary" : "secondary"} onClick={() => setM({ amount: undefined, type: undefined, income: m.income || "Income", expense: m.expense || "Expense" })}>
+            <Button
+              variant={mode === "split" ? "primary" : "secondary"}
+              onClick={() => setM({ amount: undefined, type: undefined, income: m.income || "Income", expense: m.expense || "Expense", income_sheet: undefined, expense_sheet: undefined })}
+            >
               Income + Expense columns
             </Button>
           </div>
         </SettingsRow>
-        {mode === "single" ? (
+        {mode === "tabs" ? (
+          <>
+            {field("Income tab", "income_sheet", "Tab name, e.g. Income")}
+            {field("Expenses tab", "expense_sheet", "Tab name, e.g. Expenses")}
+            {field("Amount column", "amount")}
+          </>
+        ) : mode === "single" ? (
           <>
             {field("Amount column", "amount")}
             {field("Type column", "type", "Optional — e.g. Type")}
@@ -290,7 +320,18 @@ function PreviewBox({ ok, text, headers, lines }: { ok: boolean; text: string; h
   );
 }
 
-const DEFAULT_MAPPING: FinanceMapping = { date: "Date", amount: "Amount", type: "Type", income_values: ["Income"], expense_values: ["Expense"], currency: "EUR", date_format: "auto" };
+/** Matches the studio's finance workbook: Income and Expenses tabs with Date · Category · Description · Amount. */
+const DEFAULT_MAPPING: FinanceMapping = {
+  date: "Date",
+  amount: "Amount",
+  income_sheet: "Income",
+  expense_sheet: "Expenses",
+  category: "Category",
+  description: "Description",
+  opening_balance: 0,
+  currency: "INR",
+  date_format: "auto",
+};
 
 function toDraft(s: FinanceSource | null): Draft {
   return s ? { name: s.name, kind: s.kind === "demo" ? "demo" : "upload", mapping: s.mapping } : { name: "Studio finance", kind: "upload", mapping: DEFAULT_MAPPING };

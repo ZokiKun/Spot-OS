@@ -153,6 +153,54 @@ export function normalizeSheet(rows: string[][], mapping: FinanceMapping): Norma
   return { entries, balance, headers, warnings: [...new Set(warnings)] };
 }
 
+export interface WorkbookSheet {
+  name: string;
+  rows: string[][];
+}
+
+const sameName = (a: string, b?: string) => !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/**
+ * A whole workbook → entries. With income_sheet/expense_sheet set, the two tabs are read with the
+ * same columns and combined (income positive, expenses negative); otherwise one tab is read.
+ */
+export function normalizeWorkbook(sheets: WorkbookSheet[], mapping: FinanceMapping, sheetIndex = 0): NormalizeResult & { tabs: string[] } {
+  if (!mapping.income_sheet && !mapping.expense_sheet) {
+    const sheet = sheets[sheetIndex] ?? sheets[0];
+    if (!sheet) return { entries: [], balance: null, headers: [], warnings: ["The file has no tabs"], tabs: [] };
+    return { ...normalizeSheet(sheet.rows, mapping), tabs: [sheet.name] };
+  }
+  const perTab = { ...mapping, amount: mapping.amount || "Amount", type: undefined, income: undefined, expense: undefined };
+  const warnings: string[] = [];
+  const entries: FinanceEntry[] = [];
+  const headers = new Set<string>();
+  const tabs: string[] = [];
+  for (const [name, sign] of [[mapping.income_sheet, 1], [mapping.expense_sheet, -1]] as const) {
+    if (!name) continue;
+    const sheet = sheets.find((s) => sameName(s.name, name));
+    if (!sheet) {
+      warnings.push(`Tab "${name}" not found — tabs in this file: ${sheets.map((s) => s.name).join(", ")}`);
+      continue;
+    }
+    tabs.push(sheet.name);
+    const r = normalizeSheet(sheet.rows, perTab);
+    r.headers.forEach((h) => h && headers.add(h));
+    warnings.push(...r.warnings.map((w) => `${sheet.name}: ${w}`));
+    entries.push(...r.entries.map((e) => ({ ...e, amount: sign * Math.abs(e.amount) })));
+  }
+  entries.sort((a, b) => a.date.localeCompare(b.date));
+  return { entries, balance: null, headers: [...headers], warnings, tabs };
+}
+
+/** Finds an Income tab and an Expenses tab that both have the date column (e.g. Studio Spot's finance sheet). */
+export function detectSplitTabs(sheets: WorkbookSheet[], dateHeader: string) {
+  const want = dateHeader.trim().toLowerCase();
+  const hasTable = (s: WorkbookSheet) => s.rows.slice(0, 20).some((r) => r.some((c) => c.trim().toLowerCase() === want));
+  const income = sheets.find((s) => /income|revenue|earning/i.test(s.name) && hasTable(s));
+  const expense = sheets.find((s) => /expense|spend|cost|outgoing/i.test(s.name) && hasTable(s));
+  return income && expense ? { income_sheet: income.name, expense_sheet: expense.name } : null;
+}
+
 export interface PeriodTotals {
   key: string; // yyyy-MM or yyyy-Qn
   label: string;

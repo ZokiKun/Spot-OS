@@ -5,9 +5,9 @@
 
 alter table public.finance_sources add column if not exists file_name text;
 
-update public.finance_sources set kind = 'upload', url = null where kind = 'google_sheet_csv';
-
+-- Drop the old check (it only allows 'google_sheet_csv' | 'demo') before converting rows.
 alter table public.finance_sources drop constraint if exists finance_sources_kind_check;
+update public.finance_sources set kind = 'upload', url = null where kind = 'google_sheet_csv';
 alter table public.finance_sources
   add constraint finance_sources_kind_check check (kind in ('upload', 'demo'));
 alter table public.finance_sources alter column kind set default 'upload';

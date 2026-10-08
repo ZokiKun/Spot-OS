@@ -75,7 +75,8 @@ export function timeAgo(iso: string | null | undefined) {
 
 export function formatMoney(value: number | null | undefined, currency = "EUR", compact = false) {
   if (value == null || Number.isNaN(value)) return "—";
-  return new Intl.NumberFormat(undefined, {
+  // Rupees read best in Indian grouping (₹1,89,931); other currencies follow the browser.
+  return new Intl.NumberFormat(currency === "INR" ? "en-IN" : undefined, {
     style: "currency",
     currency,
     maximumFractionDigits: 0,

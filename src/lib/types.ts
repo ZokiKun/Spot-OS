@@ -224,6 +224,9 @@ export interface FinanceMapping {
   expense_values?: string[];
   income?: string; // separate income column
   expense?: string; // separate expense column
+  /** Workbook with income and expenses on separate tabs (amounts positive on both): the tab names. */
+  income_sheet?: string;
+  expense_sheet?: string;
   category?: string;
   description?: string;
   status?: string; // e.g. "Paid" / "Outstanding"
