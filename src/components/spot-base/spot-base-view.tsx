@@ -19,6 +19,7 @@ import { Popover, usePopover } from "@/components/ui/popover";
 import { MenuItem, MenuList } from "@/components/ui/menu";
 import { EmptyState } from "@/components/ui/misc";
 import { BRAND_SLUG, CORE_PAGES, SpotBaseOverview, TEAM_SLUG, findPage } from "./spot-base-overview";
+import { useConfirm } from "@/components/ui/confirm";
 
 const SPOT_MD = "spot-md";
 
@@ -147,6 +148,7 @@ function NavLink({ href, active, children }: { href: string; active: boolean; ch
 
 function KbPageEditor({ page }: { page: KbPage }) {
   const { update, remove, me } = useWorkspace();
+  const ask = useConfirm();
   const people = useProfiles();
   const router = useRouter();
   const { setAnchor: menuAnchorRef, ...menu } = usePopover();
@@ -203,10 +205,11 @@ function KbPageEditor({ page }: { page: KbPage }) {
                 danger
                 icon={<Trash2 className="size-4" />}
                 onSelect={() => {
-                  if (confirm(`Delete “${page.title}”?`)) {
+                  void ask({ title: `Delete “${page.title}”?` }).then((ok) => {
+                    if (!ok) return;
                     void remove("kb_pages", page.id);
                     router.push("/spot-base");
-                  }
+                  });
                 }}
               >
                 Delete page

@@ -7,6 +7,7 @@ import { normalizeTag, useTags, type TagScope } from "@/lib/tags";
 import { cn } from "@/lib/utils";
 import { Popover, usePopover } from "./popover";
 import { Tag } from "./tag";
+import { useConfirm } from "@/components/ui/confirm";
 
 const COLORS: TagColor[] = ["default", "gray", ...MEMBER_COLORS.filter((c) => c !== "gray")];
 
@@ -173,6 +174,7 @@ function TagEditor({
   onDeleted: () => void;
 }) {
   const tags = useTags(scope);
+  const ask = useConfirm();
   const [draft, setDraft] = useState(name);
   const used = tags.counts.get(name) ?? 0;
   const commit = () => {
@@ -214,10 +216,12 @@ function TagEditor({
       <button
         type="button"
         onClick={() => {
-          if (!used || confirm(`Delete “${name}”? It’s removed from ${used} item${used === 1 ? "" : "s"}.`)) {
+          const go = () => {
             tags.remove(name);
             onDeleted();
-          }
+          };
+          if (!used) go();
+          else void ask({ title: `Delete the tag “${name}”?`, description: `It’s removed from ${used} item${used === 1 ? "" : "s"}.` }).then((ok) => ok && go());
         }}
         className="mt-1 flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-[14px] text-danger hover:bg-hover"
       >

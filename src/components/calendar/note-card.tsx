@@ -14,6 +14,7 @@ import { Popover, usePopover } from "@/components/ui/popover";
 import { MenuDivider, MenuItem, MenuList } from "@/components/ui/menu";
 import { RichEditor } from "@/components/editor/rich-editor";
 import { AttachmentList, NOTE_FILE_LIMIT } from "@/components/attachments";
+import { useConfirm } from "@/components/ui/confirm";
 
 function exportHtml(note: CalendarNote) {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${note.title || note.date}</title>
@@ -23,6 +24,7 @@ function exportHtml(note: CalendarNote) {
 
 export function NoteCard({ note, focus }: { note: CalendarNote; focus?: boolean }) {
   const { data, update, remove, upload, me } = useWorkspace();
+  const ask = useConfirm();
   const people = useProfiles();
   const { setAnchor: menuAnchorRef, ...menu } = usePopover();
   const ref = useRef<HTMLDivElement>(null);
@@ -96,7 +98,7 @@ export function NoteCard({ note, focus }: { note: CalendarNote; focus?: boolean 
               danger
               icon={<Trash2 className="size-4" />}
               onSelect={() => {
-                if (confirm(`Delete “${note.title || "Untitled"}”?`)) void remove("calendar_notes", note.id);
+                void ask({ title: `Delete “${note.title || "Untitled"}”?` }).then((ok) => ok && void remove("calendar_notes", note.id));
               }}
             >
               Delete note

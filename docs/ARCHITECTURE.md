@@ -80,6 +80,18 @@ src/
 
 **Per-device preferences** (`usePref` in `lib/hooks.ts`, localStorage): theme and colour theme, sidebar order, the project page layout (1 = details under the title, 2 = details in a right-hand panel) and each member's pinned Home view (`home-pin:<profile id>`).
 
+**Invoices** (`invoices`, migration 0010) belong to a project: number, what it's for, amount, issued/due dates, status `not_sent | sent | cleared` and an optional link. Shown on the project's Invoices tab with totals.
+
+**Custom task statuses** (0010): `projects.task_statuses` is a list of `{ id, label, color, base }`; `base` is the built-in status it counts as, so done/overdue/progress logic never changes. `tasks.custom_status` holds the chosen one (`lib/task-statuses.ts`). Ticking a checkbox resets it, and the task then shows its project's first status with that base.
+
+**Task views**: Tasks page — Table, Board (kanban, drag between columns), List, Grid, Gantt; a project's Timeline tab — Milestones, Board (its own statuses), List, Grid, Gantt (bars from creation to due date, grouped by milestone).
+
+**Activity** (`/activity`): every logged change, grouped by day, filterable by kind, person and project. The `log_activity` trigger (0010) also records invoices, milestones, files/links and deletions (deleted rows keep their project's name in `meta`, without a project link so the entry survives the project).
+
+**Confirmations** use the in-app `useConfirm()` dialog, never `window.confirm()` (a browser's "don't show more dialogs" makes it return false forever).
+
+**Voice typing**: focusing any text field shows a mic at its edge (or Alt+V) — the Web Speech API types at the cursor (Chrome, Edge, Safari).
+
 **Shift+A** runs the current page's add action (`usePageAdd`): Projects → new project, Tasks and a project → new task (in its current milestone), Calendar → note, Library → link, Reviews → new review, Spot Base → page, Home → the Quick Add menu. Elsewhere it opens the Quick Add chooser. It's ignored while typing or with a dialog/menu open.
 
 ## 4. Realtime architecture

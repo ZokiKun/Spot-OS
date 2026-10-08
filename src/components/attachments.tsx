@@ -9,6 +9,7 @@ import { cn, formatBytes, timeAgo } from "@/lib/utils";
 import { Button, IconButton } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/misc";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm";
 
 type Owner = { note_id?: string; project_id?: string; review_id?: string; kb_page_id?: string; task_id?: string };
 
@@ -149,6 +150,7 @@ export function AttachmentList({
   links?: boolean;
 }) {
   const { remove, create, me } = useWorkspace();
+  const ask = useConfirm();
   const people = useProfiles();
   const toast = useToast();
   const fileCount = items.filter((a) => !isLink(a)).length;
@@ -229,9 +231,11 @@ export function AttachmentList({
                   label={link ? "Remove link" : "Delete file"}
                   className="hidden group-hover:flex"
                   onClick={() => {
-                    if (!confirm(link ? `Remove this ${a.name} link?` : `Delete ${a.name}?`)) return;
-                    void remove("attachments", a.id);
-                    if (a.storage_path) void getAdapter().removeFile(a.storage_path);
+                    void ask({ title: link ? `Remove this ${a.name} link?` : `Delete ${a.name}?`, confirmLabel: link ? "Remove" : "Delete" }).then((ok) => {
+                      if (!ok) return;
+                      void remove("attachments", a.id);
+                      if (a.storage_path) void getAdapter().removeFile(a.storage_path);
+                    });
                   }}
                 >
                   <Trash2 className="size-3.5" />

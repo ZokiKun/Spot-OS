@@ -1,4 +1,5 @@
 import {
+  Activity,
   BookOpen,
   CalendarDays,
   ClipboardCheck,
@@ -15,6 +16,7 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   projects: FolderKanban,
   library: Library,
   reviews: ClipboardCheck,
+  activity: Activity,
   spotbase: BookOpen,
   settings: Settings,
 };

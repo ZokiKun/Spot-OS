@@ -11,6 +11,7 @@ import { TaskPeekProvider } from "@/components/tasks/task-peek";
 import { NotificationWatcher } from "./inbox";
 import { markPopState, recordVisit } from "./nav-history";
 import { QuickAddProvider } from "./quick-add";
+import { VoiceTyping } from "./voice-typing";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -72,6 +73,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </TaskPeekProvider>
       <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
       <NotificationWatcher />
+      <VoiceTyping />
     </ShellContext>
   );
 }

@@ -12,6 +12,7 @@ import {
   Contact,
   Ellipsis,
   Link2,
+  ListChecks,
   Palette,
   PanelRight,
   PanelTop,
@@ -48,14 +49,19 @@ import { LibraryItemDialog } from "@/components/library/library-item-dialog";
 import { LibraryRow } from "@/components/library/library-row";
 import { projectStatusPatch } from "./project-views";
 import { AddCoverButton, ProjectCover } from "./project-cover";
-import { NextStepCallout, ProjectTimeline, TimelineStepper, useTimeline } from "./project-timeline";
+import { NextStepCallout, TimelineStepper, useTimeline } from "./project-timeline";
 import { usePageAdd, useQuickAdd } from "@/components/shell/quick-add";
+import { ProjectInvoices } from "./project-invoices";
+import { ProjectTasks } from "./project-tasks";
+import { TaskStatusesDialog } from "./project-statuses";
+import { useConfirm } from "@/components/ui/confirm";
 
-type Tab = "overview" | "tasks" | "files" | "links" | "notes" | "activity";
+type Tab = "overview" | "tasks" | "invoices" | "files" | "links" | "notes" | "activity";
 const ICONS = ["📁", "🧭", "🪶", "🫙", "🟠", "⚙️", "📓", "🔤", "🎨", "📐", "🖼️", "🎬", "📦", "🌱", "✳️", "🔶", "🧪", "💡"];
 
 export function ProjectDetail({ id }: { id: string }) {
   const { data, update, remove, status } = useWorkspace();
+  const ask = useConfirm();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -64,6 +70,7 @@ export function ProjectDetail({ id }: { id: string }) {
   const { setAnchor: moreAnchorRef, ...more } = usePopover();
   const { setAnchor: iconPopAnchorRef, ...iconPop } = usePopover();
   const [description, setDescription] = useState<string | null>(null);
+  const [statusesOpen, setStatusesOpen] = useState(false);
   // Layout option 2 (details on the right) — per device, so each teammate can try it.
   const [layout, setLayout] = usePref<"stacked" | "split">("project-layout", "stacked");
   const split = layout === "split";
@@ -75,6 +82,7 @@ export function ProjectDetail({ id }: { id: string }) {
   const files = useMemo(() => data.attachments.filter((a) => a.project_id === id), [data.attachments, id]);
   const links = useMemo(() => data.library_items.filter((l) => l.project_id === id), [data.library_items, id]);
   const activity = useMemo(() => data.activity_log.filter((a) => a.project_id === id), [data.activity_log, id]);
+  const invoiceCount = useMemo(() => data.invoices.filter((i) => i.project_id === id).length, [data.invoices, id]);
 
   const Icon = NAV_ICONS.projects!;
   if (status === "ready" && !project)
@@ -106,6 +114,15 @@ export function ProjectDetail({ id }: { id: string }) {
             <Popover open={more.open} onClose={more.close} anchor={more.anchor} align="end" width={220}>
               <MenuList>
                 <MenuItem
+                  icon={<ListChecks className="size-4" />}
+                  onSelect={() => {
+                    more.close();
+                    setStatusesOpen(true);
+                  }}
+                >
+                  Task statuses…
+                </MenuItem>
+                <MenuItem
                   icon={<Archive className="size-4" />}
                   onSelect={() => {
                     set(projectStatusPatch(project.status === "archived" ? "active" : "archived"));
@@ -119,10 +136,12 @@ export function ProjectDetail({ id }: { id: string }) {
                   danger
                   icon={<Trash2 className="size-4" />}
                   onSelect={() => {
-                    if (confirm(`Delete “${project.name}” and its tasks? This cannot be undone.`)) {
+                    more.close();
+                    void ask({ title: `Delete “${project.name}”?`, description: "Its tasks, milestones, invoices and files are deleted too. This can’t be undone.", confirmLabel: "Delete project" }).then((ok) => {
+                      if (!ok) return;
                       void remove("projects", project.id);
                       router.push("/projects");
-                    }
+                    });
                   }}
                 >
                   Delete project
@@ -211,6 +230,7 @@ export function ProjectDetail({ id }: { id: string }) {
               items={[
                 { value: "overview", label: "Overview" },
                 { value: "tasks", label: "Timeline", count: tasks.filter(isOpen).length },
+                { value: "invoices", label: "Invoices", count: invoiceCount },
                 { value: "files", label: "Files", count: files.length },
                 { value: "links", label: "Links", count: links.length },
                 { value: "notes", label: "Notes" },
@@ -219,7 +239,8 @@ export function ProjectDetail({ id }: { id: string }) {
             />
             <div className="pt-5">
               {tab === "overview" && <Overview project={project} progress={prog} onOpenTimeline={() => setTab("tasks")} />}
-              {tab === "tasks" && <ProjectTimeline project={project} />}
+              {tab === "tasks" && <ProjectTasks project={project} onEditStatuses={() => setStatusesOpen(true)} />}
+              {tab === "invoices" && <ProjectInvoices project={project} />}
               {tab === "files" && <AttachmentList items={files} owner={{ project_id: project.id }} folder={`projects/${project.id}`} />}
               {tab === "links" && <ProjectLinks projectId={project.id} />}
               {tab === "notes" && <ProjectNotes project={project} />}
@@ -227,6 +248,7 @@ export function ProjectDetail({ id }: { id: string }) {
             </div>
           </div>
           </div>
+          <TaskStatusesDialog project={project} open={statusesOpen} onClose={() => setStatusesOpen(false)} />
         </div>
       )}
     </Page>

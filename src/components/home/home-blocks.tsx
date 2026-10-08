@@ -139,14 +139,14 @@ export function DatedRow({ item, showDate, showAssignee }: { item: DatedItem; sh
   const t = item.task;
   const project = t.project_id ? data.projects.find((p) => p.id === t.project_id) : undefined;
   return (
-    <div className="group flex h-[34px] items-center gap-2.5 rounded-md px-2 hover:bg-hover">
+    <div className="group flex min-h-[34px] items-center gap-2.5 rounded-md px-2 py-1 hover:bg-hover">
       <Checkbox
         checked={t.status === "done"}
         onChange={(done) => void update("tasks", t.id, statusPatch(done ? "done" : "todo"))}
         label={`Complete ${t.title}`}
       />
       <button type="button" onClick={() => openTask(t.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-        <span className={cn("min-w-0 shrink truncate text-[14px]", t.status === "done" && "text-fg-3 line-through")}>{t.title}</span>
+        <span className={cn("min-w-0 shrink break-words text-[14px] leading-snug", t.status === "done" && "text-fg-3 line-through")}>{t.title}</span>
         {t.status === "blocked" && <span className="shrink-0 rounded-[3px] bg-[var(--tag-red-bg)] px-1 text-[11px] text-[var(--tag-text)]">Blocked</span>}
         {project && (
           <span className="hidden min-w-0 shrink-[4] items-center gap-1 text-[12px] text-fg-3 sm:inline-flex">

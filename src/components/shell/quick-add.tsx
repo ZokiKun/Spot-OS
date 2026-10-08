@@ -229,7 +229,7 @@ function QuickTaskDialog({ defaults, onClose }: { defaults: TaskDefaults; onClos
     // In a project, new tasks go to its next step by default.
     return defaults.project_id ? (projectTimeline(defaults.project_id, data).current?.milestone.id ?? null) : null;
   });
-  const [assignees, setAssignees] = useState<UUID[]>(defaults.assignee_ids ?? (me ? [me.id] : []));
+  const [assignees, setAssignees] = useState<UUID[]>(defaults.assignee_ids ?? []);
   const [due, setDue] = useState<string | null>(defaults.due_date ?? null);
   const milestones = useMemo(() => sortMilestones(data.milestones.filter((m) => m.project_id === projectId)), [data.milestones, projectId]);
   const projects = useMemo(() => data.projects.filter((p) => p.status !== "archived"), [data.projects]);

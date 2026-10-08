@@ -4,7 +4,8 @@ import { createContext, Suspense, useCallback, useContext, useEffect, useMemo, u
 import { useSearchParams } from "next/navigation";
 import { CalendarDays, CircleDot, Flag, FolderKanban, Milestone as MilestoneIcon, Trash2, Users, Clock } from "lucide-react";
 import { useWorkspace, useProfiles } from "@/lib/store";
-import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/constants";
+import { TASK_PRIORITIES } from "@/lib/constants";
+import { statusChange, statusOptions, taskStatusValue } from "@/lib/task-statuses";
 import type { Task, TaskStatus, UUID } from "@/lib/types";
 import { nowISO, timeAgo } from "@/lib/utils";
 import { SidePeek } from "@/components/ui/side-peek";
@@ -15,6 +16,7 @@ import { assigneesPatch, taskAssignees } from "@/lib/selectors";
 import { sortMilestones } from "@/lib/milestones";
 import { IconButton } from "@/components/ui/button";
 import { AttachmentList, NOTE_FILE_LIMIT } from "@/components/attachments";
+import { useConfirm } from "@/components/ui/confirm";
 
 interface TaskPeekApi {
   openTask: (id: UUID) => void;
@@ -24,7 +26,8 @@ export const useTaskPeek = () => useContext(TaskPeekContext);
 
 /** Status change helper that keeps completed_at consistent. */
 export function statusPatch(status: TaskStatus): Partial<Task> {
-  return { status, completed_at: status === "done" ? nowISO() : null };
+  // custom_status resets: the task shows its project's first status with this base.
+  return { status, completed_at: status === "done" ? nowISO() : null, custom_status: null };
 }
 
 export function TaskPeekProvider({ children }: { children: ReactNode }) {
@@ -61,6 +64,7 @@ function TaskParamWatcher({ onTask }: { onTask: (id: UUID) => void }) {
 
 function TaskPeek({ taskId, onClose }: { taskId: UUID | null; onClose: () => void }) {
   const { data, update, remove } = useWorkspace();
+  const ask = useConfirm();
   const people = useProfiles();
   const task = data.tasks.find((t) => t.id === taskId);
   const project = task?.project_id ? data.projects.find((p) => p.id === task.project_id) : undefined;
@@ -87,10 +91,11 @@ function TaskPeek({ taskId, onClose }: { taskId: UUID | null; onClose: () => voi
         <IconButton
           label="Delete task"
           onClick={() => {
-            if (confirm(`Delete “${task.title}”?`)) {
+            void ask({ title: `Delete “${task.title || "Untitled"}”?`, description: "The task and its files are removed for everyone." }).then((ok) => {
+              if (!ok) return;
               void remove("tasks", task.id);
               onClose();
-            }
+            });
           }}
         >
           <Trash2 className="size-4" />
@@ -106,7 +111,7 @@ function TaskPeek({ taskId, onClose }: { taskId: UUID | null; onClose: () => voi
       />
       <div className="mt-5 space-y-0.5">
         <PropertyRow icon={<CircleDot className="size-4" />} label="Status">
-          <OptionField variant="property" options={TASK_STATUSES} value={task.status} onChange={(s) => set(statusPatch(s))} />
+          <OptionField variant="property" options={statusOptions(project)} value={taskStatusValue(task, project)} onChange={(v) => set(statusChange(v, project))} />
         </PropertyRow>
         <PropertyRow icon={<Users className="size-4" />} label="Assignees">
           <PeopleField variant="property" people={people.list} value={taskAssignees(task)} onChange={(ids) => set(assigneesPatch(ids))} />

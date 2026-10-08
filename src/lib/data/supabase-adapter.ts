@@ -9,7 +9,7 @@ import { getSupabaseBrowserClient } from "../supabase/client";
 import { STORAGE_BUCKET } from "../supabase/env";
 import { uid } from "../utils";
 
-const OPTIONAL_TABLES: TableName[] = ["milestones"];
+const OPTIONAL_TABLES: TableName[] = ["milestones", "invoices"];
 const MISSING_TABLE = ["42P01", "PGRST205"];
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365; // 1 year — see docs/ARCHITECTURE.md §6
 
@@ -58,7 +58,7 @@ export class SupabaseAdapter implements DataAdapter {
     await Promise.all(
       TABLE_NAMES.map(async (table) => {
         let q = this.sb.from(table).select("*");
-        if (table === "activity_log") q = q.order("created_at", { ascending: false }).limit(300);
+        if (table === "activity_log") q = q.order("created_at", { ascending: false }).limit(1500);
         if (table === "finance_snapshots") q = q.order("fetched_at", { ascending: false }).limit(10);
         if (table === "notifications") q = q.order("created_at", { ascending: false }).limit(200);
         const { data, error } = await q;

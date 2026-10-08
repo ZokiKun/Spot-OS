@@ -19,9 +19,11 @@ import { MenuItem, MenuList } from "@/components/ui/menu";
 import { EmptyState } from "@/components/ui/misc";
 import { StatRow } from "@/components/insights/stat-row";
 import { Money, RevealToggle } from "@/components/insights/money";
+import { useConfirm } from "@/components/ui/confirm";
 
 export function ReviewDetail({ id }: { id: string }) {
   const { data, status, remove } = useWorkspace();
+  const ask = useConfirm();
   const people = useProfiles();
   const router = useRouter();
   const fin = useFinance();
@@ -75,10 +77,11 @@ export function ReviewDetail({ id }: { id: string }) {
                   danger
                   icon={<Trash2 className="size-4" />}
                   onSelect={() => {
-                    if (confirm(`Delete the ${label} review?`)) {
+                    void ask({ title: `Delete the ${label} review?` }).then((ok) => {
+                      if (!ok) return;
                       void remove("reviews", review.id);
                       router.push("/reviews");
-                    }
+                    });
                   }}
                 >
                   Delete review

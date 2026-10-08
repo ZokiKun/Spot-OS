@@ -12,6 +12,7 @@ import { MenuDivider, MenuItem, MenuList } from "@/components/ui/menu";
 import { TagList } from "@/components/ui/tags-field";
 import { LibraryIcon, hostOf } from "./library-meta";
 import { LibraryItemDialog } from "./library-item-dialog";
+import { useConfirm } from "@/components/ui/confirm";
 
 /** Pinned for everyone, and/or by me. */
 export function usePins(item: LibraryItem) {
@@ -28,6 +29,7 @@ export function usePins(item: LibraryItem) {
 
 function ItemMenu({ item, onEdit }: { item: LibraryItem; onEdit: () => void }) {
   const { remove } = useWorkspace();
+  const ask = useConfirm();
   const pins = usePins(item);
   const { setAnchor: anchorRef, ...pop } = usePopover();
   const pinned = pins.forAll || pins.mine;
@@ -65,7 +67,7 @@ function ItemMenu({ item, onEdit }: { item: LibraryItem; onEdit: () => void }) {
             icon={<Trash2 className="size-4" />}
             onSelect={() => {
               pop.close();
-              if (confirm(`Remove “${item.name}” from Library? The file itself is not touched.`)) void remove("library_items", item.id);
+              void ask({ title: `Remove “${item.name}” from Library?`, description: "The file itself is not touched.", confirmLabel: "Remove" }).then((ok) => ok && void remove("library_items", item.id));
             }}
           >
             Remove from Library

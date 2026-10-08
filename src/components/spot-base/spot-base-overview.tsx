@@ -14,6 +14,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button, IconButton } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/misc";
 import { AttachmentList, useAttachmentUpload } from "@/components/attachments";
+import { useConfirm } from "@/components/ui/confirm";
 
 /** The four pages every collaborator should read, with the slugs older workspaces may use. */
 export const CORE_PAGES = [
@@ -155,6 +156,7 @@ function CoreSection({ pages }: { pages: KbPage[] }) {
 
 function BrandSection({ pages, workspaceName }: { pages: KbPage[]; workspaceName: string }) {
   const { data, remove } = useWorkspace();
+  const ask = useConfirm();
   const brand = pages.find((p) => p.slug === BRAND_SLUG);
   const ensure = useEnsurePage();
   const files = brand ? data.attachments.filter((a) => a.kb_page_id === brand.id) : [];
@@ -232,9 +234,11 @@ function BrandSection({ pages, workspaceName }: { pages: KbPage[]; workspaceName
                       type="button"
                       title="Delete"
                       onClick={() => {
-                        if (!confirm(`Delete ${a.name}?`)) return;
-                        void remove("attachments", a.id);
-                        void getAdapter().removeFile(a.storage_path);
+                        void ask({ title: `Delete ${a.name}?` }).then((ok) => {
+                          if (!ok) return;
+                          void remove("attachments", a.id);
+                          void getAdapter().removeFile(a.storage_path);
+                        });
                       }}
                       className="flex size-5 items-center justify-center rounded text-fg-2 hover:bg-hover"
                     >

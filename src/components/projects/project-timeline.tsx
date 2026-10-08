@@ -14,6 +14,8 @@ import { MenuDivider, MenuItem, MenuList } from "@/components/ui/menu";
 import { ProgressBar } from "@/components/ui/misc";
 import { TaskDndContext, TaskTable, type TaskDnd } from "@/components/tasks/task-table";
 
+import { useConfirm } from "@/components/ui/confirm";
+
 export function useTimeline(projectId: string): Timeline {
   const { data } = useWorkspace();
   return useMemo(() => projectTimeline(projectId, data), [projectId, data]);
@@ -208,6 +210,7 @@ export function ProjectTimeline({ project }: { project: Project }) {
   return (
     <TaskDndContext value={taskDnd}>
     <div className="space-y-6">
+
       {steps.map((step, i) => (
         <MilestoneSection
           key={step.milestone.id}
@@ -290,6 +293,7 @@ function MilestoneSection({
   taskOver: boolean;
 }) {
   const { update, remove } = useWorkspace();
+  const ask = useConfirm();
   const { setAnchor, ...menu } = usePopover();
   const sectionRef = useRef<HTMLElement>(null);
   const m = step.milestone;
@@ -392,7 +396,7 @@ function MilestoneSection({
               icon={<Trash2 className="size-4" />}
               onSelect={() => {
                 menu.close();
-                if (confirm(`Delete the milestone “${m.title}”? Its tasks stay in the project.`)) void remove("milestones", m.id);
+                void ask({ title: `Delete the milestone “${m.title}”?`, description: "Its tasks stay in the project." }).then((ok) => ok && void remove("milestones", m.id));
               }}
             >
               Delete milestone

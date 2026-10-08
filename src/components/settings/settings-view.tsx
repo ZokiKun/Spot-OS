@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Bell, Building2, Database, Palette, Plug, Settings, Wallet } from "lucide-react";
 import type { Profile } from "@/lib/types";
@@ -14,6 +14,7 @@ import { cn, downloadFile, timeAgo } from "@/lib/utils";
 import { Page } from "@/components/shell/page";
 import { PALETTES, useTheme } from "@/components/shell/theme";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { EditableText, TextInput, Toggle } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { Popover, usePopover } from "@/components/ui/popover";
@@ -22,6 +23,7 @@ import { isGoogleCalendarConfigured } from "@/lib/google-calendar";
 import { SettingsRow, SettingsSection } from "./settings-ui";
 import { DESKTOP_NOTIFY_PREF } from "@/components/shell/inbox";
 import { FinanceSettings } from "./finance-settings";
+import { useConfirm } from "@/components/ui/confirm";
 
 const SECTIONS = [
   { id: "appearance", label: "Appearance", icon: Palette },
@@ -120,10 +122,77 @@ function Appearance() {
   );
 }
 
+type NotifyPermission = NotificationPermission | "unsupported";
+const readPermission = (): NotifyPermission => (typeof Notification === "undefined" ? "unsupported" : Notification.permission);
+/** Re-read the permission when the browser reports a change, or when the tab regains focus (after site settings). */
+function subscribePermission(cb: () => void) {
+  let status: PermissionStatus | null = null;
+  navigator.permissions
+    ?.query({ name: "notifications" as PermissionName })
+    .then((s) => {
+      status = s;
+      s.addEventListener("change", cb);
+    })
+    .catch(() => {});
+  window.addEventListener("focus", cb);
+  return () => {
+    status?.removeEventListener("change", cb);
+    window.removeEventListener("focus", cb);
+  };
+}
+
+const UNBLOCK_HELP = "Click the icon to the left of the address bar → Site settings → Notifications → Allow, then come back to this tab.";
+
 function Notifications() {
+  const toast = useToast();
   const [desktop, setDesktop] = useState(() => readPref(DESKTOP_NOTIFY_PREF, false));
-  const supported = typeof window !== "undefined" && "Notification" in window;
-  const [permission, setPermission] = useState(() => (supported ? Notification.permission : "denied"));
+  const permission = useSyncExternalStore(subscribePermission, readPermission, () => "default" as NotifyPermission);
+  const on = desktop && permission === "granted";
+
+  const test = () => {
+    try {
+      new Notification("Spot OS notifications are on", { body: "You’ll get one like this when someone @mentions you.", icon: "/icon.png" });
+    } catch {
+      toast.show({ title: "Couldn’t show a notification", description: "Your system may be blocking them — check your computer’s notification settings for this browser.", tone: "error" });
+    }
+  };
+
+  const toggle = async (next: boolean) => {
+    if (!next) {
+      setDesktop(false);
+      writePref(DESKTOP_NOTIFY_PREF, false);
+      return;
+    }
+    if (permission === "unsupported") {
+      toast.show({ title: "Not supported here", description: "This browser doesn’t support desktop notifications.", tone: "error" });
+      return;
+    }
+    let result = permission;
+    if (result !== "granted") {
+      if (result === "denied") {
+        toast.show({ title: "Notifications are blocked for Spot OS", description: UNBLOCK_HELP, tone: "error" });
+        return;
+      }
+      try {
+        result = await Notification.requestPermission();
+      } catch {
+        result = Notification.permission;
+      }
+    }
+    if (result !== "granted") {
+      // Chrome can silence the prompt (a crossed-out bell in the address bar) — say so instead of doing nothing.
+      toast.show({
+        title: result === "denied" ? "Notifications were blocked" : "The browser didn’t show the permission prompt",
+        description: UNBLOCK_HELP,
+        tone: "error",
+      });
+      return;
+    }
+    setDesktop(true);
+    writePref(DESKTOP_NOTIFY_PREF, true);
+    test();
+  };
+
   return (
     <>
       <SettingsSection
@@ -133,26 +202,21 @@ function Notifications() {
         <SettingsRow
           label="Desktop notifications"
           description={
-            !supported
+            permission === "unsupported"
               ? "This browser doesn’t support desktop notifications."
               : permission === "denied"
-                ? "Blocked by the browser. Allow notifications for this site in your browser settings, then reload."
+                ? `Blocked by the browser. ${UNBLOCK_HELP}`
                 : "Also show a system notification when you’re mentioned and Spot OS is in the background. Saved on this device."
           }
         >
-          <Toggle
-            label="Desktop notifications"
-            checked={desktop && permission === "granted"}
-            onChange={async (v) => {
-              if (v && supported && Notification.permission !== "granted") {
-                const p = await Notification.requestPermission();
-                setPermission(p);
-                if (p !== "granted") return;
-              }
-              setDesktop(v);
-              writePref(DESKTOP_NOTIFY_PREF, v);
-            }}
-          />
+          <div className="flex items-center gap-3">
+            {on && (
+              <Button size="sm" onClick={test}>
+                Send a test
+              </Button>
+            )}
+            <Toggle label="Desktop notifications" checked={on} onChange={(v) => void toggle(v)} />
+          </div>
         </SettingsRow>
       </SettingsSection>
     </>
@@ -292,6 +356,7 @@ function Integrations() {
 
 function DataSettings() {
   const { data, mode } = useWorkspace();
+  const ask = useConfirm();
   const demo = getDemoAdapter();
   const ws = (data.settings.find((s) => s.key === "workspace")?.value.name as string) ?? "Studio Spot";
   return (
@@ -318,10 +383,11 @@ function DataSettings() {
             <Button
               variant="danger"
               onClick={() => {
-                if (confirm("Reset the demo workspace? Local changes will be lost.")) {
+                void ask({ title: "Reset the demo workspace?", description: "Local changes will be lost.", confirmLabel: "Reset" }).then((ok) => {
+                  if (!ok) return;
                   demo.reset();
                   window.location.reload();
-                }
+                });
               }}
             >
               Reset

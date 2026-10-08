@@ -203,7 +203,7 @@ function WeekChip({ item, showAssignee, late }: { item: DatedItem; showAssignee?
       )}
     >
       {project?.icon && <span className="shrink-0">{project.icon}</span>}
-      <span className={cn("min-w-0 flex-1", late ? "truncate" : "line-clamp-2 break-words")}>{t.title}</span>
+      <span className="min-w-0 flex-1 break-words">{t.title}</span>
       {late && <span className="shrink-0 font-medium text-danger tabular">{relativeDue(item.date)}</span>}
       {showAssignee && (taskAssignees(t).length ? <AvatarStack profiles={taskAssignees(t).map((id) => people.get(id))} size={16} /> : <Avatar profile={null} size={16} />)}
     </button>

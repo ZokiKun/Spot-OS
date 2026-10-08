@@ -81,4 +81,5 @@ export const NAV_ITEMS = [
   { href: "/projects", label: "Projects", icon: "projects" },
   { href: "/library", label: "Library", icon: "library" },
   { href: "/reviews", label: "Reviews", icon: "reviews" },
+  { href: "/activity", label: "Activity", icon: "activity" },
 ] as const;

@@ -3,7 +3,8 @@
 import { createContext, useContext, useState } from "react";
 import { CalendarDays, CircleDot, Flag, FolderKanban, GripVertical, Plus, Type, Users, PanelRightOpen } from "lucide-react";
 import type { Profile, Project, Task, UUID } from "@/lib/types";
-import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/constants";
+import { TASK_PRIORITIES } from "@/lib/constants";
+import { statusChange, statusOptions, taskStatusValue } from "@/lib/task-statuses";
 import { useWorkspace, useProfiles } from "@/lib/store";
 import { cn, daysUntil, formatDay } from "@/lib/utils";
 import { AvatarStack } from "@/components/ui/avatar";
@@ -147,7 +148,7 @@ export function TaskTable({
                 type="button"
                 onClick={() => openTask(t.id)}
                 className={cn(
-                  "min-w-0 flex-1 truncate py-1.5 text-left font-medium",
+                  "min-w-0 flex-1 whitespace-normal break-words py-1.5 text-left font-medium leading-snug",
                   t.status === "done" && "text-fg-3 line-through decoration-fg-3",
                 )}
               >
@@ -162,7 +163,7 @@ export function TaskTable({
               </button>
             </div>
             <Cell>
-              <OptionField options={TASK_STATUSES} value={t.status} onChange={(s) => void update("tasks", t.id, statusPatch(s))} />
+              <TaskStatusField task={t} />
             </Cell>
             <Cell>
               <PeopleField people={people.list} value={taskAssignees(t)} onChange={(ids) => void update("tasks", t.id, assigneesPatch(ids))} />
@@ -193,7 +194,7 @@ export function TaskTable({
               description: null,
               project_id: null,
               milestone_id: null,
-              ...assigneesPatch(me ? [me.id] : []),
+              ...assigneesPatch([]), // nobody by default — assign deliberately
               status: "todo",
               priority: "medium",
               due_date: null,
@@ -205,6 +206,20 @@ export function TaskTable({
         />
       </div>
     </div>
+  );
+}
+
+/** Status picker using the task's project statuses (custom ones if the project has them). */
+export function TaskStatusField({ task, variant }: { task: Task; variant?: "cell" | "property" }) {
+  const { data, update } = useWorkspace();
+  const project = task.project_id ? data.projects.find((p) => p.id === task.project_id) : null;
+  return (
+    <OptionField
+      variant={variant}
+      options={statusOptions(project)}
+      value={taskStatusValue(task, project)}
+      onChange={(v) => void update("tasks", task.id, statusChange(v, project))}
+    />
   );
 }
 
@@ -294,10 +309,10 @@ function TaskListRow({
   const diff = daysUntil(task.due_date);
   const overdue = task.status !== "done" && diff != null && diff < 0;
   return (
-    <div className="group flex h-[34px] items-center gap-2.5 rounded-md px-2 transition-colors duration-75 hover:bg-hover">
+    <div className="group flex min-h-[34px] items-center gap-2.5 rounded-md px-2 py-1 transition-colors duration-75 hover:bg-hover">
       <Checkbox checked={task.status === "done"} onChange={onToggle} label={`Complete ${task.title}`} />
       <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-        <span className={cn("min-w-0 shrink truncate text-[14px]", task.status === "done" && "text-fg-3 line-through")}>{task.title}</span>
+        <span className={cn("min-w-0 shrink break-words text-[14px] leading-snug", task.status === "done" && "text-fg-3 line-through")}>{task.title}</span>
         {task.status === "blocked" && <span className="shrink-0 rounded-[3px] bg-[var(--tag-red-bg)] px-1 text-[11px] text-[var(--tag-text)]">Blocked</span>}
         {projectLabel && (
           <span className="hidden min-w-0 shrink-[4] items-center gap-1 text-[12px] text-fg-3 sm:inline-flex">

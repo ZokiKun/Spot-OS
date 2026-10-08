@@ -4,7 +4,7 @@ import type { ActivityEntry, Change, Row, Snapshot, TableName, UUID } from "../t
 import type { AuthUser, DataAdapter, UploadResult } from "./adapter";
 import { normalizeSnapshot } from "./adapter";
 import { buildSeed } from "./seed";
-import { deriveActivity, shouldSkipEdit } from "./activity";
+import { deriveActivity, deriveDeletion, shouldSkipEdit } from "./activity";
 import { nowISO, uid } from "../utils";
 
 const DB_KEY = "spotos:db:v1";
@@ -122,8 +122,14 @@ export class DemoAdapter implements DataAdapter {
   }
 
   async remove(table: TableName, id: UUID): Promise<void> {
+    const deletion = deriveDeletion(table, id, this.db);
+    if (deletion) {
+      const ts = nowISO();
+      this.emit({ type: "upsert", table: "activity_log", row: { id: uid(), actor_id: localStorage.getItem(USER_KEY), ...deletion, created_at: ts, updated_at: ts } });
+    }
     // Mirror the foreign-key rules in the SQL schema (cascade / set null).
     if (table === "projects") {
+      this.db.invoices.filter((i) => i.project_id === id).forEach((i) => this.emit({ type: "delete", table: "invoices", id: i.id }));
       this.db.milestones.filter((m) => m.project_id === id).forEach((m) => this.emit({ type: "delete", table: "milestones", id: m.id }));
       const taskIds = new Set(this.db.tasks.filter((t) => t.project_id === id).map((t) => t.id));
       this.db.attachments.filter((a) => a.task_id && taskIds.has(a.task_id)).forEach((a) => this.emit({ type: "delete", table: "attachments", id: a.id }));

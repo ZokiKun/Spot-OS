@@ -56,10 +56,40 @@ export interface Project {
   /** Vertical focus of an image banner, 0–100 (%). */
   cover_position: number;
   notes_html: string | null;
+  /** The project's own task statuses (migration 0010); null = the built-in ones. */
+  task_statuses?: CustomTaskStatus[] | null;
   created_by: UUID | null;
   created_at: ISODateTime;
   updated_at: ISODateTime;
   completed_at: ISODateTime | null;
+}
+
+/** A project's own task status. `base` is the built-in status it counts as (done, overdue, progress…). */
+export interface CustomTaskStatus {
+  id: string;
+  label: string;
+  color: string; // tag colour key
+  base: TaskStatus;
+}
+
+export type InvoiceStatus = "not_sent" | "sent" | "cleared";
+
+/** One invoice on a project (migration 0010). */
+export interface Invoice {
+  id: UUID;
+  project_id: UUID;
+  number: string;
+  title: string;
+  amount: number | null;
+  currency: string | null;
+  issue_date: ISODate | null;
+  due_date: ISODate | null;
+  status: InvoiceStatus;
+  /** Link to the invoice (PDF in Drive…). */
+  url: string | null;
+  created_by: UUID | null;
+  created_at: ISODateTime;
+  updated_at: ISODateTime;
 }
 
 /** One step on a project's timeline. Done = it has tasks and all of them are done. */
@@ -97,6 +127,8 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   due_date: ISODate | null;
+  /** The project's custom status this task is in (its id); `status` holds the matching built-in one. */
+  custom_status?: string | null;
   /** Hand-set position inside its milestone (drag to reorder); null until dragged. Migration 0008. */
   sort_order?: number | null;
   created_by: UUID | null;
@@ -176,7 +208,7 @@ export interface ActivityEntry {
   id: UUID;
   actor_id: UUID | null;
   action: string; // e.g. "created", "completed", "status_changed"
-  entity_type: "project" | "task" | "calendar_note" | "library_item" | "review" | "kb_page";
+  entity_type: "project" | "task" | "calendar_note" | "library_item" | "review" | "kb_page" | "invoice" | "milestone" | "attachment";
   entity_id: UUID;
   entity_label: string;
   project_id: UUID | null;
@@ -283,6 +315,7 @@ export interface Tables {
   project_members: ProjectMember;
   milestones: Milestone;
   tasks: Task;
+  invoices: Invoice;
   calendar_notes: CalendarNote;
   attachments: Attachment;
   library_items: LibraryItem;
@@ -304,6 +337,7 @@ export const TABLE_NAMES: TableName[] = [
   "project_members",
   "milestones",
   "tasks",
+  "invoices",
   "calendar_notes",
   "attachments",
   "library_items",
