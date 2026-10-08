@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { cn, formatDay, daysUntil } from "@/lib/utils";
 import type { Option } from "@/lib/constants";
-import type { Profile, Project, UUID } from "@/lib/types";
+import type { Milestone, Profile, Project, UUID } from "@/lib/types";
 import { Popover, usePopover } from "./popover";
 import { Picker } from "./picker";
 import { StatusTag, Tag } from "./tag";
@@ -240,5 +240,53 @@ export function PropertyRow({ icon, label, children }: { icon: ReactNode; label:
       </div>
       <div className="min-w-0 flex-1 text-[14px]">{children}</div>
     </div>
+  );
+}
+
+/** Pick one of a project's milestones (already in timeline order), or none. */
+export function MilestoneField({
+  milestones,
+  value,
+  onChange,
+  variant = "cell",
+  placeholder = "No milestone",
+}: {
+  milestones: Milestone[];
+  value: UUID | null;
+  onChange: (v: UUID | null) => void;
+  variant?: "cell" | "property";
+  placeholder?: string;
+}) {
+  const pop = usePopover();
+  const index = milestones.findIndex((m) => m.id === value);
+  const label = (m: Milestone, i: number) => (
+    <span className="flex min-w-0 items-center gap-1.5">
+      <span className="shrink-0 text-[12px] text-fg-3 tabular">{i + 1}</span>
+      <span className="truncate">{m.title}</span>
+    </span>
+  );
+  return (
+    <>
+      <FieldButton setAnchor={pop.setAnchor} onClick={pop.toggle} variant={variant}>
+        {index >= 0 ? label(milestones[index]!, index) : <span className="text-fg-3">{placeholder}</span>}
+      </FieldButton>
+      <Popover open={pop.open} onClose={pop.close} anchor={pop.anchor} width={260}>
+        <Picker
+          items={milestones.map((m, i) => ({ value: m.id, label: m.title, render: label(m, i) }))}
+          value={value}
+          placeholder="Search milestones…"
+          emptyLabel="This project has no milestones yet"
+          onSelect={(v) => {
+            onChange(v);
+            pop.close();
+          }}
+          onClear={() => {
+            onChange(null);
+            pop.close();
+          }}
+          clearLabel="Remove from milestone"
+        />
+      </Popover>
+    </>
   );
 }

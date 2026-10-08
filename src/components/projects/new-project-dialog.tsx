@@ -1,15 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { Flag, Plus, X } from "lucide-react";
 import { todayISO } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import type { ProjectType } from "@/lib/types";
 import { PROJECT_TYPES } from "@/lib/constants";
 import { useProfiles, useWorkspace } from "@/lib/store";
 import { Dialog } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Button, IconButton } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
 import { DateField, OptionField, PersonField } from "@/components/ui/fields";
+
+type DraftMilestone = { key: number; title: string; due: string | null };
+const PLACEHOLDERS = ["Discovery", "Design", "Delivery"];
+const blankMilestones = (): DraftMilestone[] => PLACEHOLDERS.map((_, key) => ({ key, title: "", due: null }));
 
 const ICONS = ["📁", "🧭", "🪶", "🫙", "🟠", "⚙️", "📓", "🔤", "🎨", "📐", "🖼️", "🎬", "📦", "🌱", "✳️", "🔶"];
 
@@ -23,13 +28,13 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
   const [client, setClient] = useState("");
   const [lead, setLead] = useState<string | null>(me?.id ?? null);
   const [deadline, setDeadline] = useState<string | null>(null);
-  const [nextAction, setNextAction] = useState("");
+  const [milestones, setMilestones] = useState<DraftMilestone[]>(blankMilestones);
 
   const reset = () => {
     setName("");
     setClient("");
     setDeadline(null);
-    setNextAction("");
+    setMilestones(blankMilestones());
     setIcon("📁");
   };
 
@@ -47,7 +52,7 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
       start_date: todayISO(),
       deadline,
       description: null,
-      next_action: nextAction.trim() || null,
+      next_action: null,
       note: null,
       tags: [],
       cover: null,
@@ -56,6 +61,10 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
       created_by: me?.id ?? null,
       completed_at: null,
     });
+    // Timeline: named rows become milestones, in the order they were listed.
+    const steps = milestones.filter((m) => m.title.trim());
+    for (const [sort_order, m] of steps.entries())
+      await create("milestones", { project_id: p.id, title: m.title.trim(), due_date: m.due, sort_order, created_by: me?.id ?? null });
     reset();
     onClose();
     router.push(`/projects/${p.id}`);
@@ -114,11 +123,55 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
           <div className="-ml-1.5">
             <DateField variant="property" value={deadline} onChange={setDeadline} />
           </div>
-          <span className="text-fg-2">Next action</span>
-          <TextInput placeholder="The one next meaningful step" value={nextAction} onChange={(e) => setNextAction(e.target.value)} />
         </div>
+        <TimelineDraft milestones={milestones} onChange={setMilestones} />
         <button type="submit" hidden />
       </form>
     </Dialog>
+  );
+}
+
+/** Major milestones, in order. Tasks get added under them on the project's Timeline tab. */
+function TimelineDraft({ milestones, onChange }: { milestones: DraftMilestone[]; onChange: (m: DraftMilestone[]) => void }) {
+  const patch = (key: number, p: Partial<DraftMilestone>) => onChange(milestones.map((m) => (m.key === key ? { ...m, ...p } : m)));
+  return (
+    <div>
+      <div className="mb-1 flex items-baseline gap-2 text-[14px]">
+        <span className="text-fg-2">Timeline</span>
+        <span className="text-[12px] text-fg-3">Major milestones, in order. The first unfinished one is the project’s next step.</span>
+      </div>
+      <ol className="space-y-1">
+        {milestones.map((m, i) => (
+          <li key={m.key} className="flex items-center gap-2">
+            <span className="w-4 shrink-0 text-right text-[12px] text-fg-3 tabular">{i + 1}</span>
+            <TextInput
+              placeholder={PLACEHOLDERS[i] ? `e.g. ${PLACEHOLDERS[i]}` : "Milestone"}
+              value={m.title}
+              onChange={(e) => patch(m.key, { title: e.target.value })}
+              aria-label={`Milestone ${i + 1}`}
+              className="min-w-0 flex-1"
+            />
+            <div className="w-28 shrink-0 text-[13px]">
+              <DateField variant="property" value={m.due} placeholder="Due date" onChange={(due) => patch(m.key, { due })} />
+            </div>
+            <IconButton label={`Remove milestone ${i + 1}`} onClick={() => onChange(milestones.filter((x) => x.key !== m.key))}>
+              <X className="size-3.5" />
+            </IconButton>
+          </li>
+        ))}
+      </ol>
+      <button
+        type="button"
+        onClick={() => onChange([...milestones, { key: Math.max(-1, ...milestones.map((m) => m.key)) + 1, title: "", due: null }])}
+        className="mt-1 flex h-7 items-center gap-1.5 rounded-md px-2 text-[13px] text-fg-3 hover:bg-hover hover:text-fg-2"
+      >
+        <Plus className="size-3.5" /> Add milestone
+      </button>
+      {milestones.every((m) => !m.title.trim()) && (
+        <p className="mt-1 flex items-center gap-1.5 px-2 text-[12px] text-fg-3">
+          <Flag className="size-3" /> You can also plan the timeline later from the project page.
+        </p>
+      )}
+    </div>
   );
 }

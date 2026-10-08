@@ -9,6 +9,8 @@ import { getSupabaseBrowserClient } from "../supabase/client";
 import { STORAGE_BUCKET } from "../supabase/env";
 import { uid } from "../utils";
 
+const OPTIONAL_TABLES: TableName[] = ["milestones"];
+const MISSING_TABLE = ["42P01", "PGRST205"];
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365; // 1 year — see docs/ARCHITECTURE.md §6
 
 /**
@@ -37,6 +39,11 @@ export class SupabaseAdapter implements DataAdapter {
         if (table === "finance_snapshots") q = q.order("fetched_at", { ascending: false }).limit(10);
         if (table === "notifications") q = q.order("created_at", { ascending: false }).limit(200);
         const { data, error } = await q;
+        // Tables from newer migrations: an unmigrated database shows no data instead of failing.
+        if (error && OPTIONAL_TABLES.includes(table) && MISSING_TABLE.includes(error.code)) {
+          console.warn(`Spot OS: table "${table}" is missing — run the latest supabase/migrations.`);
+          return;
+        }
         if (error) throw new Error(`Loading ${table}: ${error.message}`);
         (snap[table] as unknown[]) = data ?? [];
       }),

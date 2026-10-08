@@ -6,13 +6,13 @@ import { useRouter } from "next/navigation";
 import {
   Archive,
   ArchiveRestore,
-  ArrowRight,
   ArrowUpRight,
   CalendarDays,
   ChevronRight,
   CircleCheck,
   CircleDot,
   Ellipsis,
+  Flag,
   Percent,
   Shapes,
   StickyNote,
@@ -28,6 +28,7 @@ import { readPref, writePref } from "@/lib/hooks";
 import { cn, formatDay, daysUntil, nowISO } from "@/lib/utils";
 import { DateField, OptionField, PersonField } from "@/components/ui/fields";
 import { Avatar } from "@/components/ui/avatar";
+import { NextStepText, useTimeline } from "./project-timeline";
 import { ProgressBar, EmptyState } from "@/components/ui/misc";
 import { StatusTag, Tag } from "@/components/ui/tag";
 import { IconButton } from "@/components/ui/button";
@@ -58,7 +59,7 @@ export function ProjectTable({ projects, grouped = true }: { projects: Project[]
     { icon: <User className="size-3.5" />, label: "Lead" },
     { icon: <CalendarDays className="size-3.5" />, label: "Deadline" },
     { icon: <Percent className="size-3.5" />, label: "Progress" },
-    { icon: <ArrowRight className="size-3.5" />, label: "Next action" },
+    { icon: <Flag className="size-3.5" />, label: "Next step" },
     { icon: <StickyNote className="size-3.5" />, label: "Note" },
   ];
   if (!projects.length) return <EmptyState title="No projects match" description="Try a different filter, or create a new project." />;
@@ -166,13 +167,7 @@ function ProjectRow({ project: p }: { project: Project }) {
         )}
       </div>
       <button type="button" onClick={() => router.push(`/projects/${p.id}`)} className="flex min-w-0 items-center border-l border-line px-2 text-left">
-        {p.next_action ? (
-          <span className="truncate">{p.next_action}</span>
-        ) : p.status === "active" ? (
-          <span className="truncate text-[13px] text-danger">Set a next action</span>
-        ) : (
-          <span className="text-fg-3">—</span>
-        )}
+        <NextStepText project={p} />
       </button>
       <div className="flex min-w-0 border-l border-line">
         <ProjectNoteField project={p} />
@@ -233,7 +228,7 @@ export function ProjectBoard({ projects }: { projects: Project[] }) {
                       {p.client && <span className="truncate text-[12px] text-fg-2">{p.client}</span>}
                     </div>
                     {p.tags.length > 0 && <TagList scope="project" tags={p.tags} className="mt-1.5" />}
-                    {p.next_action && <div className="mt-1.5 line-clamp-2 text-[12px] text-fg-2">→ {p.next_action}</div>}
+                    <BoardNextStep projectId={p.id} />
                     <div className="mt-2 flex items-center gap-2">
                       {lead && <Avatar profile={lead} size={18} />}
                       {p.deadline && (
@@ -257,4 +252,11 @@ export function ProjectBoard({ projects }: { projects: Project[] }) {
       })}
     </div>
   );
+}
+
+/** Board cards show the timeline's current milestone, when there is one. */
+function BoardNextStep({ projectId }: { projectId: string }) {
+  const { current } = useTimeline(projectId);
+  if (!current) return null;
+  return <div className="mt-1.5 line-clamp-2 text-[12px] text-fg-2">→ {current.milestone.title}</div>;
 }

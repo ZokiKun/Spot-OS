@@ -20,11 +20,14 @@ export function TaskTable({
   showProject = true,
   newTaskDefaults,
   emptyLabel = "No tasks here",
+  showHeader = true,
 }: {
   tasks: Task[];
   showProject?: boolean;
   newTaskDefaults?: Partial<Task>;
   emptyLabel?: string;
+  /** Off when several tables stack (e.g. one per milestone) under a shared header. */
+  showHeader?: boolean;
 }) {
   const { data, update, create, me } = useWorkspace();
   const people = useProfiles();
@@ -43,14 +46,18 @@ export function TaskTable({
   return (
     <div className="-mx-2 overflow-x-auto px-2">
       <div className={cn("text-[14px]", showProject ? "min-w-[860px]" : "min-w-[660px]")}>
-        <div className="grid border-y border-line text-[13px] text-fg-2" style={{ gridTemplateColumns: cols }}>
-          {head.map((h, i) => (
-            <div key={h.label} className={cn("flex h-8 items-center gap-1.5 px-2", i > 0 && "border-l border-line")}>
-              <span className="text-fg-3">{h.icon}</span>
-              {h.label}
-            </div>
-          ))}
-        </div>
+        {showHeader ? (
+          <div className="grid border-y border-line text-[13px] text-fg-2" style={{ gridTemplateColumns: cols }}>
+            {head.map((h, i) => (
+              <div key={h.label} className={cn("flex h-8 items-center gap-1.5 px-2", i > 0 && "border-l border-line")}>
+                <span className="text-fg-3">{h.icon}</span>
+                {h.label}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="border-t border-line" />
+        )}
         {tasks.map((t) => (
           <div
             key={t.id}
@@ -107,6 +114,7 @@ export function TaskTable({
               title,
               description: null,
               project_id: null,
+              milestone_id: null,
               assignee_id: me?.id ?? null,
               status: "todo",
               priority: "medium",

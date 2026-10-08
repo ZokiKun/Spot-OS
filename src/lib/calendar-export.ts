@@ -1,6 +1,7 @@
 import { addDays, endOfMonth, endOfWeek, endOfYear, format, startOfMonth, startOfWeek, startOfYear } from "date-fns";
 import type { ISODate, Snapshot } from "./types";
 import { isOpen } from "./selectors";
+import { projectTimeline } from "./milestones";
 import { htmlToMarkdown } from "./markdown";
 import { formatLongDate, parseDate, toISODate } from "./utils";
 
@@ -32,6 +33,7 @@ export function rangeFor(range: ExportRange, date: ISODate, weekStartsOn: 0 | 1 
 export function collectEvents(data: Snapshot, start: ISODate, end: ISODate): CalendarEvent[] {
   const inRange = (d: string | null) => !!d && d >= start && d < end;
   const projects = new Map(data.projects.map((p) => [p.id, p]));
+  const nextStep = (id: string) => projectTimeline(id, data).current?.milestone.title;
   const events: CalendarEvent[] = [];
   for (const p of data.projects)
     if (inRange(p.deadline) && p.status !== "archived")
@@ -39,7 +41,7 @@ export function collectEvents(data: Snapshot, start: ISODate, end: ISODate): Cal
         uid: `deadline-${p.id}`,
         date: p.deadline!,
         title: `◆ ${p.name} — deadline`,
-        description: [p.client && `Client: ${p.client}`, p.next_action && `Next action: ${p.next_action}`].filter(Boolean).join("\n"),
+        description: [p.client && `Client: ${p.client}`, nextStep(p.id) && `Next step: ${nextStep(p.id)}`].filter(Boolean).join("\n"),
         kind: "deadline",
       });
   for (const t of data.tasks)

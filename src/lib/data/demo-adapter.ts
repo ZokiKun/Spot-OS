@@ -124,6 +124,7 @@ export class DemoAdapter implements DataAdapter {
   async remove(table: TableName, id: UUID): Promise<void> {
     // Mirror the foreign-key rules in the SQL schema (cascade / set null).
     if (table === "projects") {
+      this.db.milestones.filter((m) => m.project_id === id).forEach((m) => this.emit({ type: "delete", table: "milestones", id: m.id }));
       this.db.tasks.filter((t) => t.project_id === id).forEach((t) => this.emit({ type: "delete", table: "tasks", id: t.id }));
       this.db.project_members.filter((m) => m.project_id === id).forEach((m) => this.emit({ type: "delete", table: "project_members", id: m.id }));
       this.db.attachments.filter((a) => a.project_id === id).forEach((a) => this.emit({ type: "delete", table: "attachments", id: a.id }));
@@ -131,6 +132,10 @@ export class DemoAdapter implements DataAdapter {
         .filter((l) => l.project_id === id)
         .forEach((l) => this.emit({ type: "upsert", table: "library_items", row: { ...l, project_id: null } }));
     }
+    if (table === "milestones")
+      this.db.tasks
+        .filter((t) => t.milestone_id === id)
+        .forEach((t) => this.emit({ type: "upsert", table: "tasks", row: { ...t, milestone_id: null } }));
     if (table === "kb_pages")
       this.db.attachments.filter((a) => a.kb_page_id === id).forEach((a) => this.emit({ type: "delete", table: "attachments", id: a.id }));
     if (table === "calendar_notes")

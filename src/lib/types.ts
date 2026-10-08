@@ -43,6 +43,7 @@ export interface Project {
   start_date: ISODate | null;
   deadline: ISODate | null;
   description: string | null;
+  /** Legacy free-text next step; the timeline's current milestone replaces it. */
   next_action: string | null;
   /** Short note shown in the projects table (supports @mentions). */
   note: string | null;
@@ -59,6 +60,18 @@ export interface Project {
   completed_at: ISODateTime | null;
 }
 
+/** One step on a project's timeline. Done = it has tasks and all of them are done. */
+export interface Milestone {
+  id: UUID;
+  project_id: UUID;
+  title: string;
+  due_date: ISODate | null;
+  sort_order: number;
+  created_by: UUID | null;
+  created_at: ISODateTime;
+  updated_at: ISODateTime;
+}
+
 export interface ProjectMember {
   id: UUID;
   project_id: UUID;
@@ -71,6 +84,8 @@ export interface ProjectMember {
 export interface Task {
   id: UUID;
   project_id: UUID | null;
+  /** Timeline step this task belongs to (same project). */
+  milestone_id: UUID | null;
   title: string;
   description: string | null;
   assignee_id: UUID | null;
@@ -253,6 +268,7 @@ export interface Tables {
   profiles: Profile;
   projects: Project;
   project_members: ProjectMember;
+  milestones: Milestone;
   tasks: Task;
   calendar_notes: CalendarNote;
   attachments: Attachment;
@@ -273,6 +289,7 @@ export const TABLE_NAMES: TableName[] = [
   "profiles",
   "projects",
   "project_members",
+  "milestones",
   "tasks",
   "calendar_notes",
   "attachments",

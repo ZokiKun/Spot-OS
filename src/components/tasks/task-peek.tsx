@@ -2,7 +2,7 @@
 
 import { createContext, Suspense, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { CalendarDays, CircleDot, Flag, FolderKanban, Trash2, User, Clock } from "lucide-react";
+import { CalendarDays, CircleDot, Flag, FolderKanban, Milestone as MilestoneIcon, Trash2, User, Clock } from "lucide-react";
 import { useWorkspace, useProfiles } from "@/lib/store";
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/constants";
 import type { Task, TaskStatus, UUID } from "@/lib/types";
@@ -10,7 +10,8 @@ import { nowISO, timeAgo } from "@/lib/utils";
 import { SidePeek } from "@/components/ui/side-peek";
 import { EditableText } from "@/components/ui/input";
 import { MentionTextarea } from "@/components/ui/mention-textarea";
-import { DateField, OptionField, PersonField, ProjectField, PropertyRow } from "@/components/ui/fields";
+import { DateField, MilestoneField, OptionField, PersonField, ProjectField, PropertyRow } from "@/components/ui/fields";
+import { sortMilestones } from "@/lib/milestones";
 import { IconButton } from "@/components/ui/button";
 
 interface TaskPeekApi {
@@ -113,8 +114,23 @@ function TaskPeek({ taskId, onClose }: { taskId: UUID | null; onClose: () => voi
           <OptionField variant="property" kind="select" options={TASK_PRIORITIES} value={task.priority} onChange={(priority) => set({ priority })} />
         </PropertyRow>
         <PropertyRow icon={<FolderKanban className="size-4" />} label="Project">
-          <ProjectField variant="property" projects={data.projects} value={task.project_id} onChange={(project_id) => set({ project_id })} />
+          <ProjectField
+            variant="property"
+            projects={data.projects}
+            value={task.project_id}
+            onChange={(project_id) => project_id !== task.project_id && set({ project_id, milestone_id: null })}
+          />
         </PropertyRow>
+        {project && (
+          <PropertyRow icon={<MilestoneIcon className="size-4" />} label="Milestone">
+            <MilestoneField
+              variant="property"
+              milestones={sortMilestones(data.milestones.filter((m) => m.project_id === project.id))}
+              value={task.milestone_id}
+              onChange={(milestone_id) => set({ milestone_id })}
+            />
+          </PropertyRow>
+        )}
         <PropertyRow icon={<Clock className="size-4" />} label="Created">
           <div className="flex min-h-[30px] items-center px-1.5 text-fg-2">
             {people.get(task.created_by)?.full_name ?? "Someone"} · {timeAgo(task.created_at)}

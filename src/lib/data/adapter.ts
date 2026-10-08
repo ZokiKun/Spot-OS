@@ -35,6 +35,7 @@ export function emptySnapshot(): Snapshot {
     profiles: [],
     projects: [],
     project_members: [],
+    milestones: [],
     tasks: [],
     calendar_notes: [],
     attachments: [],
@@ -59,6 +60,8 @@ export function normalizeSnapshot(s: Snapshot): Snapshot {
     ...s,
     projects: s.projects.map((p) => ({ ...p, tags: p.tags ?? [], note: p.note ?? null, cover: p.cover ?? null, cover_position: p.cover_position ?? 50 })),
     library_items: s.library_items.map((l) => ({ ...l, tags: l.tags ?? [], pinned: l.pinned ?? false, pinned_by: l.pinned_by ?? [] })),
+    tasks: s.tasks.map((t) => ({ ...t, milestone_id: t.milestone_id ?? null })),
+    milestones: s.milestones ?? [],
     attachments: s.attachments.map((a) => ({ ...a, kb_page_id: a.kb_page_id ?? null })),
     notifications: s.notifications ?? [],
   };

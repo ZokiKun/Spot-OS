@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/input";
 import { EmptyState, ProgressBar } from "@/components/ui/misc";
 import { StatusTag, Tag } from "@/components/ui/tag";
 import { statusPatch, useTaskPeek } from "@/components/tasks/task-peek";
+import { NextStepText } from "@/components/projects/project-timeline";
 import type { DatedItem, HomeLayout } from "./home-data";
 
 const LAYOUT_META: Record<HomeLayout, { label: string; icon: ReactNode }> = {
@@ -194,7 +195,9 @@ export function ProjectCard({ project: p }: { project: Project }) {
       <div className="mt-2.5 line-clamp-2 text-[15px] font-semibold leading-snug">{p.name}</div>
       {p.client && <div className="truncate text-[12px] text-fg-3">{p.client}</div>}
       <div className="mt-1.5 line-clamp-2 min-h-[2lh] text-[13px] text-fg-2">
-        {p.next_action ? `→ ${p.next_action}` : <span className="text-fg-3">No next action</span>}
+        <span className="flex min-w-0 items-center gap-1">
+          → <NextStepText project={p} />
+        </span>
       </div>
       <div className="mt-auto pt-3">
         <div className="flex items-center gap-2 text-[12px] text-fg-2 tabular">

@@ -26,7 +26,7 @@ With no Supabase keys, Spot OS runs in **demo mode**: sample data lives in your 
 ## Connect Supabase
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. Run the files in `supabase/migrations/` in order (`0001_init.sql`, `0002_tags_pins_mentions.sql`, `0003_grants.sql`), either in the SQL editor or with `supabase db push` via the CLI. They create the tables, RLS, triggers, Realtime publication and the private `attachments` bucket, then grant signed-in users access to the tables (newer Supabase projects don't do this automatically).
+2. Run the files in `supabase/migrations/` in order (`0001_init.sql`, `0002_tags_pins_mentions.sql`, `0003_grants.sql`, `0004_milestones.sql`), either in the SQL editor or with `supabase db push` via the CLI. They create the tables, RLS, triggers, Realtime publication and the private `attachments` bucket, then grant signed-in users access to the tables (newer Supabase projects don't do this automatically).
 3. **Authentication → Providers → Email:** keep Email enabled and **turn off "Allow new users to sign up"**.
 4. **Authentication → URL configuration:** set the Site URL to your app URL, and add `http://localhost:3000/auth/callback` plus `https://<your-domain>/auth/callback` to the redirect URLs.
 5. **Authentication → Users → Invite user** for each of the three members. Their profile is created automatically. Members set a password via the invite link, or use "Email me a sign-in link".

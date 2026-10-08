@@ -12,6 +12,7 @@ This document answers the brief's "first task" list: schema, routes, components,
 | --- | --- | --- |
 | `profiles` | One row per member (FK → `auth.users`) | Created by the `on_auth_user_created` trigger. Membership = having a profile. |
 | `projects` | Project, type, status, client, CD, lead, dates, description, **next_action**, `notes_html` | `type` / `status` are text + `check` (easier to evolve than PG enums). |
+| `milestones` | A project's timeline: ordered steps (`sort_order`), optional `due_date`; tasks point at one via `tasks.milestone_id` | A milestone is done when it has tasks and all are done. The project's **next step** is derived (`lib/milestones.ts`): the first unfinished milestone. `projects.next_action` is legacy and no longer edited. |
 | `project_members` | People associated with a project | `unique(project_id, profile_id)` |
 | `tasks` | Title, description, assignee, status, priority, due date, project | `project_id` nullable (studio-level tasks such as invoicing). `completed_at` set on Done. |
 | `calendar_notes` | Rich-text notes per date | Several notes per day. HTML from the editor. |

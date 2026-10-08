@@ -1,5 +1,5 @@
 import { format, startOfMonth, subMonths } from "date-fns";
-import type { Snapshot, Project, Task, ProjectStatus, TaskStatus, TaskPriority, ProjectType } from "../types";
+import type { Snapshot, Project, Task, Milestone, ProjectStatus, TaskStatus, TaskPriority, ProjectType } from "../types";
 import { emptySnapshot } from "./adapter";
 import { addDaysISO, nowISO, todayISO, uid } from "../utils";
 import { DEMO_MAPPING } from "../finance/sample";
@@ -59,7 +59,6 @@ export function buildSeed(): Snapshot {
     deadline: addDaysISO(t, 9),
     start_date: addDaysISO(t, -45),
     description: "Full identity refresh: logo system, typography, colour, and launch toolkit.",
-    next_action: "Present final logo lockups to Maya",
     tags: ["branding", "retainer"],
     cover: "gradient:dusk",
     note: "Maya wants the compass mark — keep the wordmark as backup.",
@@ -70,7 +69,6 @@ export function buildSeed(): Snapshot {
     lead_id: jordan!.id,
     deadline: addDaysISO(t, 21),
     description: "Marketing site redesign and CMS migration.",
-    next_action: "Get CMS access from Kestrel IT",
     tags: ["web"],
     note: "Blocked on IT since last week; escalate Friday if still stuck.",
   });
@@ -80,7 +78,6 @@ export function buildSeed(): Snapshot {
     lead_id: alex!.id,
     deadline: addDaysISO(t, 4),
     description: "Packaging system for the autumn ceramics line.",
-    next_action: "Collect client feedback on dielines",
     tags: ["packaging", "print"],
     cover: "gradient:clay",
   });
@@ -96,7 +93,6 @@ export function buildSeed(): Snapshot {
     deadline: addDaysISO(t, 60),
     description: "Internal operating system for the studio.",
     tags: ["internal"],
-    next_action: "Connect finance sheet",
   });
   const fieldnotes = project("Field Notes campaign", "📓", "client", "backlog", {
     client: "Field Notes Co.",
@@ -149,6 +145,7 @@ export function buildSeed(): Snapshot {
   ): Task => ({
     id: uid(),
     project_id: projectId,
+    milestone_id: null,
     title,
     description,
     assignee_id: assignee,
@@ -186,6 +183,34 @@ export function buildSeed(): Snapshot {
     task("Renew Adobe licences", null, jordan!.id, "todo", 4),
     task("Print and bind zine", typeface.id, sam!.id, "done", -11),
   ];
+
+  // Timelines: [project, milestone, due offset, task titles under it]
+  const timelines: [Project, string, number | null, string[]][] = [
+    [northwind, "Discovery", -25, ["Client kickoff deck", "Moodboard round 2"]],
+    [northwind, "Identity design", 2, ["Finalise logo lockups", "Colour system — accessibility check"]],
+    [northwind, "Guidelines and launch", 9, ["Brand guidelines layout", "Launch toolkit templates"]],
+    [kestrel, "Content and structure", 3, ["Content inventory", "Sitemap sign-off"]],
+    [kestrel, "Design", 10, ["Homepage wireframes"]],
+    [kestrel, "Build", 20, ["Request CMS credentials"]],
+    [mora, "Packaging design", 0, ["Dieline revisions"]],
+    [mora, "Production", 6, ["Print vendor quotes", "Photography brief"]],
+    [site, "Planning", -4, ["Choose site framework"]],
+    [site, "Content", 14, ["Case study: Northwind", "Write about page copy"]],
+    [ops, "Setup", 2, ["Finance sheet mapping", "Invite team to Spot OS"]],
+    [ops, "Documentation", 7, ["Draft SPOT.md"]],
+    [fieldnotes, "Concepts", 18, ["Concept routes"]],
+    [typeface, "Print", -11, ["Print and bind zine"]],
+  ];
+  const order = new Map<string, number>();
+  s.milestones = timelines.map(([p, title, due, taskTitles]): Milestone => {
+    const sort_order = order.get(p.id) ?? 0;
+    order.set(p.id, sort_order + 1);
+    const m: Milestone = { id: uid(), project_id: p.id, title, due_date: due == null ? null : addDaysISO(t, due), sort_order, created_by: alex!.id, ...stamp };
+    s.tasks.forEach((task) => {
+      if (task.project_id === p.id && taskTitles.includes(task.title)) task.milestone_id = m.id;
+    });
+    return m;
+  });
 
   s.library_items = [
     ["Brand guidelines template", "template", "https://docs.google.com/document/d/brand-template", null, ["brand", "template"], "Starting point for every identity project."],

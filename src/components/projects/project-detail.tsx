@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Archive,
-  ArrowRight,
   Building2,
   CalendarDays,
   CalendarPlus,
@@ -39,7 +38,7 @@ import { Popover, usePopover } from "@/components/ui/popover";
 import { MenuDivider, MenuItem, MenuList } from "@/components/ui/menu";
 import { EmptyState, ProgressBar, SectionHeading } from "@/components/ui/misc";
 import { Avatar } from "@/components/ui/avatar";
-import { TaskList, TaskTable } from "@/components/tasks/task-table";
+import { TaskList } from "@/components/tasks/task-table";
 import { ActivityFeed } from "@/components/activity-feed";
 import { AttachmentList } from "@/components/attachments";
 import { RichEditor } from "@/components/editor/rich-editor";
@@ -47,6 +46,7 @@ import { LibraryItemDialog } from "@/components/library/library-item-dialog";
 import { LibraryRow } from "@/components/library/library-row";
 import { projectStatusPatch } from "./project-views";
 import { AddCoverButton, ProjectCover } from "./project-cover";
+import { NextStepCallout, ProjectTimeline, TimelineStepper, useTimeline } from "./project-timeline";
 
 type Tab = "overview" | "tasks" | "files" | "links" | "notes" | "activity";
 const ICONS = ["📁", "🧭", "🪶", "🫙", "🟠", "⚙️", "📓", "🔤", "🎨", "📐", "🖼️", "🎬", "📦", "🌱", "✳️", "🔶", "🧪", "💡"];
@@ -204,7 +204,7 @@ export function ProjectDetail({ id }: { id: string }) {
             </PropertyRow>
           </div>
 
-          <NextActionCallout project={project} onCommit={(next_action) => set({ next_action })} />
+          <NextStepCallout project={project} onOpenTimeline={() => setTab("tasks")} onComplete={() => set(projectStatusPatch("completed"))} />
 
           <AutoTextarea
             value={description ?? project.description ?? ""}
@@ -223,7 +223,7 @@ export function ProjectDetail({ id }: { id: string }) {
               onChange={setTab}
               items={[
                 { value: "overview", label: "Overview" },
-                { value: "tasks", label: "Tasks", count: tasks.filter(isOpen).length },
+                { value: "tasks", label: "Timeline", count: tasks.filter(isOpen).length },
                 { value: "files", label: "Files", count: files.length },
                 { value: "links", label: "Links", count: links.length },
                 { value: "notes", label: "Notes" },
@@ -231,8 +231,8 @@ export function ProjectDetail({ id }: { id: string }) {
               ]}
             />
             <div className="pt-5">
-              {tab === "overview" && <Overview project={project} progress={prog} />}
-              {tab === "tasks" && <TaskTable tasks={tasks} showProject={false} newTaskDefaults={{ project_id: project.id }} emptyLabel="No tasks yet — add the first one below" />}
+              {tab === "overview" && <Overview project={project} progress={prog} onOpenTimeline={() => setTab("tasks")} />}
+              {tab === "tasks" && <ProjectTimeline project={project} />}
               {tab === "files" && <AttachmentList items={files} owner={{ project_id: project.id }} folder={`projects/${project.id}`} />}
               {tab === "links" && <ProjectLinks projectId={project.id} />}
               {tab === "notes" && <ProjectNotes project={project} />}
@@ -249,30 +249,6 @@ function TextProperty({ value, onCommit }: { value: string | null; onCommit: (v:
   return (
     <div className="rounded-md px-1.5 py-1 hover:bg-hover focus-within:bg-hover">
       <EditableText value={value ?? ""} placeholder="Empty" onCommit={(v) => onCommit(v || null)} className="text-[14px] placeholder:text-fg-3" />
-    </div>
-  );
-}
-
-function NextActionCallout({ project, onCommit }: { project: Project; onCommit: (v: string | null) => void }) {
-  const missing = !project.next_action?.trim() && project.status === "active";
-  return (
-    <div
-      className={cn(
-        "mt-5 flex items-start gap-3 rounded-md px-4 py-3",
-        missing ? "bg-danger-soft" : "bg-[color-mix(in_srgb,var(--tag-blue-bg)_55%,transparent)]",
-      )}
-    >
-      <ArrowRight className={cn("mt-[3px] size-4 shrink-0", missing ? "text-danger" : "text-[var(--dot-blue)]")} />
-      <div className="min-w-0 flex-1">
-        <div className="text-[12px] font-medium text-fg-2">Next action</div>
-        <EditableText
-          value={project.next_action ?? ""}
-          onCommit={(v) => onCommit(v || null)}
-          placeholder="What’s the one next meaningful step?"
-          multiline
-          className="text-[15px] font-medium leading-snug"
-        />
-      </div>
     </div>
   );
 }
@@ -323,10 +299,21 @@ function MembersProperty({ projectId }: { projectId: string }) {
   );
 }
 
-function Overview({ project, progress }: { project: Project; progress: { done: number; total: number; ratio: number } }) {
+function Overview({
+  project,
+  progress,
+  onOpenTimeline,
+}: {
+  project: Project;
+  progress: { done: number; total: number; ratio: number };
+  onOpenTimeline: () => void;
+}) {
   const { data } = useWorkspace();
   const people = useProfiles();
+  const timeline = useTimeline(project.id);
   const open = sortTasks(data.tasks.filter((t) => t.project_id === project.id && isOpen(t)));
+  // "Up next" follows the timeline: the current milestone's open tasks first.
+  const upNext = timeline.current ? sortTasks(timeline.current.tasks.filter(isOpen)) : open;
   const overdue = open.filter((t) => isOverdue(t)).length;
   const blocked = open.filter((t) => t.status === "blocked").length;
   const byPerson = data.profiles
@@ -350,9 +337,19 @@ function Overview({ project, progress }: { project: Project; progress: { done: n
         ))}
       </div>
 
+      {timeline.steps.length > 0 && (
+        <section>
+          <SectionHeading>Timeline</SectionHeading>
+          <TimelineStepper timeline={timeline} onOpen={onOpenTimeline} />
+        </section>
+      )}
+
       <section>
-        <SectionHeading>Up next{blocked ? ` · ${blocked} blocked` : ""}</SectionHeading>
-        {open.length ? <TaskList tasks={open} limit={6} /> : <EmptyState title="No open tasks" className="py-6" />}
+        <SectionHeading>
+          {timeline.current ? `Up next · ${timeline.current.milestone.title}` : "Up next"}
+          {blocked ? ` · ${blocked} blocked` : ""}
+        </SectionHeading>
+        {upNext.length ? <TaskList tasks={upNext} limit={6} /> : <EmptyState title={timeline.current ? "No open tasks in this milestone" : "No open tasks"} className="py-6" />}
       </section>
 
       {byPerson.length > 0 && (
