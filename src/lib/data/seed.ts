@@ -17,7 +17,7 @@ export function buildSeed(): Snapshot {
     { id: uid(), full_name: "Alex Rivera", email: "alex@studiospot.co", role_title: "Creative Director", color: "orange" },
     { id: uid(), full_name: "Sam Okafor", email: "sam@studiospot.co", role_title: "Design Lead", color: "blue" },
     { id: uid(), full_name: "Jordan Lee", email: "jordan@studiospot.co", role_title: "Producer", color: "green" },
-  ].map((p) => ({ ...p, ...stamp }));
+  ].map((p) => ({ ...p, access: "editor" as const, ...stamp }));
   s.profiles = [alex!, sam!, jordan!];
 
   const project = (

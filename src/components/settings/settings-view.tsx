@@ -159,8 +159,8 @@ function WorkspaceSettings() {
         title="Members"
         description={
           mode === "supabase"
-            ? "Each person has their own login in one shared workspace. Invite new members from the Supabase dashboard (Authentication → Users → Invite). Public sign-up is disabled."
-            : "In demo mode, members are local sample profiles. With Supabase, each person gets their own login."
+            ? "Each person has their own login in one shared workspace. Invite new members from the Supabase dashboard (Authentication → Users → Invite). Public sign-up is disabled. View-only members (e.g. bots) can see everything but change nothing."
+            : "In demo mode, members are local sample profiles. With Supabase, each person gets their own login. View-only members (e.g. bots) can see everything but change nothing."
         }
       >
         {data.profiles.map((p) => (
@@ -172,7 +172,8 @@ function WorkspaceSettings() {
 }
 
 function MemberRow({ profile }: { profile: Profile }) {
-  const { update, me } = useWorkspace();
+  const { update, me, canEdit } = useWorkspace();
+  const isMe = profile.id === me?.id;
   const { setAnchor: popAnchorRef, ...pop } = usePopover();
   return (
     <div className="flex items-center gap-3 border-b border-line py-2.5 last:border-b-0">
@@ -193,7 +194,18 @@ function MemberRow({ profile }: { profile: Profile }) {
       <div className="w-44">
         <EditableText value={profile.role_title ?? ""} placeholder="Role" onCommit={(role_title) => void update("profiles", profile.id, { role_title: role_title || null })} className="text-right text-[13px] text-fg-2" />
       </div>
-      {profile.id === me?.id && <span className="rounded-[3px] bg-active px-1.5 text-[11px] text-fg-2">You</span>}
+      {canEdit && !isMe ? (
+        <div className="flex shrink-0 gap-1" role="group" aria-label={`Access for ${profile.full_name}`}>
+          {(["editor", "viewer"] as const).map((a) => (
+            <Button key={a} size="sm" variant={profile.access === a ? "primary" : "secondary"} onClick={() => profile.access !== a && void update("profiles", profile.id, { access: a })}>
+              {a === "editor" ? "Can edit" : "View only"}
+            </Button>
+          ))}
+        </div>
+      ) : (
+        <span className="shrink-0 text-[12px] text-fg-2">{profile.access === "viewer" ? "View only" : "Can edit"}</span>
+      )}
+      {isMe && <span className="rounded-[3px] bg-active px-1.5 text-[11px] text-fg-2">You</span>}
     </div>
   );
 }

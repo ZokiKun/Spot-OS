@@ -54,7 +54,7 @@ function NavRow({
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { data, me, mode, signOut, status } = useWorkspace();
+  const { data, me, mode, signOut, status, canEdit } = useWorkspace();
   const { openSearch, closeMobileNav } = useShell();
   const { pref, setPref } = useTheme();
   const { setAnchor: menuAnchorRef, ...menu } = usePopover<HTMLButtonElement>();
@@ -78,6 +78,7 @@ export function Sidebar() {
         >
           <SpotMark size={22} />
           <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">{workspaceName}</span>
+          {!canEdit && <span className="shrink-0 rounded-[3px] bg-active px-1.5 text-[11px] text-fg-2">View only</span>}
           <ChevronDown className="size-3.5 text-fg-3" />
         </button>
         <Popover open={menu.open} onClose={menu.close} anchor={menu.anchor} width={260}>

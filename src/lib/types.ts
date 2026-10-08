@@ -26,6 +26,8 @@ export interface Profile {
   email: string;
   role_title: string | null;
   color: string; // tag colour key
+  /** 'viewer' = read-only (e.g. bot accounts). Enforced by RLS — see migration 0007. */
+  access: "editor" | "viewer";
   created_at: ISODateTime;
   updated_at: ISODateTime;
 }

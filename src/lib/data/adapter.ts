@@ -58,6 +58,7 @@ export function normalizeSnapshot(s: Snapshot): Snapshot {
   return {
     ...emptySnapshot(),
     ...s,
+    profiles: s.profiles.map((p) => ({ ...p, access: p.access ?? "editor" })),
     projects: s.projects.map((p) => ({ ...p, tags: p.tags ?? [], note: p.note ?? null, cover: p.cover ?? null, cover_position: p.cover_position ?? 50 })),
     library_items: s.library_items.map((l) => ({ ...l, tags: l.tags ?? [], pinned: l.pinned ?? false, pinned_by: l.pinned_by ?? [] })),
     tasks: s.tasks.map((t) => ({ ...t, milestone_id: t.milestone_id ?? null, assignee_ids: t.assignee_ids?.length ? t.assignee_ids : t.assignee_id ? [t.assignee_id] : [] })),

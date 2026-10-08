@@ -66,6 +66,8 @@ interface WorkspaceContextValue {
   mode: "demo" | "supabase";
   user: AuthUser | null;
   me: Profile | null;
+  /** False for view-only members: writes are refused (RLS refuses them too). */
+  canEdit: boolean;
   create<T extends TableName>(table: T, row: NewRow<T>): Promise<Row<T>>;
   update<T extends TableName>(table: T, id: UUID, patch: Partial<Row<T>>): Promise<void>;
   remove(table: TableName, id: UUID): Promise<void>;
@@ -121,9 +123,33 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     [toast],
   );
 
+  const me = useMemo(
+    () => (user ? (state.data.profiles.find((p) => p.id === user.id) ?? null) : null),
+    [user, state.data.profiles],
+  );
+  const canEdit = me?.access !== "viewer";
+  const canEditRef = useLatest(canEdit);
+  const userIdRef = useLatest(user?.id ?? null);
+
+  /**
+   * View-only members may still mark their own notifications read and edit their own profile
+   * (except access). Everything else is refused here with a toast, before the optimistic update.
+   */
+  const allowed = useCallback(
+    (table: TableName, id?: UUID, patch?: Record<string, unknown>) => {
+      if (canEditRef.current) return true;
+      if (table === "notifications" && id) return true;
+      if (table === "profiles" && id === userIdRef.current && !(patch && "access" in patch)) return true;
+      toast.show({ title: "View-only access", description: "You can look around, but not change anything.", tone: "error" });
+      return false;
+    },
+    [canEditRef, userIdRef, toast],
+  );
+
   /** Deliver @mention notifications. They belong to the recipient, so they never enter our own snapshot. */
   const notifyMentions = useCallback(
     <T extends TableName>(table: T, before: Row<T> | null, after: Row<T>) => {
+      if (!canEditRef.current) return;
       const rows = mentionNotifications(table, before, after, dataRef.current, user?.id ?? null);
       for (const n of rows) {
         const ts = nowISO();
@@ -132,11 +158,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           .catch((err) => fail(err, "send the mention notification"));
       }
     },
-    [dataRef, user, fail],
+    [dataRef, user, fail, canEditRef],
   );
 
   const create = useCallback(
     async <T extends TableName>(table: T, row: NewRow<T>) => {
+      if (!allowed(table)) throw new Error("View-only access");
       const ts = nowISO();
       const full = { id: uid(), created_at: ts, updated_at: ts, ...row } as unknown as Row<T>;
       dispatch({ type: "change", change: { type: "upsert", table, row: full } });
@@ -151,13 +178,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [fail, notifyMentions],
+    [fail, notifyMentions, allowed],
   );
 
   const update = useCallback(
     async <T extends TableName>(table: T, id: UUID, patch: Partial<Row<T>>) => {
       const before = (dataRef.current[table] as Row<T>[]).find((r) => (r as { id: UUID }).id === id);
       if (!before) return;
+      if (!allowed(table, id, patch as Record<string, unknown>)) return;
       const optimistic = { ...before, ...patch, updated_at: nowISO() } as Row<T>;
       dispatch({ type: "change", change: { type: "upsert", table, row: optimistic } });
       try {
@@ -169,11 +197,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         fail(err, "update");
       }
     },
-    [fail, dataRef, notifyMentions],
+    [fail, dataRef, notifyMentions, allowed],
   );
 
   const remove = useCallback(
     async (table: TableName, id: UUID) => {
+      if (!allowed(table, id)) return;
       const before = (dataRef.current[table] as Row<TableName>[]).find((r) => (r as { id: UUID }).id === id);
       dispatch({ type: "change", change: { type: "delete", table, id } });
       try {
@@ -183,11 +212,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         fail(err, "delete");
       }
     },
-    [fail, dataRef],
+    [fail, dataRef, allowed],
   );
 
   const upload = useCallback(
     async (file: File, folder: string) => {
+      if (!allowed("attachments")) throw new Error("View-only access");
       try {
         return await getAdapter().upload(file, folder);
       } catch (err) {
@@ -195,18 +225,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [fail],
+    [fail, allowed],
   );
 
   const signOut = useCallback(async () => {
     await getAdapter().signOut();
     router.replace("/login");
   }, [router]);
-
-  const me = useMemo(
-    () => (user ? (state.data.profiles.find((p) => p.id === user.id) ?? null) : null),
-    [user, state.data.profiles],
-  );
 
   const value = useMemo<WorkspaceContextValue>(
     () => ({
@@ -216,13 +241,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       mode: isSupabaseConfigured ? "supabase" : "demo",
       user,
       me,
+      canEdit,
       create,
       update,
       remove,
       upload,
       signOut,
     }),
-    [state, user, me, create, update, remove, upload, signOut],
+    [state, user, me, canEdit, create, update, remove, upload, signOut],
   );
 
   return <WorkspaceContext value={value}>{children}</WorkspaceContext>;
