@@ -1,7 +1,7 @@
 import { format, startOfMonth, subMonths } from "date-fns";
 import type { FinanceMapping } from "../types";
 
-/** Mapping for the bundled demo sheet — the same shape a real Google Sheet mapping uses. */
+/** Mapping for the bundled demo sheet — the same shape a real uploaded sheet's mapping uses. */
 export const DEMO_MAPPING: FinanceMapping = {
   date: "Date",
   amount: "Amount",

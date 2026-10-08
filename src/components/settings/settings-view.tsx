@@ -10,7 +10,7 @@ import { getDemoAdapter } from "@/lib/data";
 import { buildSpotMd } from "@/lib/spot-md";
 import { SUPABASE_URL } from "@/lib/supabase/env";
 import { readPref, writePref } from "@/lib/hooks";
-import { cn, downloadFile } from "@/lib/utils";
+import { cn, downloadFile, timeAgo } from "@/lib/utils";
 import { Page } from "@/components/shell/page";
 import { PALETTES, useTheme } from "@/components/shell/theme";
 import { Button } from "@/components/ui/button";
@@ -280,8 +280,10 @@ function Integrations() {
         >
           <Status ok>{isGoogleCalendarConfigured ? "Sync enabled" : ".ics import"}</Status>
         </SettingsRow>
-        <SettingsRow label="Google Sheets (finance)" description="Configured under Finance.">
-          <Status ok={fin?.kind === "google_sheet_csv" && !!fin.url}>{fin?.kind === "google_sheet_csv" && fin.url ? "Connected" : fin?.kind === "demo" ? "Sample data" : "Not connected"}</Status>
+        <SettingsRow label="Finance" description="Uploaded monthly as an Excel or CSV file under Finance. Spot OS never connects to the spreadsheet.">
+          <Status ok={fin?.kind === "upload" && !!fin.last_synced_at}>
+            {fin?.kind === "demo" ? "Sample data" : fin?.last_synced_at ? `Updated ${timeAgo(fin.last_synced_at)}` : "Nothing uploaded"}
+          </Status>
         </SettingsRow>
       </SettingsSection>
     </>

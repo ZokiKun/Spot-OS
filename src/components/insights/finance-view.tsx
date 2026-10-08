@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { RefreshCw, Settings2, TriangleAlert } from "lucide-react";
+import { Upload, TriangleAlert } from "lucide-react";
 import { useFinance } from "@/lib/finance/use-finance";
 import { cn, timeAgo } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { EmptyState, SectionHeading, Skeleton } from "@/components/ui/misc";
+import { EmptyState, SectionHeading } from "@/components/ui/misc";
 import { Money, RevealToggle, useMoneyVisible } from "./money";
 import { StatRow } from "./stat-row";
 import type { PeriodTotals } from "@/lib/finance/normalize";
@@ -18,11 +17,11 @@ export function FinanceView() {
   if (!fin.source)
     return (
       <EmptyState
-        title="No finance source connected"
-        description="Point Spot OS at the studio finance spreadsheet. The sheet stays the source of truth."
+        title="No finance numbers yet"
+        description="Upload the studio finance spreadsheet (Excel or CSV) once a month. The sheet stays the source of truth."
         action={
           <Link href="/settings?section=finance" className="text-[14px] text-accent hover:underline">
-            Connect a sheet
+            Upload the finance file
           </Link>
         }
       />
@@ -34,31 +33,40 @@ export function FinanceView() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="text-[13px] text-fg-2">
           From <span className="font-medium text-fg">{fin.source.name}</span>
-          {fin.fetchedAt && <> · updated {timeAgo(fin.fetchedAt)}</>}
+          {fin.updatedAt && <> · updated {timeAgo(fin.updatedAt)}</>}
           {fin.source.kind === "demo" && <span className="ml-1.5 rounded-[3px] bg-[var(--tag-orange-bg)] px-1 text-[11px] text-[var(--tag-text)]">Sample data</span>}
         </div>
         <div className="ml-auto flex items-center gap-1">
-          <Button variant="ghost" onClick={fin.refresh} disabled={fin.loading}>
-            <RefreshCw className={cn("size-3.5", fin.loading && "animate-spin")} /> Refresh
-          </Button>
           <Link href="/settings?section=finance" className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[13px] font-medium text-fg-2 hover:bg-hover">
-            <Settings2 className="size-3.5" /> Source
+            <Upload className="size-3.5" /> Upload new file
           </Link>
           <RevealToggle />
         </div>
       </div>
 
-      {fin.error && (
-        <div className="flex items-start gap-2 rounded-md bg-danger-soft px-3 py-2.5 text-[13px] text-danger">
-          <TriangleAlert className="mt-px size-4 shrink-0" /> {fin.error}
+      {fin.stale && (
+        <div className="flex items-start gap-2 rounded-md bg-[var(--tag-orange-bg)] px-3 py-2.5 text-[13px]">
+          <TriangleAlert className="mt-px size-4 shrink-0" />
+          <span>
+            These numbers are from {timeAgo(fin.updatedAt!)}.{" "}
+            <Link href="/settings?section=finance" className="font-medium underline">
+              Upload this month’s file
+            </Link>{" "}
+            to bring them up to date.
+          </span>
         </div>
       )}
 
       {!s ? (
-        <div className="space-y-3">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-48 w-full" />
-        </div>
+        <EmptyState
+          title="Nothing uploaded yet"
+          description="Export the finance sheet as Excel or CSV and upload it in Settings → Finance."
+          action={
+            <Link href="/settings?section=finance" className="text-[14px] text-accent hover:underline">
+              Upload the finance file
+            </Link>
+          }
+        />
       ) : (
         <>
           <StatRow

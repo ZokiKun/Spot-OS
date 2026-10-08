@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { CircleCheck, TriangleAlert } from "lucide-react";
+import { useMemo, useRef, useState, type DragEvent } from "react";
+import { CircleCheck, FileSpreadsheet, TriangleAlert, Upload } from "lucide-react";
 import type { FinanceMapping, FinanceSource } from "@/lib/types";
 import { useWorkspace } from "@/lib/store";
 import { DEMO_MAPPING } from "@/lib/finance/sample";
 import { normalizeSheet, summarize } from "@/lib/finance/normalize";
-import { fetchSourceRows } from "@/lib/finance/use-finance";
-import { formatMoney, timeAgo } from "@/lib/utils";
+import { FINANCE_FILE_ACCEPT, readFinanceFile, type FinanceFileSheet } from "@/lib/finance/read-file";
+import { cn, formatMoney, timeAgo } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import { SettingsRow, SettingsSection } from "./settings-ui";
 
 const list = (s: string) =>
@@ -18,14 +19,20 @@ const list = (s: string) =>
     .map((x) => x.trim())
     .filter(Boolean);
 
-type Draft = Omit<FinanceSource, "id" | "created_at" | "updated_at" | "last_synced_at">;
+type Draft = Omit<FinanceSource, "id" | "created_at" | "updated_at" | "last_synced_at" | "file_name">;
+type Picked = { fileName: string; sheets: FinanceFileSheet[]; sheet: number };
 
 export function FinanceSettings() {
   const { data, create, update } = useWorkspace();
+  const toast = useToast();
   const source = data.finance_sources[0] ?? null;
   const [draft, setDraft] = useState<Draft>(() => toDraft(source));
-  const [test, setTest] = useState<{ ok: boolean; text: string; headers?: string[]; preview?: string[] } | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [picked, setPicked] = useState<Picked | null>(null);
+  const [readError, setReadError] = useState<string | null>(null);
+  const [reading, setReading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Reset the form when the saved source changes (e.g. after Save, or another member edits it).
   const [seen, setSeen] = useState(source);
@@ -38,31 +45,59 @@ export function FinanceSettings() {
   const setM = (patch: Partial<FinanceMapping>) => setDraft((d) => ({ ...d, mapping: { ...d.mapping, ...patch } }));
   const mode: "single" | "split" = m.amount ? "single" : "split";
 
-  const runTest = async () => {
-    setBusy(true);
-    setTest(null);
+  // Preview updates live as the file, tab or mapping changes.
+  const rows = picked?.sheets[picked.sheet]?.rows ?? null;
+  const preview = useMemo(() => {
+    if (!rows) return null;
+    const result = normalizeSheet(rows, m);
+    return { result, summary: summarize(result.entries, result.balance, m) };
+  }, [rows, m]);
+
+  const pickFile = async (file: File | undefined) => {
+    if (!file) return;
+    setReading(true);
+    setReadError(null);
     try {
-      const rows = await fetchSourceRows({ ...draft, id: "test", created_at: "", updated_at: "", last_synced_at: null });
-      const result = normalizeSheet(rows, draft.mapping);
-      const s = summarize(result.entries, result.balance, draft.mapping);
-      setTest({
-        ok: result.entries.length > 0,
-        text: result.entries.length
-          ? `Read ${result.entries.length} entries. Available: ${formatMoney(s.available, m.currency)} · This month net: ${formatMoney(s.currentMonth?.net ?? 0, m.currency)}`
-          : "Connected, but no entries matched the mapping.",
-        headers: result.headers,
-        preview: [...result.warnings, ...result.entries.slice(-3).map((e) => `${e.date} · ${e.description ?? e.category ?? ""} · ${formatMoney(e.amount, m.currency)}`)],
-      });
+      const sheets = await readFinanceFile(file);
+      if (!sheets.some((s) => s.rows.length)) throw new Error("That file looks empty.");
+      // Start on the first tab that has the date column, else the first tab with data.
+      const want = m.date.trim().toLowerCase();
+      const withDate = sheets.findIndex((s) => s.rows.slice(0, 20).some((r) => r.some((c) => c.trim().toLowerCase() === want)));
+      setPicked({ fileName: file.name, sheets, sheet: withDate >= 0 ? withDate : sheets.findIndex((s) => s.rows.length) });
     } catch (err) {
-      setTest({ ok: false, text: err instanceof Error ? err.message : String(err) });
+      setPicked(null);
+      setReadError(err instanceof Error ? err.message : String(err));
     } finally {
-      setBusy(false);
+      setReading(false);
+      if (inputRef.current) inputRef.current.value = "";
     }
   };
 
+  const onDrop = (e: DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    void pickFile(e.dataTransfer.files[0]);
+  };
+
+  const canPublish = draft.kind === "upload" && !!preview && preview.result.entries.length > 0;
+
   const save = async () => {
-    if (source) await update("finance_sources", source.id, draft);
-    else await create("finance_sources", { ...draft, last_synced_at: null });
+    setSaving(true);
+    try {
+      const at = new Date().toISOString();
+      const fields = { ...draft, ...(canPublish ? { file_name: picked!.fileName, last_synced_at: at } : {}) };
+      const saved = source ? (await update("finance_sources", source.id, fields), source) : await create("finance_sources", { file_name: null, last_synced_at: null, ...fields });
+      if (canPublish) {
+        const { entries, balance } = preview!.result;
+        await create("finance_snapshots", { source_id: saved.id, entries, balance, fetched_at: at });
+        setPicked(null);
+        toast.show({ title: "Finance updated", description: `${entries.length} entries from ${fields.file_name}. Home, Insights and Reviews now use these numbers.` });
+      } else toast.show({ title: "Finance settings saved" });
+    } catch (err) {
+      toast.show({ title: "Couldn’t save finance", description: err instanceof Error ? err.message : String(err), tone: "error" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const field = (label: string, key: keyof FinanceMapping, placeholder = "Column header") => (
@@ -71,21 +106,28 @@ export function FinanceSettings() {
     </SettingsRow>
   );
 
+  const sheet = picked?.sheets[picked.sheet];
+
   return (
     <>
-      <SettingsSection
-        title="Source"
-        description="The finance spreadsheet is the source of truth. Spot OS reads it and never writes back."
-      >
+      <SettingsSection title="Source" description="Your finance spreadsheet stays the source of truth. Once a month, upload a copy here and Spot OS updates its numbers.">
         <SettingsRow label="Source type">
           <div className="flex gap-1">
-            {(["google_sheet_csv", "demo"] as const).map((k) => (
+            {(["upload", "demo"] as const).map((k) => (
               <Button
                 key={k}
                 variant={draft.kind === k ? "primary" : "secondary"}
-                onClick={() => setDraft((d) => ({ ...d, kind: k, mapping: k === "demo" ? DEMO_MAPPING : d.mapping }))}
+                onClick={() =>
+                  setDraft((d) =>
+                    k === "demo"
+                      ? { ...d, kind: k, mapping: DEMO_MAPPING }
+                      : d.kind === "demo"
+                        ? { kind: k, name: "Studio finance", mapping: DEFAULT_MAPPING }
+                        : d,
+                  )
+                }
               >
-                {k === "demo" ? "Sample data" : "Google Sheet"}
+                {k === "demo" ? "Sample data" : "Excel upload"}
               </Button>
             ))}
           </div>
@@ -93,13 +135,72 @@ export function FinanceSettings() {
         <SettingsRow label="Name">
           <TextInput className="w-72" value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
         </SettingsRow>
-        {draft.kind === "google_sheet_csv" && (
-          <SettingsRow label="Sheet URL" description="Share the sheet as “Anyone with the link can view”, or File → Share → Publish to web → CSV. Use the tab’s URL so the right sheet (gid) is read.">
-            <TextInput className="w-full sm:w-96" placeholder="https://docs.google.com/spreadsheets/d/…" value={draft.url ?? ""} onChange={(e) => setDraft((d) => ({ ...d, url: e.target.value || null }))} />
-          </SettingsRow>
-        )}
-        {source?.last_synced_at && <p className="pt-1 text-[12px] text-fg-3">Last synced {timeAgo(source.last_synced_at)}</p>}
       </SettingsSection>
+
+      {draft.kind === "upload" && (
+        <SettingsSection title="Upload this month’s file" description="In Google Sheets: File → Download → Microsoft Excel (.xlsx) — or CSV. The file is read on this device and never stored; Spot OS saves only the entries it needs.">
+          <label
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={onDrop}
+            className={cn(
+              "mt-2 flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed px-4 py-7 text-center transition-colors",
+              dragging ? "border-accent bg-accent/5" : "border-[var(--border-strong)] hover:bg-hover",
+            )}
+          >
+            <input ref={inputRef} type="file" accept={FINANCE_FILE_ACCEPT} className="sr-only" onChange={(e) => void pickFile(e.target.files?.[0])} />
+            {picked ? <FileSpreadsheet className="size-5 text-fg-2" /> : <Upload className="size-5 text-fg-2" />}
+            <span className="text-[14px] font-medium">{reading ? "Reading…" : picked ? picked.fileName : "Drop the finance file here, or click to choose"}</span>
+            <span className="text-[12px] text-fg-2">{picked ? "Choose a different file" : "Excel (.xlsx) or CSV · up to 10 MB"}</span>
+          </label>
+
+          {picked && picked.sheets.length > 1 && (
+            <SettingsRow label="Tab" description="Which tab of the workbook holds the transactions.">
+              <select
+                value={picked.sheet}
+                onChange={(e) => setPicked({ ...picked, sheet: Number(e.target.value) })}
+                className="h-8 max-w-60 rounded-md bg-input px-2 text-[14px] shadow-[inset_0_0_0_1px_var(--border-strong)]"
+              >
+                {picked.sheets.map((s, i) => (
+                  <option key={i} value={i}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </SettingsRow>
+          )}
+
+          {readError && (
+            <div className="mt-3 flex items-start gap-2 rounded-md bg-danger-soft px-3.5 py-3 text-[13px] font-medium text-danger">
+              <TriangleAlert className="mt-px size-4 shrink-0" /> {readError}
+            </div>
+          )}
+
+          {!picked && !readError && (
+            <p className="pt-3 text-[12px] text-fg-3">
+              {source?.kind === "upload" && source.last_synced_at
+                ? <>Last updated {timeAgo(source.last_synced_at)}{source.file_name && <> from {source.file_name}</>}. Changed the column mapping? Upload the file again to apply it.</>
+                : "Nothing uploaded yet."}
+            </p>
+          )}
+
+          {preview && sheet && (
+            <PreviewBox
+              ok={preview.result.entries.length > 0}
+              text={
+                preview.result.entries.length
+                  ? `Found ${preview.result.entries.length} entries in “${sheet.name}”. Available: ${formatMoney(preview.summary.available, m.currency)} · This month net: ${formatMoney(preview.summary.currentMonth?.net ?? 0, m.currency)}`
+                  : `No entries matched the column mapping in “${sheet.name}”. Check the column names below.`
+              }
+              headers={preview.result.headers}
+              lines={[...preview.result.warnings, ...preview.result.entries.slice(-3).map((e) => `${e.date} · ${e.description ?? e.category ?? ""} · ${formatMoney(e.amount, m.currency)}`)]}
+            />
+          )}
+        </SettingsSection>
+      )}
 
       <SettingsSection title="Column mapping" description="Tell Spot OS which columns mean what. Header names are matched case-insensitively, so you can change the sheet without code changes.">
         {field("Date column", "date")}
@@ -163,33 +264,34 @@ export function FinanceSettings() {
       </SettingsSection>
 
       <div className="flex flex-wrap items-center gap-2 pt-2">
-        <Button onClick={() => void runTest()} disabled={busy}>
-          {busy ? "Testing…" : "Test connection"}
+        <Button variant="primary" onClick={() => void save()} disabled={saving || reading}>
+          {saving ? "Saving…" : canPublish ? "Save and update finance" : "Save settings"}
         </Button>
-        <Button variant="primary" onClick={() => void save()}>
-          Save finance source
-        </Button>
+        {canPublish && <span className="text-[12px] text-fg-2">Replaces the numbers everyone sees with this file’s.</span>}
       </div>
-      {test && (
-        <div className={`mt-3 rounded-md px-3.5 py-3 text-[13px] ${test.ok ? "bg-callout" : "bg-danger-soft text-danger"}`}>
-          <div className="flex items-start gap-2 font-medium">
-            {test.ok ? <CircleCheck className="mt-px size-4 text-[var(--success)]" /> : <TriangleAlert className="mt-px size-4" />}
-            {test.text}
-          </div>
-          {test.headers && <div className="mt-2 text-fg-2">Columns found: {test.headers.join(" · ")}</div>}
-          {test.preview?.map((p, i) => (
-            <div key={i} className="mt-0.5 font-mono text-[12px] text-fg-2">
-              {p}
-            </div>
-          ))}
-        </div>
-      )}
     </>
   );
 }
 
+function PreviewBox({ ok, text, headers, lines }: { ok: boolean; text: string; headers: string[]; lines: string[] }) {
+  return (
+    <div className={cn("mt-3 rounded-md px-3.5 py-3 text-[13px]", ok ? "bg-callout" : "bg-danger-soft text-danger")}>
+      <div className="flex items-start gap-2 font-medium">
+        {ok ? <CircleCheck className="mt-px size-4 shrink-0 text-[var(--success)]" /> : <TriangleAlert className="mt-px size-4 shrink-0" />}
+        {text}
+      </div>
+      {headers.length > 0 && <div className="mt-2 text-fg-2">Columns found: {headers.filter(Boolean).join(" · ")}</div>}
+      {lines.map((p, i) => (
+        <div key={i} className="mt-0.5 font-mono text-[12px] text-fg-2">
+          {p}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const DEFAULT_MAPPING: FinanceMapping = { date: "Date", amount: "Amount", type: "Type", income_values: ["Income"], expense_values: ["Expense"], currency: "EUR", date_format: "auto" };
+
 function toDraft(s: FinanceSource | null): Draft {
-  return s
-    ? { name: s.name, kind: s.kind, url: s.url, mapping: s.mapping }
-    : { name: "Studio finance", kind: "google_sheet_csv", url: null, mapping: { date: "Date", amount: "Amount", type: "Type", income_values: ["Income"], expense_values: ["Expense"], currency: "EUR", date_format: "auto" } };
+  return s ? { name: s.name, kind: s.kind === "demo" ? "demo" : "upload", mapping: s.mapping } : { name: "Studio finance", kind: "upload", mapping: DEFAULT_MAPPING };
 }

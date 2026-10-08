@@ -21,7 +21,7 @@ This document answers the brief's "first task" list: schema, routes, components,
 | `reviews` | Monthly and quarterly reviews | `period` = `month`/`quarter`, `unique(period, period_start)`. Replaces the two separate review tables. |
 | `activity_log` | Lightweight history | Written **only by the database** (`log_activity` trigger). Clients can read it but can't write to it. |
 | `kb_pages` | Spot Base pages (Markdown) | **SPOT.md is derived from these pages**, not stored a second time. |
-| `finance_sources` | Sheet URL + configurable column **mapping** (`jsonb`) | |
+| `finance_sources` | Source kind (`upload` / `demo`), last uploaded file name + configurable column **mapping** (`jsonb`) | |
 | `finance_snapshots` | Cached, normalized entries | Pruned to the 5 newest rows per source by trigger. |
 | `settings` | Workspace settings (`key` → `jsonb`) | Per-device preferences (theme, finance reveal) stay in `localStorage`. The `tags` key holds custom tag names + colours for projects and Library. |
 | `notifications` | @mention notifications (0002) | Recipient-only RLS: you read and mark your own; any member can create one for another member. |
@@ -44,7 +44,6 @@ This document answers the brief's "first task" list: schema, routes, components,
 /reviews, /reviews/[id]
 /spot-base, /spot-base/[slug], /spot-base/spot-md   (inside Library; overview = Team, What/Why/How/Ethos, Brand assets)
 /settings                  ?section=appearance|notifications|workspace|finance|integrations|data
-/api/finance               server-side Google Sheets CSV fetch (host-allowlisted)
 ```
 
 `?task=<id>` on any page opens that task in the side peek. Attention items and search results use it for deep links.
@@ -93,27 +92,28 @@ src/
 - Cascaded deletes, for example a project's tasks, arrive as their own realtime events.
 - Demo mode mimics this with `BroadcastChannel` across tabs.
 
-## 5. Google Drive, Calendar & Sheets
+## 5. Google Drive & Calendar, and finance
 
 **Calendar.** Calendar → Export picks a week, month or year around the selected day and downloads an `.ics` file (deadlines, open tasks due, day notes as all-day events with stable UIDs) or a Markdown digest. "Import into Google Calendar…" downloads the file and opens Google Calendar's import page. With `NEXT_PUBLIC_GOOGLE_CLIENT_ID` set (and the Google Calendar API enabled), **Sync** pushes the same events into the signed-in person's primary calendar via `events.import` (scope `calendar.events`), so re-syncing updates instead of duplicating. A live subscription feed isn't offered: demo data lives in the browser, and a Supabase feed would need a server-side token.
 
 **Drive / Library.** Drive stays the main file store. Library only indexes URLs. Pasting a link auto-detects its type (Doc, Sheet, Slides, Folder, File, PDF) and suggests a name. The optional **Google Picker** button appears only when `NEXT_PUBLIC_GOOGLE_CLIENT_ID` and `NEXT_PUBLIC_GOOGLE_API_KEY` are set. It uses the `drive.file` scope and only reads the picked file's URL, name and type. Nothing is copied into Supabase.
 
-**Sheets / Finance.** The spreadsheet is the source of truth, and Spot OS never writes to it.
-1. In Settings → Finance, paste the sheet's URL. The sheet must be shared as "anyone with the link can view" or published as CSV.
-2. `/api/finance` converts the URL to its CSV export and fetches it server-side. Only `docs.google.com` is allowed, so it can't act as an open proxy.
-3. The **mapping** (`finance_sources.mapping`) says which header means date, amount (or separate income and expense columns), type values, category, status, outstanding values, balance column, opening balance, date format and currency. Columns are matched by header name, so the sheet can change without code changes.
-4. Entries are normalized into `{date, amount±, category, outstanding}` and summarized into available, outstanding, monthly and quarterly totals. They're cached in `finance_snapshots` and refreshed at most hourly or on demand.
-5. Every finance value on Home and Reviews is **hidden by default** behind Reveal (stored per device).
+**Finance (uploaded spreadsheet).** The spreadsheet is the source of truth, and Spot OS never connects to it, so it can stay private. No Google access is needed.
+1. Once a month a member exports the sheet as `.xlsx` or `.csv` and drops it into Settings → Finance.
+2. The file is read **in the browser** (`lib/finance/read-file.ts`, `read-excel-file` loaded on demand). It's never uploaded or stored. Every tab becomes text rows; the tab containing the date column is picked automatically, and title rows above the header are skipped.
+3. The **mapping** (`finance_sources.mapping`) says which header means date, amount (or separate income and expense columns), type values, category, status, outstanding values, balance column, opening balance, date format and currency. Columns are matched by header name, so the sheet can change without code changes. A live preview shows what will be saved.
+4. On save, entries are normalized into `{date, amount±, category, outstanding}` and stored as a `finance_snapshots` row. Insights and Reviews summarize the newest snapshot into available, outstanding, monthly and quarterly totals. Raw rows aren't kept, so a mapping change applies on the next upload.
+5. After 35 days without an upload, Home and Insights show a reminder.
+6. Every finance value is **hidden by default** behind Reveal (stored per device).
 
-*Upgrade path:* to keep the sheet private, swap the CSV fetch for the Sheets API with a Google service account. The account's key would live in a server env var, and the sheet would be shared with the service account's email. Only `fetchSourceRows` would change.
+*Why not a live Google Sheet link?* The earlier version fetched the sheet as CSV, which required "anyone with the link can view", so anyone holding the URL could read the studio's finances. A monthly upload is enough for monthly and quarterly reviews and needs no access to anyone's Google account. If live numbers are ever needed, use a Google service account that the sheet is shared with (read-only, key in a server env var), not link sharing.
 
 ## 6. Technical risks & assumptions
 
 | Risk / assumption | Mitigation |
 | --- | --- |
-| Finance sheet must be link-viewable for CSV fetch | Documented. Service-account upgrade path above. |
-| Sheet structure changes | Configurable mapping plus "Test connection" preview with warnings. |
+| Finance numbers are only as fresh as the last upload | 35-day reminder on Home and Insights. Service-account path above if live data is needed. |
+| Sheet structure changes | Configurable mapping plus a live upload preview with warnings. |
 | Signed URLs for uploads expire (set to 1 year) | Paths are stored, so URLs can be regenerated. Alternatively switch the bucket to public with UUID paths. |
 | Simultaneous edits of the same note | Last write wins (accepted in the brief). Remote updates don't apply to a focused editor. |
 | Snapshot loading won't scale to large data | Fine for 3 people and years of data. Paginate `activity_log` and `calendar_notes` if they grow. |
@@ -144,6 +144,6 @@ src/
 | 4 Calendar: month / quarter / year views, date notes, rich text, images, attachments, note export (MD / HTML / PDF), period export (.ics / Markdown), Google Calendar import + optional direct sync | ✅ |
 | 5 Library: links, docs, project association, tags, search, Drive detection, optional Picker | ✅ |
 | 6 Reviews: monthly / quarterly, auto metrics from Spot OS + finance | ✅ |
-| 7 Finance: Sheets source, mapping layer, totals, hide / reveal | ✅ (needs the real sheet URL) |
+| 7 Finance: monthly Excel / CSV upload, mapping layer, totals, hide / reveal, stale reminder | ✅ |
 | 8 Spot Base: pages, Markdown editing, SPOT.md | ✅ |
 | 9 Polish: settings, empty / loading / error states, responsive, ⌘K search | ✅ first pass. A security review against a live Supabase project is still to do. |

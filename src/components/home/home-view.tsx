@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Building2, House, Pin, User } from "lucide-react";
+import { Building2, FileSpreadsheet, House, Pin, User } from "lucide-react";
 import { useWorkspace } from "@/lib/store";
+import { useFinance } from "@/lib/finance/use-finance";
 import { isActiveProject, isAssignedTo, isDueToday, isOverdue } from "@/lib/selectors";
-import { cn, firstName, formatLongDate, greeting, plural, todayISO } from "@/lib/utils";
+import { cn, firstName, formatLongDate, greeting, plural, timeAgo, todayISO } from "@/lib/utils";
 import { usePref } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
 import { Page } from "@/components/shell/page";
@@ -20,6 +22,7 @@ type View = "personal" | "studio";
 
 export function HomeView() {
   const { data, me } = useWorkspace();
+  const fin = useFinance();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -91,6 +94,12 @@ export function HomeView() {
           {greeting()}, {firstName(me?.full_name) || "there"}
         </h1>
         <p className="mt-1.5 text-[15px] text-fg-2">{summary}</p>
+        {fin.stale && (
+          <Link href="/settings?section=finance" className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-fg-2 hover:text-fg">
+            <FileSpreadsheet className="size-3.5" />
+            Finance was last updated {timeAgo(fin.updatedAt)}. <span className="font-medium text-accent">Upload this month’s file</span>
+          </Link>
+        )}
       </div>
       <div className="mb-7 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line pb-1.5">
         <ViewTabs<View>

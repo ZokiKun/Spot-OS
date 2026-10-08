@@ -302,7 +302,7 @@ export function buildSeed(): Snapshot {
       id: uid(),
       name: "Demo finance sheet",
       kind: "demo",
-      url: null,
+      file_name: null,
       mapping: DEMO_MAPPING,
       last_synced_at: null,
       created_at: now,

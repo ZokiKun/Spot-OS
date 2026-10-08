@@ -31,12 +31,14 @@ With no Supabase keys, Spot OS runs in **demo mode**: sample data lives in your 
 4. **Authentication → URL configuration:** set the Site URL to your app URL, and add `http://localhost:3000/auth/callback` plus `https://<your-domain>/auth/callback` to the redirect URLs.
 5. **Authentication → Users → Invite user** for each of the three members. Their profile is created automatically. Members set a password via the invite link, or use "Email me a sign-in link".
 6. Copy `.env.example` to `.env.local` and fill in `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-7. Restart `npm run dev`, sign in, then open **Spot Base → Add starter pages** and **Settings → Finance** to connect the sheet.
+7. Restart `npm run dev`, sign in, then open **Spot Base → Add starter pages** and **Settings → Finance** to upload the finance file.
 
-## Connect the finance sheet
+## Update finance (monthly)
 
-Settings → Finance → paste the Google Sheet URL (the specific tab). Map the column headers, then press **Test connection** to preview, then **Save**.
-The sheet must be viewable by link, or published to the web as CSV. Spot OS reads it and never writes to it.
+Export the finance spreadsheet as Excel (`.xlsx`) or CSV, then Settings → Finance → drop the file in. Pick the tab if the workbook has several, check the column mapping against the live preview, then press **Save and update finance**.
+The file is read in the browser and never uploaded; only the normalized entries are saved. Spot OS never connects to the spreadsheet, so it can stay private. Home and Insights remind the team when the numbers are over 35 days old.
+
+If you run Supabase, apply `supabase/migrations/0009_finance_upload.sql` first.
 
 ## Deploy to Vercel
 

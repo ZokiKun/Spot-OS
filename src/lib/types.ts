@@ -238,8 +238,10 @@ export interface FinanceMapping {
 export interface FinanceSource {
   id: UUID;
   name: string;
-  kind: "google_sheet_csv" | "demo";
-  url: string | null;
+  /** "upload": a member uploads the finance spreadsheet (.xlsx / .csv) each month. */
+  kind: "upload" | "demo";
+  /** Name of the last uploaded file, for display only. The file itself is never stored. */
+  file_name: string | null;
   mapping: FinanceMapping;
   last_synced_at: ISODateTime | null;
   created_at: ISODateTime;

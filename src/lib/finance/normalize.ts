@@ -52,6 +52,11 @@ export function parseAmount(raw: string | undefined): number | null {
 function parseDateCell(raw: string, fmt: FinanceMapping["date_format"] = "auto"): string | null {
   const s = raw.trim();
   if (!s) return null;
+  // Excel date serial (days since 1899-12-30) from a cell with a custom format, e.g. "45930".
+  if (/^\d{5}(\.\d+)?$/.test(s)) {
+    const n = Math.floor(Number(s));
+    if (n > 20000 && n < 80000) return new Date(Date.UTC(1899, 11, 30) + n * 86_400_000).toISOString().slice(0, 10);
+  }
   const tryFormats: string[] =
     fmt === "dmy"
       ? ["dd/MM/yyyy", "d/M/yyyy", "dd.MM.yyyy", "dd-MM-yyyy"]
@@ -65,7 +70,7 @@ function parseDateCell(raw: string, fmt: FinanceMapping["date_format"] = "auto")
     if (isValid(d)) return format(d, "yyyy-MM-dd");
   }
   const d = new Date(s);
-  return isValid(d) ? format(d, "yyyy-MM-dd") : null;
+  return isValid(d) && d.getFullYear() > 1900 && d.getFullYear() < 2200 ? format(d, "yyyy-MM-dd") : null;
 }
 
 export interface NormalizeResult {
@@ -78,7 +83,10 @@ export interface NormalizeResult {
 /** Turn any sheet into entries using the configurable mapping (no hard-coded columns). */
 export function normalizeSheet(rows: string[][], mapping: FinanceMapping): NormalizeResult {
   const warnings: string[] = [];
-  const [header, ...body] = rows;
+  // Spreadsheets often have a title or notes above the table: the header is the first row with the date column.
+  const want = mapping.date.trim().toLowerCase();
+  const headerAt = Math.max(0, rows.slice(0, 20).findIndex((r) => r.some((c) => c.trim().toLowerCase() === want)));
+  const [header, ...body] = rows.slice(headerAt);
   if (!header) return { entries: [], balance: null, headers: [], warnings: ["Sheet is empty"] };
   const headers = header.map((h) => h.trim());
   const col = (name?: string) => {
@@ -202,13 +210,4 @@ export function summarize(entries: FinanceEntry[], balance: number | null, mappi
     previousMonth: months.find((m) => m.key === prevKey) ?? null,
     currentQuarter: quarters.find((m) => m.key === qKey) ?? null,
   };
-}
-
-/** Accepts a normal Google Sheets URL and returns its CSV export URL. */
-export function toCsvUrl(url: string): string {
-  const m = url.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-  if (!m) return url;
-  if (/\/pub\b|output=csv|format=csv/.test(url)) return url;
-  const gid = url.match(/[#&?]gid=(\d+)/)?.[1] ?? "0";
-  return `https://docs.google.com/spreadsheets/d/${m[1]}/export?format=csv&gid=${gid}`;
 }
