@@ -404,6 +404,7 @@ function Overview({
   const { data } = useWorkspace();
   const people = useProfiles();
   const timeline = useTimeline(project.id);
+  const quick = useQuickAdd();
   const open = sortTasks(data.tasks.filter((t) => t.project_id === project.id && isOpen(t)));
   // "Up next" follows the timeline: the current milestone's open tasks first.
   const upNext = timeline.current ? sortTasks(timeline.current.tasks.filter(isOpen)) : open;
@@ -443,6 +444,9 @@ function Overview({
           {blocked ? ` · ${blocked} blocked` : ""}
         </SectionHeading>
         {upNext.length ? <TaskList tasks={upNext} limit={6} /> : <EmptyState title={timeline.current ? "No open tasks in this milestone" : "No open tasks"} className="py-6" />}
+        <button type="button" onClick={() => quick.openTask({ project_id: project.id })} className="mt-1 flex h-8 w-full items-center gap-1.5 rounded-md px-2 text-[14px] text-fg-3 hover:bg-hover hover:text-fg-2">
+          <Plus className="size-4" /> Add task
+        </button>
       </section>
 
       {byPerson.length > 0 && (
