@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Bell, Building2, Database, Palette, Plug, Settings, Wallet } from "lucide-react";
+import { Bell, Bot, Building2, Database, Palette, Plug, Settings, Wallet } from "lucide-react";
 import type { Profile } from "@/lib/types";
 import { MEMBER_COLORS } from "@/lib/constants";
 import { useWorkspace } from "@/lib/store";
@@ -23,6 +23,7 @@ import { isGoogleCalendarConfigured } from "@/lib/google-calendar";
 import { SettingsRow, SettingsSection } from "./settings-ui";
 import { DESKTOP_NOTIFY_PREF } from "@/components/shell/inbox";
 import { FinanceSettings } from "./finance-settings";
+import { PushToFix } from "./push-to-fix";
 import { useConfirm } from "@/components/ui/confirm";
 
 const SECTIONS = [
@@ -30,6 +31,7 @@ const SECTIONS = [
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "workspace", label: "Workspace", icon: Building2 },
   { id: "finance", label: "Finance", icon: Wallet },
+  { id: "automation", label: "Automation", icon: Bot },
   { id: "integrations", label: "Integrations", icon: Plug },
   { id: "data", label: "Data", icon: Database },
 ] as const;
@@ -66,6 +68,7 @@ export function SettingsView() {
           {current.id === "notifications" && <Notifications />}
           {current.id === "workspace" && <WorkspaceSettings />}
           {current.id === "finance" && <FinanceSettings />}
+          {current.id === "automation" && <PushToFix />}
           {current.id === "integrations" && <Integrations />}
           {current.id === "data" && <DataSettings />}
         </div>
