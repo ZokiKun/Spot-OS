@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Bell, Bot, Building2, Database, Palette, Plug, Settings, Wallet } from "lucide-react";
+import { Bell, Bot, Building2, Database, FlaskConical, Palette, Plug, Settings, Wallet } from "lucide-react";
 import type { Profile } from "@/lib/types";
 import { MEMBER_COLORS } from "@/lib/constants";
 import { useWorkspace } from "@/lib/store";
@@ -34,6 +34,7 @@ const SECTIONS = [
   { id: "automation", label: "Automation", icon: Bot },
   { id: "integrations", label: "Integrations", icon: Plug },
   { id: "data", label: "Data", icon: Database },
+  { id: "test", label: "Test", icon: FlaskConical },
 ] as const;
 type SectionId = (typeof SECTIONS)[number]["id"];
 
@@ -71,6 +72,7 @@ export function SettingsView() {
           {current.id === "automation" && <PushToFix />}
           {current.id === "integrations" && <Integrations />}
           {current.id === "data" && <DataSettings />}
+          {current.id === "test" && <TestSettings />}
         </div>
       </div>
     </Page>
@@ -485,5 +487,15 @@ function DataSettings() {
         </SettingsSection>
       )}
     </>
+  );
+}
+
+function TestSettings() {
+  return (
+    <SettingsSection title="Test" description="A placeholder tab for trying things out.">
+      <SettingsRow label="Status" description="Nothing to configure here yet.">
+        <Status ok>Working</Status>
+      </SettingsRow>
+    </SettingsSection>
   );
 }
