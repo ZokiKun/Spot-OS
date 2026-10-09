@@ -11,8 +11,10 @@ import { CLAUDE_AGENT_NAME, FIX_RUN_STALE_MS, OPEN_FIX_STATUSES } from "@/lib/pu
  *
  * Env (Vercel, server-only): CLAUDE_ROUTINE_FIRE_URL, CLAUDE_ROUTINE_TOKEN.
  */
-const FIRE_URL = process.env.CLAUDE_ROUTINE_FIRE_URL ?? "";
-const FIRE_TOKEN = process.env.CLAUDE_ROUTINE_TOKEN ?? "";
+// Pasted values often carry stray spaces, newlines or quotes.
+const clean = (v: string | undefined) => (v ?? "").trim().replace(/^["']|["']$/g, "").trim();
+const FIRE_URL = clean(process.env.CLAUDE_ROUTINE_FIRE_URL);
+const FIRE_TOKEN = clean(process.env.CLAUDE_ROUTINE_TOKEN);
 const ROUTINE_BETA = "experimental-cc-routine-2026-04-01";
 
 const fail = (status: number, error: string) => NextResponse.json({ error }, { status });
@@ -98,6 +100,9 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({ text: JSON.stringify(payload) }),
     });
     const body = (await res.json().catch(() => ({}))) as { claude_code_session_url?: string; error?: { message?: string } };
+    if (res.status === 401 || res.status === 403)
+      throw new Error("Claude rejected the routine token. Regenerate it on the routine’s API trigger and update CLAUDE_ROUTINE_TOKEN in Vercel.");
+    if (res.status === 404) throw new Error("Claude couldn’t find the routine. Check CLAUDE_ROUTINE_FIRE_URL in Vercel.");
     if (!res.ok) throw new Error(body.error?.message ?? `The routine answered ${res.status}.`);
     await sb.from("fix_runs").update({ session_url: body.claude_code_session_url ?? null }).eq("id", run.id);
     return NextResponse.json({ id: run.id, tasks: tasks.length, session_url: body.claude_code_session_url ?? null });
