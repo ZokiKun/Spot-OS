@@ -2,12 +2,13 @@ import { createHash, randomBytes } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from "@/lib/supabase/env";
-import { CLAUDE_AGENT_NAME, FIX_RUN_STALE_MS, OPEN_FIX_STATUSES } from "@/lib/push-to-fix";
+import { CLAUDE_AGENT_NAME, FIX_RUN_STALE_MS, OPEN_FIX_STATUSES, tasksAwaitingShip, type FixRun } from "@/lib/push-to-fix";
 
 /**
  * Settings → Automation → "Push to fix". Sends every open task assigned to the Claude member to a
- * cloud Claude Code routine (API trigger), which builds them, pushes main and reports back through
- * the finish_fix_run() RPC (migration 0012). Runs as the signed-in editor — no service-role key.
+ * cloud Claude Code routine (API trigger), which builds them on its own claude/… branch and reports
+ * back through finish_fix_run() (migrations 0012–0013). An editor then presses Ship it
+ * (./ship/route.ts) to merge the branch into main. Runs as the signed-in editor — no service-role key.
  *
  * Env (Vercel, server-only): CLAUDE_ROUTINE_FIRE_URL, CLAUDE_ROUTINE_TOKEN.
  */
@@ -41,13 +42,17 @@ export async function POST(request: NextRequest) {
   const { data: agent } = await sb.from("profiles").select("id, full_name").eq("full_name", CLAUDE_AGENT_NAME).maybeSingle();
   if (!agent) return fail(404, `No member named “${CLAUDE_AGENT_NAME}”.`);
 
-  const { data: tasks, error: tasksError } = await sb
+  const { data: ready } = await sb.from("fix_runs").select("status, results").eq("status", "ready");
+  const waiting = tasksAwaitingShip((ready as Pick<FixRun, "status" | "results">[] | null) ?? []);
+
+  const { data: found, error: tasksError } = await sb
     .from("tasks")
     .select("id, title, description, priority, status, project_id, created_at, created_by, projects(name)")
     .in("status", OPEN_FIX_STATUSES)
     .or(`assignee_id.eq.${agent.id},assignee_ids.cs.{${agent.id}}`)
     .order("created_at", { ascending: true });
   if (tasksError) return fail(500, tasksError.message);
+  const tasks = found?.filter((t) => !waiting.has(t.id));
   if (!tasks?.length) return NextResponse.json({ empty: true });
 
   const { data: people } = await sb.from("profiles").select("id, full_name");

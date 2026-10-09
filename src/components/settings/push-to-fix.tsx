@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ExternalLink, Rocket } from "lucide-react";
+import { ExternalLink, Rocket, Ship } from "lucide-react";
 import { useWorkspace } from "@/lib/store";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { CLAUDE_AGENT_NAME, FIX_RUN_STALE_MS, OPEN_FIX_STATUSES, type FixRun } from "@/lib/push-to-fix";
+import { CLAUDE_AGENT_NAME, FIX_RUN_STALE_MS, GITHUB_REPO, OPEN_FIX_STATUSES, tasksAwaitingShip, type FixRun } from "@/lib/push-to-fix";
 import { cn, timeAgo } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -13,21 +13,26 @@ import { SettingsRow, SettingsSection } from "./settings-ui";
 
 const isActive = (r: FixRun) => r.status === "running" && Date.now() - new Date(r.created_at).getTime() < FIX_RUN_STALE_MS;
 
-/** Settings → Automation: hand Claude's open tasks to a cloud Claude run that ships them live. */
+/** Settings → Automation: hand Claude's open tasks to a cloud Claude run, then Ship it to put the work live. */
 export function PushToFix() {
   const { mode, data, canEdit } = useWorkspace();
   const toast = useToast();
   const confirm = useConfirm();
   const [runs, setRuns] = useState<FixRun[] | null>(null);
   const [sending, setSending] = useState(false);
+  const [shipping, setShipping] = useState<string | null>(null);
 
   const agent = data.profiles.find((p) => p.full_name === CLAUDE_AGENT_NAME);
+  // Tasks already built in a run that's waiting for Ship it aren't sent again.
+  const waiting = useMemo(() => tasksAwaitingShip(runs ?? []), [runs]);
   const queue = useMemo(
     () =>
       agent
-        ? data.tasks.filter((t) => OPEN_FIX_STATUSES.includes(t.status) && (t.assignee_ids?.includes(agent.id) || t.assignee_id === agent.id))
+        ? data.tasks.filter(
+            (t) => OPEN_FIX_STATUSES.includes(t.status) && (t.assignee_ids?.includes(agent.id) || t.assignee_id === agent.id) && !waiting.has(t.id),
+          )
         : [],
-    [agent, data.tasks],
+    [agent, data.tasks, waiting],
   );
 
   // Bumping `tick` re-reads the latest runs.
@@ -51,6 +56,7 @@ export function PushToFix() {
 
   // While Claude works, check back every 10s for its report.
   const running = runs?.find(isActive);
+  const ready = runs?.find((r) => r.status === "ready");
   useEffect(() => {
     if (!running) return;
     const timer = setInterval(reload, 10_000);
@@ -62,7 +68,7 @@ export function PushToFix() {
       title: `Send ${queue.length} task${queue.length === 1 ? "" : "s"} to Claude?`,
       description: (
         <>
-          Claude builds {queue.length === 1 ? "it" : "each one"} in the cloud, pushes it live and moves it to Review for you to check.
+          Claude builds {queue.length === 1 ? "it" : "each one"} in the cloud. Nothing goes live until you press Ship it.
           <ul className="mt-2 list-disc space-y-0.5 pl-4">
             {queue.slice(0, 6).map((t) => (
               <li key={t.id} className="line-clamp-1">
@@ -83,7 +89,7 @@ export function PushToFix() {
       const body = (await res.json().catch(() => ({}))) as { error?: string; empty?: boolean; tasks?: number };
       if (!res.ok) throw new Error(body.error ?? "Couldn’t start the run.");
       if (body.empty) toast.show({ title: `Nothing assigned to ${CLAUDE_AGENT_NAME}`, description: "Open tasks assigned to Claude show up here." });
-      else toast.show({ title: "Claude is on it", description: `${body.tasks} task${body.tasks === 1 ? "" : "s"} sent. They move to Review once live.`, tone: "success" });
+      else toast.show({ title: "Claude is on it", description: `${body.tasks} task${body.tasks === 1 ? "" : "s"} sent. Ship it appears here when Claude is done.`, tone: "success" });
     } catch (e) {
       toast.show({ title: "Push to fix didn’t start", description: e instanceof Error ? e.message : undefined, tone: "error" });
     } finally {
@@ -110,6 +116,45 @@ export function PushToFix() {
     reload();
   };
 
+  const ship = async (run: FixRun) => {
+    const count = run.results.filter((x) => x.outcome === "shipped").length;
+    const ok = await confirm({
+      title: "Put this live?",
+      description: `Merges Claude’s work (${count} task${count === 1 ? "" : "s"}) into the live site. It’s up in about 2 minutes, and the tasks move to Review for you to check.`,
+      confirmLabel: "Ship it",
+      danger: false,
+    });
+    if (!ok) return;
+    setShipping(run.id);
+    try {
+      const res = await fetch("/api/push-to-fix/ship", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ runId: run.id }) });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(body.error ?? "Couldn’t ship it.");
+      toast.show({ title: "Shipped", description: "Live in about 2 minutes. The tasks are in Review.", tone: "success" });
+    } catch (e) {
+      toast.show({ title: "Didn’t ship", description: e instanceof Error ? e.message : undefined, tone: "error" });
+    } finally {
+      setShipping(null);
+      reload();
+    }
+  };
+
+  const discard = async (run: FixRun) => {
+    const ok = await confirm({
+      title: "Discard Claude’s work?",
+      description: "Nothing from this run goes live. Its tasks can be sent to Claude again.",
+      confirmLabel: "Discard",
+    });
+    if (!ok) return;
+    const { error } = await getSupabaseBrowserClient()
+      .from("fix_runs")
+      .update({ status: "failed", error: "Discarded — not shipped." })
+      .eq("id", run.id)
+      .eq("status", "ready");
+    if (error) toast.show({ title: "Couldn’t discard the run", description: error.message, tone: "error" });
+    reload();
+  };
+
   const titleOf = (id: string) => data.tasks.find((t) => t.id === id)?.title ?? "A deleted task";
   const nameOf = (id: string | null) => data.profiles.find((p) => p.id === id)?.full_name ?? "Someone";
 
@@ -117,7 +162,7 @@ export function PushToFix() {
     <>
       <SettingsSection
         title="Push to fix"
-        description={`Sends every open task assigned to ${CLAUDE_AGENT_NAME} to Claude in the cloud. Claude builds each one, pushes it live to this site and moves it to Review. Database changes are never run for you — Claude leaves a note instead.`}
+        description={`Sends every open task assigned to ${CLAUDE_AGENT_NAME} to Claude in the cloud. Claude builds each one on its own branch; press Ship it to put the work live, and the tasks move to Review. Database changes are never run for you — Claude leaves a note instead.`}
       >
         <SettingsRow
           label={queue.length ? `${queue.length} task${queue.length === 1 ? "" : "s"} waiting` : "Nothing waiting"}
@@ -130,7 +175,9 @@ export function PushToFix() {
                   ? "Only editors can push to fix."
                   : running
                     ? `Claude started ${timeAgo(running.created_at)} and is still working.`
-                    : queue.length
+                    : ready && !queue.length
+                      ? "Claude is done — press Ship it below to put the work live."
+                      : queue.length
                       ? "Todo, In progress and Blocked tasks assigned to Claude."
                       : `Assign a task to ${CLAUDE_AGENT_NAME} and it shows up here.`
           }
@@ -156,11 +203,20 @@ export function PushToFix() {
                           "size-2 shrink-0 rounded-full",
                           state === "done" && "bg-[var(--dot-green)]",
                           state === "running" && "animate-pulse bg-[var(--dot-blue)]",
+                          state === "ready" && "bg-[var(--dot-orange)]",
                           (state === "failed" || state === "stalled") && "bg-[var(--dot-red)]",
                         )}
                       />
                       <span className="truncate">
-                        {state === "running" ? "Working" : state === "stalled" ? "No report back" : state === "done" ? `Shipped ${shipped} of ${r.task_ids.length}` : "Failed"}
+                        {state === "running"
+                          ? "Working"
+                          : state === "stalled"
+                            ? "No report back"
+                            : state === "ready"
+                              ? `Ready to ship · ${shipped} of ${r.task_ids.length}`
+                              : state === "done"
+                                ? `${r.shipped_at ? "Live" : "Shipped"} · ${shipped} of ${r.task_ids.length}`
+                                : "Failed"}
                         <span className="text-fg-2"> · {nameOf(r.requested_by)} · {timeAgo(r.created_at)}</span>
                       </span>
                     </span>
@@ -170,6 +226,16 @@ export function PushToFix() {
                           Stop waiting
                         </button>
                       )}
+                      {r.status === "ready" && r.branch && (
+                        <a
+                          href={`https://github.com/${GITHUB_REPO}/compare/main...${r.branch}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-fg-2 hover:text-fg"
+                        >
+                          Changes <ExternalLink className="size-3.5" />
+                        </a>
+                      )}
                       {r.session_url && (
                         <a href={r.session_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-fg-2 hover:text-fg">
                           Session <ExternalLink className="size-3.5" />
@@ -178,6 +244,7 @@ export function PushToFix() {
                     </span>
                   </div>
                   {(r.summary || r.error) && <p className="mt-1 whitespace-pre-line text-fg-2">{r.summary || r.error}</p>}
+                  {r.shipped_at && <p className="mt-1 text-[12px] text-fg-2">Shipped by {nameOf(r.shipped_by)} · {timeAgo(r.shipped_at)}</p>}
                   {!!r.results.length && (
                     <ul className="mt-1.5 space-y-0.5 text-[12px] text-fg-2">
                       {r.results.map((x) => (
@@ -188,6 +255,16 @@ export function PushToFix() {
                         </li>
                       ))}
                     </ul>
+                  )}
+                  {r.status === "ready" && canEdit && (
+                    <div className="mt-2.5 flex items-center gap-2">
+                      <Button variant="primary" onClick={() => void ship(r)} disabled={!!shipping}>
+                        <Ship className="size-4" /> {shipping === r.id ? "Shipping…" : "Ship it"}
+                      </Button>
+                      <Button variant="ghost" onClick={() => void discard(r)} disabled={!!shipping}>
+                        Discard
+                      </Button>
+                    </div>
                   )}
                 </li>
               );
