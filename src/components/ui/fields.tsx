@@ -10,6 +10,9 @@ import { StatusTag, Tag } from "./tag";
 import { Avatar, AvatarStack, PersonChip } from "./avatar";
 import { MiniCalendar } from "./mini-calendar";
 
+/** "chip": a compact toolbar button (e.g. the bulk-edit bar). */
+type FieldVariant = "cell" | "property" | "chip";
+
 /** Button that looks like a cell value and opens a popover editor. */
 function FieldButton({
   setAnchor,
@@ -22,7 +25,7 @@ function FieldButton({
   onClick: () => void;
   children: ReactNode;
   className?: string;
-  variant: "cell" | "property";
+  variant: FieldVariant;
 }) {
   return (
     <button
@@ -34,7 +37,11 @@ function FieldButton({
       }}
       className={cn(
         "flex min-w-0 items-center text-left transition-colors duration-75 hover:bg-hover",
-        variant === "property" ? "min-h-[30px] w-full rounded-md px-1.5 py-1" : "h-full min-h-8 w-full px-2",
+        variant === "property"
+          ? "min-h-[30px] w-full rounded-md px-1.5 py-1"
+          : variant === "chip"
+            ? "h-7 shrink-0 gap-1.5 rounded-md px-2 text-[13px]"
+            : "h-full min-h-8 w-full px-2",
         className,
       )}
     >
@@ -54,9 +61,9 @@ export function OptionField<T extends string>({
   options: Option<T>[];
   value: T | null;
   onChange: (v: T) => void;
-  variant?: "cell" | "property";
+  variant?: FieldVariant;
   kind?: "status" | "select";
-  placeholder?: string;
+  placeholder?: ReactNode;
 }) {
   const pop = usePopover();
   const current = options.find((o) => o.value === value);
@@ -93,9 +100,9 @@ export function PersonField({
   people: Profile[];
   value: UUID | null;
   onChange: (v: UUID | null) => void;
-  variant?: "cell" | "property";
+  variant?: FieldVariant;
   compact?: boolean;
-  placeholder?: string;
+  placeholder?: ReactNode;
 }) {
   const pop = usePopover();
   const current = people.find((p) => p.id === value);
@@ -143,8 +150,8 @@ export function PeopleField({
   people: Profile[];
   value: UUID[];
   onChange: (v: UUID[]) => void;
-  variant?: "cell" | "property";
-  placeholder?: string;
+  variant?: FieldVariant;
+  placeholder?: ReactNode;
 }) {
   const pop = usePopover();
   const current = value.map((id) => people.find((p) => p.id === id)).filter((p): p is Profile => !!p);
@@ -194,9 +201,9 @@ export function DateField({
 }: {
   value: string | null;
   onChange: (v: string | null) => void;
-  variant?: "cell" | "property";
+  variant?: FieldVariant;
   highlightOverdue?: boolean;
-  placeholder?: string;
+  placeholder?: ReactNode;
 }) {
   const pop = usePopover();
   const diff = daysUntil(value);
@@ -247,8 +254,8 @@ export function ProjectField({
   projects: Project[];
   value: UUID | null;
   onChange: (v: UUID | null) => void;
-  variant?: "cell" | "property";
-  placeholder?: string;
+  variant?: FieldVariant;
+  placeholder?: ReactNode;
 }) {
   const pop = usePopover();
   const current = projects.find((p) => p.id === value);
@@ -307,8 +314,8 @@ export function MilestoneField({
   milestones: Milestone[];
   value: UUID | null;
   onChange: (v: UUID | null) => void;
-  variant?: "cell" | "property";
-  placeholder?: string;
+  variant?: FieldVariant;
+  placeholder?: ReactNode;
 }) {
   const pop = usePopover();
   const index = milestones.findIndex((m) => m.id === value);

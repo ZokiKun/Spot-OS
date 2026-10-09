@@ -13,6 +13,7 @@ import { DateField, OptionField, PeopleField, ProjectField } from "@/components/
 import { assigneesPatch, taskAssignees } from "@/lib/selectors";
 import { EmptyState } from "@/components/ui/misc";
 import { statusPatch, useTaskPeek } from "./task-peek";
+import { useTaskSelection } from "./task-selection";
 
 /**
  * Drag-and-drop between stacked task tables (the project timeline). Each table is a "group"
@@ -29,8 +30,9 @@ export interface TaskDnd {
 }
 export const TaskDndContext = createContext<TaskDnd | null>(null);
 
-const COLS_WITH_PROJECT = "minmax(220px,1fr) 124px 150px 96px 92px 180px";
-const COLS = "minmax(200px,1fr) 124px 146px 92px 88px";
+// The first, narrow column holds the select tick (several tasks → the bulk-edit bar).
+const COLS_WITH_PROJECT = "28px minmax(220px,1fr) 124px 150px 96px 92px 180px";
+const COLS = "28px minmax(200px,1fr) 124px 146px 92px 88px";
 
 export function TaskTable({
   tasks,
@@ -52,6 +54,10 @@ export function TaskTable({
   const { data, update, create, me } = useWorkspace();
   const people = useProfiles();
   const { openTask } = useTaskPeek();
+  const selection = useTaskSelection();
+  const selecting = selection.selected.size > 0;
+  const ids = tasks.map((t) => t.id);
+  const allSelected = ids.length > 0 && ids.every((id) => selection.selected.has(id));
   const cols = showProject ? COLS_WITH_PROJECT : COLS;
   const dndCtx = useContext(TaskDndContext);
   const dnd = dndGroup != null ? dndCtx : null;
@@ -87,6 +93,16 @@ export function TaskTable({
       <div className={cn("text-[14px]", showProject ? "min-w-[860px]" : "min-w-[660px]")}>
         {showHeader ? (
           <div className="grid border-y border-line text-[13px] text-fg-2" style={{ gridTemplateColumns: cols }}>
+            <div className="flex h-8 items-center justify-center">
+              {ids.length > 0 && (
+                <SelectTick
+                  checked={allSelected}
+                  visible={selecting}
+                  label={allSelected ? "Unselect all tasks" : "Select all tasks"}
+                  onChange={(on) => selection.setMany(ids, on)}
+                />
+              )}
+            </div>
             {head.map((h, i) => (
               <div key={h.label} className={cn("flex h-8 items-center gap-1.5 px-2", i > 0 && "border-l border-line")}>
                 <span className="text-fg-3">{h.icon}</span>
@@ -114,12 +130,21 @@ export function TaskTable({
             onDrop={tableDrag?.onDrop}
             className={cn(
               "group relative grid border-b border-line transition-colors duration-75 hover:bg-subtle",
+              selection.selected.has(t.id) && "bg-accent-soft hover:bg-accent-soft",
               dnd?.dragging === t.id && "opacity-40",
               dropAt === i && "before:absolute before:inset-x-0 before:-top-px before:z-[1] before:h-0.5 before:bg-accent",
               dropAt === tasks.length && i === tasks.length - 1 && "after:absolute after:inset-x-0 after:-bottom-px after:z-[1] after:h-0.5 after:bg-accent",
             )}
             style={{ gridTemplateColumns: cols }}
           >
+            <div className="flex items-center justify-center">
+              <SelectTick
+                checked={selection.selected.has(t.id)}
+                visible={selecting}
+                label={`Select ${t.title || "Untitled"}`}
+                onChange={(on, e) => selection.toggle(t.id, on, { ids, shift: e.shiftKey })}
+              />
+            </div>
             <div className={cn("flex min-w-0 items-center gap-2 px-2", dnd && "pl-0")}>
               {dnd && (
                 <span
@@ -219,6 +244,31 @@ export function TaskStatusField({ task, variant }: { task: Task; variant?: "cell
       options={statusOptions(project)}
       value={taskStatusValue(task, project)}
       onChange={(v) => void update("tasks", task.id, statusChange(v, project))}
+    />
+  );
+}
+
+/** Row select tick: shows on hover, and on every row once something is selected. Shift-click selects a range. */
+function SelectTick({
+  checked,
+  visible,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  visible: boolean;
+  label: string;
+  onChange: (on: boolean, e: React.MouseEvent) => void;
+}) {
+  return (
+    <Checkbox
+      checked={checked}
+      onChange={onChange}
+      label={label}
+      className={cn(
+        "transition-opacity focus-visible:opacity-100",
+        checked || visible ? "opacity-100" : "opacity-0 group-hover:opacity-100 max-sm:opacity-60",
+      )}
     />
   );
 }

@@ -2,8 +2,8 @@
 
 import { createContext, Suspense, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { CalendarDays, CircleDot, Flag, FolderKanban, Milestone as MilestoneIcon, Trash2, Users, Clock } from "lucide-react";
-import { useWorkspace, useProfiles } from "@/lib/store";
+import { CalendarDays, CircleDot, Copy, Flag, FolderKanban, Milestone as MilestoneIcon, Trash2, Users, Clock } from "lucide-react";
+import { useWorkspace, useProfiles, type NewRow } from "@/lib/store";
 import { TASK_PRIORITIES } from "@/lib/constants";
 import { statusChange, statusOptions, taskStatusValue } from "@/lib/task-statuses";
 import type { Task, TaskStatus, UUID } from "@/lib/types";
@@ -17,6 +17,7 @@ import { sortMilestones } from "@/lib/milestones";
 import { IconButton } from "@/components/ui/button";
 import { AttachmentList, NOTE_FILE_LIMIT } from "@/components/attachments";
 import { useConfirm } from "@/components/ui/confirm";
+import { useToast } from "@/components/ui/toast";
 
 interface TaskPeekApi {
   openTask: (id: UUID) => void;
@@ -28,6 +29,13 @@ export const useTaskPeek = () => useContext(TaskPeekContext);
 export function statusPatch(status: TaskStatus): Partial<Task> {
   // custom_status resets: the task shows its project's first status with this base.
   return { status, completed_at: status === "done" ? nowISO() : null, custom_status: null };
+}
+
+/** A new task with the same fields (files stay with the original). Lands right after it in a hand-ordered milestone. */
+export function taskCopy(task: Task, createdBy: UUID | null): NewRow<"tasks"> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { id, created_at, updated_at, ...rest } = task;
+  return { ...rest, title: task.title ? `${task.title} (copy)` : "", created_by: createdBy };
 }
 
 export function TaskPeekProvider({ children }: { children: ReactNode }) {
@@ -48,7 +56,7 @@ export function TaskPeekProvider({ children }: { children: ReactNode }) {
       <Suspense fallback={null}>
         <TaskParamWatcher onTask={openTask} />
       </Suspense>
-      <TaskPeek taskId={taskId} onClose={close} />
+      <TaskPeek taskId={taskId} onClose={close} onOpen={openTask} />
     </TaskPeekContext>
   );
 }
@@ -62,8 +70,9 @@ function TaskParamWatcher({ onTask }: { onTask: (id: UUID) => void }) {
   return null;
 }
 
-function TaskPeek({ taskId, onClose }: { taskId: UUID | null; onClose: () => void }) {
-  const { data, update, remove } = useWorkspace();
+function TaskPeek({ taskId, onClose, onOpen }: { taskId: UUID | null; onClose: () => void; onOpen: (id: UUID) => void }) {
+  const { data, update, remove, create, me } = useWorkspace();
+  const toast = useToast();
   const ask = useConfirm();
   const people = useProfiles();
   const task = data.tasks.find((t) => t.id === taskId);
@@ -88,18 +97,31 @@ function TaskPeek({ taskId, onClose }: { taskId: UUID | null; onClose: () => voi
       onClose={onClose}
       expandHref={project ? `/projects/${project.id}?tab=tasks&task=${task.id}` : undefined}
       actions={
-        <IconButton
-          label="Delete task"
-          onClick={() => {
-            void ask({ title: `Delete “${task.title || "Untitled"}”?`, description: "The task and its files are removed for everyone." }).then((ok) => {
-              if (!ok) return;
-              void remove("tasks", task.id);
-              onClose();
-            });
-          }}
-        >
-          <Trash2 className="size-4" />
-        </IconButton>
+        <>
+          <IconButton
+            label="Duplicate task"
+            onClick={() => {
+              void create("tasks", taskCopy(task, me?.id ?? null)).then((copy) => {
+                onOpen(copy.id);
+                toast.show({ title: "Task duplicated", description: "You’re now looking at the copy.", tone: "success" });
+              }, () => {});
+            }}
+          >
+            <Copy className="size-4" />
+          </IconButton>
+          <IconButton
+            label="Delete task"
+            onClick={() => {
+              void ask({ title: `Delete “${task.title || "Untitled"}”?`, description: "The task and its files are removed for everyone." }).then((ok) => {
+                if (!ok) return;
+                void remove("tasks", task.id);
+                onClose();
+              });
+            }}
+          >
+            <Trash2 className="size-4" />
+          </IconButton>
+        </>
       }
     >
       <EditableText

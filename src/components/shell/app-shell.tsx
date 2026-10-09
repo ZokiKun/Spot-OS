@@ -8,6 +8,7 @@ import { CommandPalette } from "./command-palette";
 import { ShellContext } from "./shell-context";
 import { useTheme } from "./theme";
 import { TaskPeekProvider } from "@/components/tasks/task-peek";
+import { TaskSelectionProvider } from "@/components/tasks/task-selection";
 import { NotificationWatcher } from "./inbox";
 import { markPopState, recordVisit } from "./nav-history";
 import { QuickAddProvider } from "./quick-add";
@@ -53,6 +54,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <ShellContext value={shell}>
       <TaskPeekProvider>
+      <TaskSelectionProvider>
       <QuickAddProvider>
       <div className="flex h-dvh overflow-hidden">
         <aside className="no-print hidden w-60 shrink-0 border-r border-line md:block">
@@ -70,6 +72,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </div>
       </QuickAddProvider>
+      </TaskSelectionProvider>
       </TaskPeekProvider>
       <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
       <NotificationWatcher />

@@ -9,13 +9,13 @@ import { useWorkspace } from "@/lib/store";
 import { getDemoAdapter } from "@/lib/data";
 import { buildSpotMd } from "@/lib/spot-md";
 import { SUPABASE_URL } from "@/lib/supabase/env";
-import { readPref, writePref } from "@/lib/hooks";
+import { usePref } from "@/lib/hooks";
 import { cn, downloadFile, timeAgo } from "@/lib/utils";
 import { Page } from "@/components/shell/page";
 import { PALETTES, TYPEFACES, useTheme } from "@/components/shell/theme";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { EditableText, TextInput, Toggle } from "@/components/ui/input";
+import { EditableText, TextInput } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { Popover, usePopover } from "@/components/ui/popover";
 import { isGooglePickerConfigured } from "@/components/library/google-picker";
@@ -169,63 +169,131 @@ function subscribePermission(cb: () => void) {
     })
     .catch(() => {});
   window.addEventListener("focus", cb);
+  document.addEventListener("visibilitychange", cb);
   return () => {
     status?.removeEventListener("change", cb);
     window.removeEventListener("focus", cb);
+    document.removeEventListener("visibilitychange", cb);
   };
 }
 
-const UNBLOCK_HELP = "Click the icon to the left of the address bar → Site settings → Notifications → Allow, then come back to this tab.";
+/**
+ * Ask the browser. Must run straight from the click (no await before it) or Chrome ignores it.
+ * Older Safari only supports the callback form; resolving from both covers either.
+ */
+function askPermission(): Promise<NotificationPermission> {
+  return new Promise((resolve) => {
+    try {
+      const p = Notification.requestPermission(resolve);
+      if (p && typeof p.then === "function") p.then(resolve, () => resolve(Notification.permission));
+    } catch {
+      resolve(Notification.permission);
+    }
+  });
+}
+
+const UNBLOCK_STEPS = [
+  "Click the icon to the left of the address bar (🔒 or the settings slider).",
+  "Find Notifications and switch it to Allow.",
+  "Come back to this tab — this page updates by itself.",
+];
 
 function Notifications() {
   const toast = useToast();
-  const [desktop, setDesktop] = useState(() => readPref(DESKTOP_NOTIFY_PREF, false));
+  const [desktop, setDesktop] = usePref(DESKTOP_NOTIFY_PREF, false);
   const permission = useSyncExternalStore(subscribePermission, readPermission, () => "default" as NotifyPermission);
+  // "asking": the prompt is up (or Chrome tucked it into the address bar); "dismissed": closed without choosing.
+  const [ask, setAsk] = useState<"idle" | "asking" | "dismissed">("idle");
+  const [tested, setTested] = useState(false);
   const on = desktop && permission === "granted";
 
   const test = () => {
     try {
-      new Notification("Spot OS notifications are on", { body: "You’ll get one like this when someone @mentions you.", icon: "/icon.png" });
+      const n = new Notification("Spot OS notifications are on", { body: "You’ll get one like this when someone @mentions you.", icon: "/icon.png" });
+      n.onclick = () => {
+        window.focus();
+        n.close();
+      };
+      setTested(true);
     } catch {
       toast.show({ title: "Couldn’t show a notification", description: "Your system may be blocking them — check your computer’s notification settings for this browser.", tone: "error" });
     }
   };
 
-  const toggle = async (next: boolean) => {
-    if (!next) {
-      setDesktop(false);
-      writePref(DESKTOP_NOTIFY_PREF, false);
+  const enable = () => {
+    if (permission === "unsupported" || permission === "denied") return;
+    if (permission === "granted") {
+      setDesktop(true);
+      test();
       return;
     }
-    if (permission === "unsupported") {
-      toast.show({ title: "Not supported here", description: "This browser doesn’t support desktop notifications.", tone: "error" });
-      return;
-    }
-    let result = permission;
-    if (result !== "granted") {
-      if (result === "denied") {
-        toast.show({ title: "Notifications are blocked for Spot OS", description: UNBLOCK_HELP, tone: "error" });
-        return;
+    setAsk("asking");
+    void askPermission().then((result) => {
+      if (result === "granted") {
+        setAsk("idle");
+        setDesktop(true);
+        toast.show({ title: "Desktop notifications are on", tone: "success" });
+        test();
+      } else {
+        // "denied" re-renders into the blocked state via the permission store.
+        setAsk(result === "denied" ? "idle" : "dismissed");
       }
-      try {
-        result = await Notification.requestPermission();
-      } catch {
-        result = Notification.permission;
-      }
-    }
-    if (result !== "granted") {
-      // Chrome can silence the prompt (a crossed-out bell in the address bar) — say so instead of doing nothing.
-      toast.show({
-        title: result === "denied" ? "Notifications were blocked" : "The browser didn’t show the permission prompt",
-        description: UNBLOCK_HELP,
-        tone: "error",
-      });
-      return;
-    }
-    setDesktop(true);
-    writePref(DESKTOP_NOTIFY_PREF, true);
-    test();
+    });
   };
+
+  const disable = () => {
+    setDesktop(false);
+    setTested(false);
+  };
+
+  let status: React.ReactNode;
+  let action: React.ReactNode = null;
+  if (permission === "unsupported") {
+    status = "This browser doesn’t support desktop notifications. On iPhone or iPad, add Spot OS to your Home Screen first.";
+  } else if (permission === "denied") {
+    status = (
+      <>
+        <span className="font-medium text-danger">Blocked by your browser.</span> To turn them on:
+        <ol className="mt-1 list-decimal space-y-0.5 pl-4">
+          {UNBLOCK_STEPS.map((s) => (
+            <li key={s}>{s}</li>
+          ))}
+        </ol>
+      </>
+    );
+    action = <Button onClick={() => window.location.reload()}>Check again</Button>;
+  } else if (on) {
+    status = (
+      <>
+        <span className="font-medium text-fg">On for this device.</span> You’ll get a system notification when you’re mentioned and Spot OS is in the background.
+        {tested && " Didn’t see the test? Allow notifications for this browser in your computer’s settings (macOS: System Settings → Notifications)."}
+      </>
+    );
+    action = (
+      <div className="flex items-center gap-2">
+        <Button onClick={test}>Send a test</Button>
+        <Button variant="ghost" onClick={disable}>
+          Turn off
+        </Button>
+      </div>
+    );
+  } else {
+    status =
+      ask === "asking" ? (
+        <span className="text-fg">
+          Waiting for your browser — choose <b>Allow</b> in the prompt near the address bar. No prompt? Click the bell icon in the address bar.
+        </span>
+      ) : ask === "dismissed" ? (
+        <span className="text-fg">The prompt was closed without choosing. Click the button again and pick Allow.</span>
+      ) : (
+        "Get a system notification when you’re mentioned and Spot OS is in the background. Saved on this device."
+      );
+    action = (
+      <Button variant="primary" onClick={enable}>
+        <Bell className="size-3.5" /> Turn on
+      </Button>
+    );
+  }
 
   return (
     <>
@@ -233,24 +301,8 @@ function Notifications() {
         title="Mentions"
         description="Type @ in a project note, task description, calendar note or project notes to mention a member. They get a notification in their Inbox (sidebar) — live, while Spot OS is open."
       >
-        <SettingsRow
-          label="Desktop notifications"
-          description={
-            permission === "unsupported"
-              ? "This browser doesn’t support desktop notifications."
-              : permission === "denied"
-                ? `Blocked by the browser. ${UNBLOCK_HELP}`
-                : "Also show a system notification when you’re mentioned and Spot OS is in the background. Saved on this device."
-          }
-        >
-          <div className="flex items-center gap-3">
-            {on && (
-              <Button size="sm" onClick={test}>
-                Send a test
-              </Button>
-            )}
-            <Toggle label="Desktop notifications" checked={on} onChange={(v) => void toggle(v)} />
-          </div>
+        <SettingsRow label="Desktop notifications" description={status}>
+          {action}
         </SettingsRow>
       </SettingsSection>
     </>

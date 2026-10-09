@@ -102,7 +102,8 @@ export function Checkbox({
   className,
 }: {
   checked: boolean;
-  onChange: (v: boolean) => void;
+  /** The click comes along so callers can read modifier keys (shift-click ranges). */
+  onChange: (v: boolean, e: React.MouseEvent) => void;
   label: string;
   className?: string;
 }) {
@@ -114,7 +115,7 @@ export function Checkbox({
       aria-label={label}
       onClick={(e) => {
         e.stopPropagation();
-        onChange(!checked);
+        onChange(!checked, e);
       }}
       className={cn(
         "inline-flex size-4 shrink-0 items-center justify-center rounded-[3px] transition-colors duration-100",
