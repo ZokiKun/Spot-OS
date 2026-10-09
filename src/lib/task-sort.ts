@@ -9,13 +9,14 @@ export interface TaskSort {
   reverse?: boolean;
 }
 
-export const TASK_SORTS: { value: TaskSortKey; label: string; hint: string }[] = [
-  { value: "manual", label: "Custom order", hint: "Drag to arrange" },
-  { value: "created", label: "Date created", hint: "Oldest first" },
-  { value: "priority", label: "Priority", hint: "Urgent first" },
-  { value: "assignees", label: "Assignees", hint: "A → Z" },
-  { value: "due", label: "Due date", hint: "Soonest first" },
-  { value: "status", label: "Status", hint: "In status order" },
+/** `order`: the natural direction, then the reversed one — in words that fit the field. */
+export const TASK_SORTS: { value: TaskSortKey; label: string; order?: [string, string] }[] = [
+  { value: "manual", label: "Custom order" },
+  { value: "created", label: "Date created", order: ["Oldest first", "Newest first"] },
+  { value: "priority", label: "Priority", order: ["Urgent first", "Low first"] },
+  { value: "assignees", label: "Assignee", order: ["A to Z", "Z to A"] },
+  { value: "due", label: "Due date", order: ["Soonest first", "Latest first"] },
+  { value: "status", label: "Status", order: ["Todo first", "Done first"] },
 ];
 
 const PRIORITY_RANK: Record<TaskPriority, number> = { urgent: 0, high: 1, medium: 2, low: 3 };

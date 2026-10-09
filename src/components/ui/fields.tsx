@@ -198,12 +198,15 @@ export function DateField({
   variant = "cell",
   highlightOverdue = false,
   placeholder = "Empty",
+  icon,
 }: {
   value: string | null;
   onChange: (v: string | null) => void;
   variant?: FieldVariant;
   highlightOverdue?: boolean;
   placeholder?: ReactNode;
+  /** Shown before the date (or placeholder), e.g. a calendar for a milestone deadline. */
+  icon?: ReactNode;
 }) {
   const pop = usePopover();
   const diff = daysUntil(value);
@@ -211,6 +214,7 @@ export function DateField({
   return (
     <>
       <FieldButton setAnchor={pop.setAnchor} onClick={pop.toggle} variant={variant}>
+        {icon && <span className={cn("mr-1.5 flex shrink-0", value ? "text-fg-2" : "text-fg-3")}>{icon}</span>}
         {value ? (
           <span className={cn("truncate", overdue && "text-danger")}>{formatDay(value)}</span>
         ) : (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowDownUp, ArrowUp, Check, ChevronRight, Circle, CircleCheck, CircleDot, Ellipsis, Flag, GripVertical, ListChecks, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowDownUp, ArrowUp, CalendarDays, ChevronRight, Circle, CircleCheck, CircleDot, Ellipsis, Flag, GripVertical, ListChecks, Plus, Trash2 } from "lucide-react";
 import type { Project, Task } from "@/lib/types";
 import { useProfiles, useWorkspace } from "@/lib/store";
 import { readPref, usePref } from "@/lib/hooks";
@@ -282,38 +282,46 @@ function SortMenu({ sort, onChange }: { sort: TaskSort; onChange: (s: TaskSort) 
         ref={setAnchor}
         type="button"
         onClick={pop.toggle}
-        title="Sort this milestone's tasks"
+        title={sorted ? `Tasks sorted by ${active.label.toLowerCase()} — ${active.order?.[sort.reverse ? 1 : 0].toLowerCase()}` : "Sort the tasks in this milestone"}
         className={cn(
           "inline-flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 text-[12px] transition-colors hover:bg-hover",
           sorted ? "font-medium text-accent" : "text-fg-3 hover:text-fg-2",
         )}
       >
         <ArrowDownUp className="size-3.5" />
-        <span className={cn(!sorted && "hidden xl:inline")}>{sorted ? active.label : "Sort"}</span>
-        {sorted && sort.reverse && <span className="text-fg-3">↓</span>}
+        <span className="hidden xl:inline">{sorted ? `Sort: ${active.label}` : "Sort"}</span>
       </button>
-      <Popover open={pop.open} onClose={pop.close} anchor={pop.anchor} align="end" width={230}>
+      <Popover open={pop.open} onClose={pop.close} anchor={pop.anchor} align="end" width={200}>
         <MenuList>
           <MenuLabel>Sort tasks by</MenuLabel>
           {TASK_SORTS.map((o) => (
             <MenuItem
               key={o.value}
               selected={o.value === sort.by}
-              hint={o.value === sort.by ? undefined : o.hint}
               onSelect={() => {
                 onChange({ by: o.value });
-                pop.close();
+                if (!o.order) pop.close();
               }}
             >
               {o.label}
             </MenuItem>
           ))}
-          {sorted && (
+          {active.order && (
             <>
               <MenuDivider />
-              <MenuItem icon={sort.reverse ? <Check className="size-4" /> : undefined} onSelect={() => onChange({ ...sort, reverse: !sort.reverse })}>
-                Reverse order
-              </MenuItem>
+              <MenuLabel>Order</MenuLabel>
+              {active.order.map((label, i) => (
+                <MenuItem
+                  key={label}
+                  selected={!!sort.reverse === (i === 1)}
+                  onSelect={() => {
+                    onChange({ ...sort, reverse: i === 1 });
+                    pop.close();
+                  }}
+                >
+                  {label}
+                </MenuItem>
+              ))}
             </>
           )}
         </MenuList>
@@ -485,11 +493,17 @@ function MilestoneSection({
           <ProgressBar value={step.total ? step.done / step.total : 0} tone={step.state === "done" ? "green" : "default"} className="flex-1" />
           {step.done}/{step.total}
         </span>
+        <div className="w-28 shrink-0 text-[13px]" title="Milestone deadline">
+          <DateField
+            value={m.due_date}
+            icon={<CalendarDays className="size-3.5" />}
+            placeholder="Deadline"
+            onChange={(due_date) => void update("milestones", m.id, { due_date })}
+          />
+        </div>
+        {step.tasks.length > 0 && <span className="h-4 w-px shrink-0 bg-line" aria-hidden />}
         <SelectGroupButton tasks={sorted} name={m.title} />
         {step.tasks.length > 1 && <SortMenu sort={sort} onChange={setSort} />}
-        <div className="w-24 shrink-0 text-[13px]">
-          <DateField value={m.due_date} placeholder="Due date" onChange={(due_date) => void update("milestones", m.id, { due_date })} />
-        </div>
         <span className="flex shrink-0 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 max-sm:opacity-100">
           <IconButton label={`Move ${m.title} up`} disabled={first} onClick={() => onMove(-1)}>
             <ArrowUp className="size-3.5" />
