@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { CalendarDays, CalendarRange, Columns3, GanttChart, LayoutGrid, List, Table2, Waypoints } from "lucide-react";
+import { CalendarDays, CalendarRange, Columns3, GanttChart, GripVertical, LayoutGrid, List, Table2, Waypoints } from "lucide-react";
 import { differenceInCalendarDays, format } from "date-fns";
 import type { Project, Task } from "@/lib/types";
 import { TASK_PRIORITIES, optionFor } from "@/lib/constants";
@@ -13,6 +13,7 @@ import { AvatarStack } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/misc";
 import { StatusTag, Tag } from "@/components/ui/tag";
+import { usePref } from "@/lib/hooks";
 import { statusPatch, useTaskPeek } from "./task-peek";
 
 export type TaskView = "table" | "timeline" | "board" | "list" | "grid" | "gantt";
@@ -114,14 +115,27 @@ function TaskCard({ task, showProject, draggable, onDragStart, dragging }: { tas
   );
 }
 
+/** Columns in the saved order; statuses added since keep their place at the end. */
+function orderColumns(columns: StatusOption[], saved: string[]) {
+  const rank = (c: StatusOption) => {
+    const i = saved.indexOf(c.value);
+    return i < 0 ? saved.length + columns.indexOf(c) : i;
+  };
+  return columns.slice().sort((a, b) => rank(a) - rank(b));
+}
+
 /**
  * Kanban: a column per status (the project's own statuses inside a project, the built-in ones
- * across projects). Drag a card to another column to change its status.
+ * across projects). Drag a card to another column to change its status; hold and drag a column
+ * (its header or empty space) to move it — the order is saved per board on this device.
  */
 export function TaskBoard({ tasks, project, showProject = !project }: { tasks: Task[]; project?: Project | null; showProject?: boolean }) {
   const { update } = useWorkspace();
-  const columns: StatusOption[] = statusOptions(project);
+  const [savedOrder, setSavedOrder] = usePref<string[]>(`board-columns:${project?.id ?? "all"}`, []);
+  const columns = orderColumns(statusOptions(project), savedOrder);
   const [drag, setDrag] = useState<{ id: string; over: string | null } | null>(null);
+  // Moving a whole column: which one, and the edge of the column it would land beside.
+  const [colDrag, setColDrag] = useState<{ value: string; over: string | null; after: boolean } | null>(null);
   const columnOf = (t: Task) => (project ? taskStatusOption(t, project).value : t.status);
 
   const drop = (col: StatusOption) => {
@@ -132,38 +146,72 @@ export function TaskBoard({ tasks, project, showProject = !project }: { tasks: T
     void update("tasks", task.id, project ? statusChange(col.value, project) : statusPatch(col.base));
   };
 
+  const dropColumn = () => {
+    const d = colDrag;
+    setColDrag(null);
+    if (!d?.over || d.over === d.value) return;
+    const order = columns.map((c) => c.value).filter((v) => v !== d.value);
+    const at = order.indexOf(d.over) + (d.after ? 1 : 0);
+    order.splice(at, 0, d.value);
+    setSavedOrder(order);
+  };
+
   return (
     <div className="-mx-2 overflow-x-auto px-2 pb-2">
       <div className="flex min-w-max items-start gap-3">
         {columns.map((col) => {
           const items = tasks.filter((t) => columnOf(t) === col.value);
           const over = drag?.over === col.value;
+          const edge = colDrag && colDrag.over === col.value && colDrag.value !== col.value ? (colDrag.after ? "after" : "before") : null;
           return (
             <section
               key={col.value}
+              draggable
+              onDragStart={(e) => {
+                if (e.target !== e.currentTarget) return; // a card is being dragged, not the column
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", col.label);
+                setColDrag({ value: col.value, over: null, after: false });
+              }}
+              onDragEnd={() => setColDrag(null)}
               onDragOver={(e) => {
+                if (colDrag) {
+                  e.preventDefault();
+                  const r = e.currentTarget.getBoundingClientRect();
+                  const after = e.clientX > r.left + r.width / 2;
+                  if (colDrag.over !== col.value || colDrag.after !== after) setColDrag({ ...colDrag, over: col.value, after });
+                  return;
+                }
                 if (!drag) return;
                 e.preventDefault();
                 if (drag.over !== col.value) setDrag({ ...drag, over: col.value });
               }}
               onDrop={(e) => {
                 e.preventDefault();
-                drop(col);
+                if (colDrag) dropColumn();
+                else drop(col);
               }}
-              className={cn("flex w-[272px] shrink-0 flex-col rounded-lg bg-subtle p-2 transition-shadow", over && "shadow-[inset_0_0_0_1.5px_var(--accent)]")}
+              className={cn(
+                "group/col relative flex w-[272px] shrink-0 cursor-grab flex-col rounded-lg bg-subtle p-2 transition-[box-shadow,opacity] active:cursor-grabbing",
+                over && "shadow-[inset_0_0_0_1.5px_var(--accent)]",
+                colDrag?.value === col.value && "opacity-40",
+                edge === "before" && "before:absolute before:-left-[7px] before:inset-y-0 before:w-0.5 before:rounded-full before:bg-accent",
+                edge === "after" && "after:absolute after:-right-[7px] after:inset-y-0 after:w-0.5 after:rounded-full after:bg-accent",
+              )}
             >
-              <div className="mb-2 flex items-center gap-2 px-1">
+              <div className="mb-2 flex items-center gap-2 px-1" title="Hold and drag to move this column">
                 <StatusTag color={col.color}>{col.label}</StatusTag>
                 <span className="text-[12px] text-fg-3 tabular">{items.length}</span>
+                <GripVertical className="ml-auto size-3.5 text-fg-3 opacity-0 transition-opacity group-hover/col:opacity-100 max-sm:opacity-60" aria-hidden />
               </div>
-              <div className="flex min-h-16 flex-col gap-2">
+              <div className="flex min-h-16 cursor-auto flex-col gap-2">
                 {items.map((t) => (
                   <div key={t.id} onDragEnd={() => setDrag(null)}>
                     <TaskCard task={t} showProject={showProject} draggable onDragStart={() => setDrag({ id: t.id, over: null })} dragging={drag?.id === t.id} />
                   </div>
                 ))}
                 {!items.length && (
-                  <div className="rounded-md border border-dashed border-line-strong px-2 py-4 text-center text-[12px] text-fg-3">
+                  <div className="cursor-grab rounded-md border border-dashed border-line-strong px-2 py-4 text-center text-[12px] text-fg-3">
                     {drag ? "Drop here" : col.base === "done" ? "Drop a task here to complete it" : "No tasks"}
                   </div>
                 )}
