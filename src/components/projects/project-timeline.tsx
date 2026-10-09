@@ -1,16 +1,19 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronRight, Circle, CircleCheck, CircleDot, Ellipsis, Flag, GripVertical, Plus, Trash2 } from "lucide-react";
-import type { Project } from "@/lib/types";
-import { useWorkspace } from "@/lib/store";
+import { ArrowDown, ArrowDownUp, ArrowUp, Check, ChevronRight, Circle, CircleCheck, CircleDot, Ellipsis, Flag, GripVertical, ListChecks, Plus, Trash2 } from "lucide-react";
+import type { Project, Task } from "@/lib/types";
+import { useProfiles, useWorkspace } from "@/lib/store";
+import { readPref, usePref } from "@/lib/hooks";
+import { sortTasksBy, TASK_SORTS, timelineSortPref, type TaskSort } from "@/lib/task-sort";
+import { useTaskSelection } from "@/components/tasks/task-selection";
 import { nextSortOrder, projectTimeline, type MilestoneState, type Timeline, type TimelineStep } from "@/lib/milestones";
 import { cn, formatDay } from "@/lib/utils";
 import { EditableText } from "@/components/ui/input";
 import { DateField } from "@/components/ui/fields";
 import { Button, IconButton } from "@/components/ui/button";
 import { Popover, usePopover } from "@/components/ui/popover";
-import { MenuDivider, MenuItem, MenuList } from "@/components/ui/menu";
+import { MenuDivider, MenuItem, MenuLabel, MenuList } from "@/components/ui/menu";
 import { ProgressBar } from "@/components/ui/misc";
 import { TaskDndContext, TaskTable, type TaskDnd } from "@/components/tasks/task-table";
 
@@ -151,11 +154,16 @@ export function ProjectTimeline({ project }: { project: Project }) {
     const task = timeline.steps.flatMap((s) => s.tasks).concat(loose).find((t) => t.id === d.id);
     if (!task) return;
     const { group, index } = d.over;
+    const milestoneId = group === LOOSE ? null : group;
+    // A sorted group decides its own order: dropping there only moves the task into it.
+    if (readPref<TaskSort>(timelineSortPref(group === LOOSE ? `${LOOSE}:${project.id}` : group), MANUAL).by !== "manual") {
+      if ((task.milestone_id ?? null) !== milestoneId) void update("tasks", task.id, { milestone_id: milestoneId });
+      return;
+    }
     const target = groupTasks(group);
     const from = target.findIndex((t) => t.id === d.id);
     const order = target.filter((t) => t.id !== d.id);
     order.splice(from >= 0 && from < index ? index - 1 : index, 0, task);
-    const milestoneId = group === LOOSE ? null : group;
     // Number the whole group 0..n so the hand-set order sticks for everyone.
     order.forEach((t, i) => {
       const patch: { sort_order?: number; milestone_id?: string | null } = {};
@@ -234,18 +242,17 @@ export function ProjectTimeline({ project }: { project: Project }) {
       ))}
       <AddMilestone projectId={project.id} empty={!steps.length} />
       {(loose.length > 0 || !steps.length || taskDrag) && (
-        <section {...dropOnGroup(LOOSE)}>
-          <div className="mb-1 flex h-7 items-center gap-2 text-[13px] font-medium text-fg-2">
-            {steps.length ? "Not in a milestone" : "Tasks"} <span className="font-normal text-fg-3">{loose.length}</span>
-          </div>
+        <LooseSection project={project} tasks={loose} label={steps.length ? "Not in a milestone" : "Tasks"} drop={dropOnGroup(LOOSE)}>
+          {(sorted) => (
           <TaskTable
-            tasks={loose}
+            tasks={sorted}
             showProject={false}
             newTaskDefaults={{ project_id: project.id }}
             emptyLabel={steps.length ? "Every task is in a milestone" : "No tasks yet"}
             dndGroup={LOOSE}
           />
-        </section>
+          )}
+        </LooseSection>
       )}
     </div>
     </TaskDndContext>
@@ -254,6 +261,115 @@ export function ProjectTimeline({ project }: { project: Project }) {
 
 /** Drop-group id for tasks outside every milestone. */
 const LOOSE = "loose";
+const MANUAL: TaskSort = { by: "manual" };
+
+/** A group's tasks in its chosen sort (saved per milestone, on this device). */
+function useGroupSort(prefKey: string, tasks: Task[], project: Project) {
+  const [sort, setSort] = usePref<TaskSort>(timelineSortPref(prefKey), MANUAL);
+  const people = useProfiles();
+  const sorted = useMemo(() => sortTasksBy(tasks, sort, { project, person: people.get }), [tasks, sort, project, people]);
+  return { sort, setSort, sorted };
+}
+
+/** "Sort" button + menu for one group of tasks. Shows the active sort so it's clear the order isn't the custom one. */
+function SortMenu({ sort, onChange }: { sort: TaskSort; onChange: (s: TaskSort) => void }) {
+  const { setAnchor, ...pop } = usePopover();
+  const active = TASK_SORTS.find((o) => o.value === sort.by) ?? TASK_SORTS[0]!;
+  const sorted = sort.by !== "manual";
+  return (
+    <>
+      <button
+        ref={setAnchor}
+        type="button"
+        onClick={pop.toggle}
+        title="Sort this milestone's tasks"
+        className={cn(
+          "inline-flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 text-[12px] transition-colors hover:bg-hover",
+          sorted ? "font-medium text-accent" : "text-fg-3 hover:text-fg-2",
+        )}
+      >
+        <ArrowDownUp className="size-3.5" />
+        <span className={cn(!sorted && "hidden xl:inline")}>{sorted ? active.label : "Sort"}</span>
+        {sorted && sort.reverse && <span className="text-fg-3">↓</span>}
+      </button>
+      <Popover open={pop.open} onClose={pop.close} anchor={pop.anchor} align="end" width={230}>
+        <MenuList>
+          <MenuLabel>Sort tasks by</MenuLabel>
+          {TASK_SORTS.map((o) => (
+            <MenuItem
+              key={o.value}
+              selected={o.value === sort.by}
+              hint={o.value === sort.by ? undefined : o.hint}
+              onSelect={() => {
+                onChange({ by: o.value });
+                pop.close();
+              }}
+            >
+              {o.label}
+            </MenuItem>
+          ))}
+          {sorted && (
+            <>
+              <MenuDivider />
+              <MenuItem icon={sort.reverse ? <Check className="size-4" /> : undefined} onSelect={() => onChange({ ...sort, reverse: !sort.reverse })}>
+                Reverse order
+              </MenuItem>
+            </>
+          )}
+        </MenuList>
+      </Popover>
+    </>
+  );
+}
+
+/** Tick every task in a group (adds to the selection, so several milestones can be combined). */
+function SelectGroupButton({ tasks, name }: { tasks: Task[]; name: string }) {
+  const selection = useTaskSelection();
+  if (!tasks.length) return null;
+  const all = tasks.every((t) => selection.selected.has(t.id));
+  return (
+    <button
+      type="button"
+      onClick={() => selection.setMany(tasks.map((t) => t.id), !all)}
+      title={all ? `Unselect the tasks in ${name}` : `Select all tasks in ${name} to edit, duplicate or delete them together`}
+      className={cn(
+        "inline-flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 text-[12px] transition-colors hover:bg-hover",
+        all ? "font-medium text-accent" : "text-fg-3 hover:text-fg-2",
+      )}
+    >
+      <ListChecks className="size-3.5" />
+      <span className="hidden xl:inline">{all ? "Unselect" : "Select"}</span>
+    </button>
+  );
+}
+
+function LooseSection({
+  project,
+  tasks,
+  label,
+  drop,
+  children,
+}: {
+  project: Project;
+  tasks: Task[];
+  label: string;
+  drop: { onDragOver: (e: React.DragEvent) => void; onDrop: (e: React.DragEvent) => void };
+  children: (sorted: Task[]) => React.ReactNode;
+}) {
+  const { sort, setSort, sorted } = useGroupSort(`${LOOSE}:${project.id}`, tasks, project);
+  return (
+    <section {...drop}>
+      <div className="mb-1 flex h-7 items-center gap-2 text-[13px] font-medium text-fg-2">
+        {label} <span className="font-normal text-fg-3">{tasks.length}</span>
+        <span className="ml-auto flex items-center gap-0.5 font-normal">
+          <SelectGroupButton tasks={sorted} name={label} />
+          {tasks.length > 1 && <SortMenu sort={sort} onChange={setSort} />}
+        </span>
+      </div>
+      {children(sorted)}
+    </section>
+  );
+}
 
 function MilestoneSection({
   step,
@@ -297,6 +413,7 @@ function MilestoneSection({
   const { setAnchor, ...menu } = usePopover();
   const sectionRef = useRef<HTMLElement>(null);
   const m = step.milestone;
+  const { sort, setSort, sorted } = useGroupSort(m.id, step.tasks, project);
   const move = (dir: -1 | 1) => {
     onMove(dir);
     menu.close();
@@ -368,6 +485,8 @@ function MilestoneSection({
           <ProgressBar value={step.total ? step.done / step.total : 0} tone={step.state === "done" ? "green" : "default"} className="flex-1" />
           {step.done}/{step.total}
         </span>
+        <SelectGroupButton tasks={sorted} name={m.title} />
+        {step.tasks.length > 1 && <SortMenu sort={sort} onChange={setSort} />}
         <div className="w-24 shrink-0 text-[13px]">
           <DateField value={m.due_date} placeholder="Due date" onChange={(due_date) => void update("milestones", m.id, { due_date })} />
         </div>
@@ -407,7 +526,7 @@ function MilestoneSection({
       {open && (
         <div className="mt-1 pl-9">
           <TaskTable
-            tasks={step.tasks}
+            tasks={sorted}
             showProject={false}
             showHeader={showHeader}
             newTaskDefaults={{ project_id: project.id, milestone_id: m.id }}

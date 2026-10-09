@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState } from "react";
-import { CalendarDays, CircleDot, Flag, FolderKanban, GripVertical, Plus, Type, Users, PanelRightOpen } from "lucide-react";
+import { CalendarDays, CircleDot, Flag, FolderKanban, GripVertical, Plus, Type, Users } from "lucide-react";
 import type { Profile, Project, Task, UUID } from "@/lib/types";
 import { TASK_PRIORITIES } from "@/lib/constants";
 import { statusChange, statusOptions, taskStatusValue } from "@/lib/task-statuses";
@@ -94,7 +94,8 @@ export function TaskTable({
         {showHeader ? (
           <div className="grid border-y border-line text-[13px] text-fg-2" style={{ gridTemplateColumns: cols }}>
             <div className="flex h-8 items-center justify-center">
-              {ids.length > 0 && (
+              {/* Stacked tables (timeline) share one header — each group has its own "Select" instead. */}
+              {ids.length > 0 && !dnd && (
                 <SelectTick
                   checked={allSelected}
                   visible={selecting}
@@ -178,13 +179,6 @@ export function TaskTable({
                 )}
               >
                 {t.title || <span className="text-fg-3">Untitled</span>}
-              </button>
-              <button
-                type="button"
-                onClick={() => openTask(t.id)}
-                className="hidden h-6 shrink-0 items-center gap-1 rounded px-1.5 text-[12px] font-medium text-fg-2 shadow-[inset_0_0_0_1px_var(--border-strong)] hover:bg-hover group-hover:flex"
-              >
-                <PanelRightOpen className="size-3" /> Open
               </button>
             </div>
             <Cell>
