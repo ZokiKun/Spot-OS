@@ -92,6 +92,24 @@ export function PushToFix() {
     }
   };
 
+  // A run that never reported back (blocked push, crashed session) would block the button for hours.
+  const stop = async (run: FixRun) => {
+    const ok = await confirm({
+      title: "Stop waiting for this run?",
+      description: "Spot OS marks it as stopped so you can push to fix again. Anything Claude already pushed stays live.",
+      confirmLabel: "Stop waiting",
+      danger: false,
+    });
+    if (!ok) return;
+    const { error } = await getSupabaseBrowserClient()
+      .from("fix_runs")
+      .update({ status: "failed", error: "Stopped from Settings — Claude never reported back.", finished_at: new Date().toISOString() })
+      .eq("id", run.id)
+      .eq("status", "running");
+    if (error) toast.show({ title: "Couldn’t stop the run", description: error.message, tone: "error" });
+    reload();
+  };
+
   const titleOf = (id: string) => data.tasks.find((t) => t.id === id)?.title ?? "A deleted task";
   const nameOf = (id: string | null) => data.profiles.find((p) => p.id === id)?.full_name ?? "Someone";
 
@@ -146,11 +164,18 @@ export function PushToFix() {
                         <span className="text-fg-2"> · {nameOf(r.requested_by)} · {timeAgo(r.created_at)}</span>
                       </span>
                     </span>
-                    {r.session_url && (
-                      <a href={r.session_url} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 text-fg-2 hover:text-fg">
-                        Session <ExternalLink className="size-3.5" />
-                      </a>
-                    )}
+                    <span className="inline-flex shrink-0 items-center gap-3">
+                      {r.status === "running" && canEdit && (
+                        <button type="button" onClick={() => void stop(r)} className="text-fg-2 hover:text-fg">
+                          Stop waiting
+                        </button>
+                      )}
+                      {r.session_url && (
+                        <a href={r.session_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-fg-2 hover:text-fg">
+                          Session <ExternalLink className="size-3.5" />
+                        </a>
+                      )}
+                    </span>
                   </div>
                   {(r.summary || r.error) && <p className="mt-1 whitespace-pre-line text-fg-2">{r.summary || r.error}</p>}
                   {!!r.results.length && (
