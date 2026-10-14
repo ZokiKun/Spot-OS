@@ -3,6 +3,7 @@
 import { createContext, Suspense, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { CalendarDays, CircleDot, Copy, Flag, FolderKanban, Milestone as MilestoneIcon, Trash2, Users, Clock } from "lucide-react";
+import { useDebouncedSave } from "@/lib/hooks";
 import { useWorkspace, useProfiles, type NewRow } from "@/lib/store";
 import { TASK_PRIORITIES } from "@/lib/constants";
 import { statusChange, statusOptions, taskStatusValue } from "@/lib/task-statuses";
@@ -10,7 +11,7 @@ import type { Task, TaskStatus, UUID } from "@/lib/types";
 import { nowISO, timeAgo } from "@/lib/utils";
 import { SidePeek } from "@/components/ui/side-peek";
 import { EditableText } from "@/components/ui/input";
-import { MentionTextarea } from "@/components/ui/mention-textarea";
+import { RichEditor } from "@/components/editor/rich-editor";
 import { DateField, MilestoneField, OptionField, PeopleField, ProjectField, PropertyRow } from "@/components/ui/fields";
 import { assigneesPatch, taskAssignees } from "@/lib/selectors";
 import { sortMilestones } from "@/lib/milestones";
@@ -70,22 +71,23 @@ function TaskParamWatcher({ onTask }: { onTask: (id: UUID) => void }) {
   return null;
 }
 
+/** Older descriptions are plain text; show them as paragraphs so the rich editor keeps their line breaks. */
+function descriptionHtml(text: string | null) {
+  if (!text) return "";
+  if (/^\s*</.test(text)) return text;
+  const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return text.split(/\n/).map((l) => `<p>${esc(l)}</p>`).join("");
+}
+
 function TaskPeek({ taskId, onClose, onOpen }: { taskId: UUID | null; onClose: () => void; onOpen: (id: UUID) => void }) {
-  const { data, update, remove, create, me } = useWorkspace();
+  const { data, update, remove, create, me, upload } = useWorkspace();
   const toast = useToast();
   const ask = useConfirm();
   const people = useProfiles();
   const task = data.tasks.find((t) => t.id === taskId);
   const project = task?.project_id ? data.projects.find((p) => p.id === task.project_id) : undefined;
   const attachments = useMemo(() => (taskId ? data.attachments.filter((a) => a.task_id === taskId) : []), [data.attachments, taskId]);
-  const [description, setDescription] = useState(task?.description ?? "");
-  // Reset the draft when switching tasks or when someone else edits the description.
-  const sourceKey = `${task?.id}:${task?.description ?? ""}`;
-  const [seen, setSeen] = useState(sourceKey);
-  if (sourceKey !== seen) {
-    setSeen(sourceKey);
-    setDescription(task?.description ?? "");
-  }
+  const { schedule } = useDebouncedSave<{ id: UUID; html: string }>(({ id, html }) => void update("tasks", id, { description: html || null }));
 
   if (!task) return <SidePeek open={false} onClose={onClose}>{null}</SidePeek>;
   const set = (patch: Partial<Task>) => void update("tasks", task.id, patch);
@@ -170,12 +172,13 @@ function TaskPeek({ taskId, onClose, onOpen }: { taskId: UUID | null; onClose: (
         </PropertyRow>
       </div>
       <div className="mt-4 border-t border-line pt-4">
-        <MentionTextarea
-          value={description}
-          onChange={setDescription}
-          onBlur={() => description !== (task.description ?? "") && set({ description: description || null })}
-          placeholder="Add a description… type @ to mention someone"
+        <RichEditor
+          key={task.id}
+          value={descriptionHtml(task.description)}
+          onChange={(html) => schedule({ id: task.id, html })}
+          placeholder="Add a description… type @ to mention someone, # for a heading, - for a list"
           className="min-h-24 text-[15px] leading-relaxed"
+          onUploadImage={async (file) => (await upload(file, `tasks/${task.id}/description`)).url}
         />
       </div>
       <div className="mt-4 border-t border-line pt-3">
