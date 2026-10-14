@@ -55,12 +55,15 @@ export function usePersonalData() {
     const today = todayISO();
     const mine = data.tasks.filter((t) => isAssignedTo(t, meId));
     const myOpen = mine.filter(isOpen);
+    // Today keeps what you ticked off (struck through, after the open ones) so the day's list doesn't shrink as you work.
+    const doneToday = mine.filter((t) => !isOpen(t) && t.due_date === today);
     const projects = sortProjects(data.projects.filter((p) => ACTIVE_PROJECT_STATUSES.includes(p.status) && isMyProject(p, data, meId)));
     return {
       today,
       myOpen,
+      doneToday,
       overdue: sortTasks(mine.filter((t) => isOverdue(t, today))),
-      dueToday: sortTasks(mine.filter((t) => isDueToday(t, today))),
+      dueToday: sortTasks([...mine.filter((t) => isDueToday(t, today)), ...doneToday]),
       upcoming: sortTasks(mine.filter((t) => isUpcoming(t, today, 7))),
       projects,
       deadlines: projects

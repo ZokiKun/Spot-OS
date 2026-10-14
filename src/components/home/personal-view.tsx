@@ -4,7 +4,7 @@ import Link from "next/link";
 import { CalendarClock, CircleCheck, FolderKanban, Target } from "lucide-react";
 import type { Task } from "@/lib/types";
 import { PROJECT_STATUSES, optionFor } from "@/lib/constants";
-import { projectProgress } from "@/lib/selectors";
+import { isOpen, projectProgress } from "@/lib/selectors";
 import { useWorkspace } from "@/lib/store";
 import { addDaysISO, cn, daysUntil, formatDay } from "@/lib/utils";
 import { EmptyState, ProgressBar, SectionHeading } from "@/components/ui/misc";
@@ -27,7 +27,7 @@ export function PersonalView({ layout }: { layout: HomeLayout }) {
     case "agenda":
       return (
         <Agenda
-          items={datedItems(d.myOpen, d.projects.filter((p) => p.deadline))}
+          items={datedItems([...d.myOpen, ...d.doneToday], d.projects.filter((p) => p.deadline))}
           today={d.today}
           until={addDaysISO(d.today, 30)}
           emptyTitle="Nothing dated in the next 30 days"
@@ -36,7 +36,7 @@ export function PersonalView({ layout }: { layout: HomeLayout }) {
     case "week":
       return (
         <div className="space-y-8">
-          <WeekStrip items={datedItems(d.myOpen, d.projects.filter((p) => p.deadline))} today={d.today} />
+          <WeekStrip items={datedItems([...d.myOpen, ...d.doneToday], d.projects.filter((p) => p.deadline))} today={d.today} />
           <ProjectChips d={d} />
         </div>
       );
@@ -258,7 +258,7 @@ function PersonalBento({ d }: { d: PersonalData }) {
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <StatTile label="Overdue" value={d.overdue.length} tone={d.overdue.length ? "danger" : undefined} href="/projects/tasks?filter=mine" />
-      <StatTile label="Due today" value={d.dueToday.length} href="/projects/tasks?filter=mine" />
+      <StatTile label="Due today" value={d.dueToday.filter(isOpen).length} href="/projects/tasks?filter=mine" />
       <StatTile label="Active projects" value={d.projects.length} hint={`${d.myOpen.length} open tasks`} href="/projects" />
       <StatTile
         label="Next deadline"
