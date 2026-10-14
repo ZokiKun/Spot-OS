@@ -8,6 +8,20 @@ export function renderMarkdown(md: string): string {
   return marked.parse(escaped, { async: false }) as string;
 }
 
+/**
+ * Rich-text HTML for a field that may still hold plain text from before it became rich
+ * (e.g. task descriptions): blank lines become paragraphs, single newlines line breaks.
+ */
+export function plainTextToHtml(value: string | null | undefined): string {
+  if (!value) return "";
+  if (/^\s*<(p|h[1-6]|ul|ol|blockquote|pre|hr|img|div)\b/i.test(value)) return value;
+  const esc = value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return esc
+    .split(/\n{2,}/)
+    .map((para) => `<p>${para.replace(/\n/g, "<br>")}</p>`)
+    .join("");
+}
+
 /** Browser-only: convert editor HTML (Tiptap subset) to Markdown for export. */
 export function htmlToMarkdown(html: string): string {
   if (typeof DOMParser === "undefined") return html;

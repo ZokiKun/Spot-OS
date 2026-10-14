@@ -6,6 +6,7 @@ import { AtSign, CheckCheck, Inbox as InboxIcon } from "lucide-react";
 import type { Notification as SpotNotification } from "@/lib/types";
 import { useProfiles, useWorkspace } from "@/lib/store";
 import { readPref } from "@/lib/hooks";
+import { playNotificationSound, unlockAudioOnGesture } from "@/lib/sounds";
 import { cn, firstName, nowISO, timeAgo } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { Popover, usePopover } from "@/components/ui/popover";
@@ -139,7 +140,7 @@ function InboxPanel({ onOpen }: { onOpen: () => void }) {
 
 /**
  * Announces notifications that arrive while Spot OS is open:
- * an in-app toast, plus a desktop notification when the person has turned those on.
+ * an in-app toast and a sound, plus a desktop notification when the person has turned those on.
  */
 export function NotificationWatcher() {
   const { status } = useWorkspace();
@@ -149,16 +150,20 @@ export function NotificationWatcher() {
   const mine = useMyNotifications();
   const seen = useRef<Set<string> | null>(null);
 
+  useEffect(() => unlockAudioOnGesture(), []);
+
   useEffect(() => {
     if (status !== "ready") return;
     if (!seen.current) {
       seen.current = new Set(mine.map((n) => n.id)); // existing ones are not "new"
       return;
     }
+    let fresh = 0;
     for (const n of mine) {
       if (seen.current.has(n.id)) continue;
       seen.current.add(n.id);
       if (n.read_at) continue;
+      fresh++;
       const who = firstName(people.get(n.actor_id)?.full_name) || "Someone";
       const title = `${who} mentioned you`;
       toast.show({ title, description: n.entity_label, action: { label: "Open", onClick: () => router.push(n.href) } });
@@ -171,6 +176,7 @@ export function NotificationWatcher() {
         };
       }
     }
+    if (fresh) playNotificationSound(); // once per batch, however many arrived
   }, [mine, status, people, toast, router]);
 
   return null;

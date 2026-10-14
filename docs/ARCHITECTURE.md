@@ -14,7 +14,7 @@ This document answers the brief's "first task" list: schema, routes, components,
 | `projects` | Project, type, status, client, CD, lead, dates, description, **next_action**, `notes_html` | `type` / `status` are text + `check` (easier to evolve than PG enums). |
 | `milestones` | A project's timeline: ordered steps (`sort_order`), optional `due_date`; tasks point at one via `tasks.milestone_id` | A milestone is done when it has tasks and all are done. The project's **next step** is derived (`lib/milestones.ts`): the first unfinished milestone. `projects.next_action` is legacy and no longer edited. |
 | `project_members` | People associated with a project | `unique(project_id, profile_id)` |
-| `tasks` | Title, description, assignee, status, priority, due date, project | `project_id` nullable (studio-level tasks such as invoicing). `completed_at` set on Done. `sort_order` (0008) is the hand-dragged position inside a milestone; null = not dragged yet (those follow, by due date). |
+| `tasks` | Title, description (rich-text HTML since the editor switch; older rows may be plain text), assignee, status, priority, due date, project | `project_id` nullable (studio-level tasks such as invoicing). `completed_at` set on Done. `sort_order` (0008) is the hand-dragged position inside a milestone; null = not dragged yet (those follow, by due date). |
 | `calendar_notes` | Rich-text notes per date | Several notes per day. HTML from the editor. |
 | `attachments` | **Native uploads**: calendar, project and review files | One table with three nullable FKs + `check (num_nonnulls(...) = 1)`. Replaces `calendar_attachments` and `project_files`. |
 | `library_items` | Indexed links and docs (Drive, Docs, Sheets, PDFs, templates, URLs) | `project_id` nullable. This replaces `links`, `documents` **and** `project_links`. A project's Links tab is just a filtered view. |
@@ -140,7 +140,7 @@ src/
 - **Merged** `calendar_attachments` + `project_files` into `attachments`.
 - **SPOT.md** is generated from Spot Base pages, not maintained as a second copy.
 - **Activity** is written by DB triggers, not by client code.
-- **Notifications:** only @mentions. Typing @ in a project note, task description, calendar note or project notes offers members; the store diffs mentions on save (`src/lib/mentions.ts`) and creates a notification per newly mentioned person. They arrive in the sidebar **Inbox** live (Realtime), with a toast and optional desktop notification.
+- **Notifications:** only @mentions. Typing @ in a project note, task description, calendar note or project notes offers members; the store diffs mentions on save (`src/lib/mentions.ts`) and creates a notification per newly mentioned person. They arrive in the sidebar **Inbox** live (Realtime), with a toast, a sound (picked per device in Settings → Notifications, `src/lib/sounds.ts`) and optional desktop notification.
 - **Kanban:** the project board has fixed status columns and drag to change status. Nothing is configurable.
 - **Performance:** in Library → Performance — six-period bar charts (monthly or quarterly) per metric, with a table view.
 - **Project notes:** one rich-text field per project instead of a notes table.

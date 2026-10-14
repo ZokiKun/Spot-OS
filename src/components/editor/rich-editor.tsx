@@ -35,7 +35,10 @@ export interface RichEditorProps {
   placeholder?: string;
   /** Upload an image and return its URL; enables paste/drop/toolbar image insert. */
   onUploadImage?: (file: File) => Promise<string>;
+  /** Classes for the editable area; give a min-h-* to replace the default 160px. */
   className?: string;
+  /** Sticky offset for the block toolbar — top-11 clears the page header; use top-0 inside a panel. */
+  toolbarTop?: "top-0" | "top-11";
   editable?: boolean;
   autoFocus?: boolean;
 }
@@ -44,7 +47,7 @@ export interface RichEditorProps {
  * Notion-like rich text: markdown shortcuts (#, -, 1., [ ]), a bubble menu for inline marks,
  * and a slim block toolbar. Stores HTML. Remote updates apply only while not focused (last write wins).
  */
-export function RichEditor({ value, onChange, placeholder = "Write something…", onUploadImage, className, editable = true, autoFocus }: RichEditorProps) {
+export function RichEditor({ value, onChange, placeholder = "Write something…", onUploadImage, className, toolbarTop = "top-11", editable = true, autoFocus }: RichEditorProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadRef = useLatest(onUploadImage);
   const onChangeRef = useLatest(onChange);
@@ -74,7 +77,7 @@ export function RichEditor({ value, onChange, placeholder = "Write something…"
     ],
     content: value,
     editorProps: {
-      attributes: { class: cn("prose-notion min-h-[160px] outline-none", className) },
+      attributes: { class: cn("prose-notion outline-none", !className?.includes("min-h-") && "min-h-[160px]", className) },
       handlePaste: (view, event) => insertImagesFrom(event.clipboardData?.files, view.state.selection.from),
       handleDrop: (view, event) => {
         const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ?? view.state.selection.from;
@@ -119,7 +122,7 @@ export function RichEditor({ value, onChange, placeholder = "Write something…"
 
   return (
     <div className="group/editor relative">
-      {editable && <BlockToolbar editor={editor} onImage={onUploadImage ? () => fileRef.current?.click() : undefined} />}
+      {editable && <BlockToolbar editor={editor} top={toolbarTop} onImage={onUploadImage ? () => fileRef.current?.click() : undefined} />}
       {editable && (
         <BubbleMenu editor={editor} className="flex items-center gap-0.5 rounded-md bg-elevated p-0.5 shadow-menu">
           <MarkButtons editor={editor} />
@@ -210,10 +213,10 @@ function MarkButtons({ editor }: { editor: Editor }) {
   );
 }
 
-function BlockToolbar({ editor, onImage }: { editor: Editor; onImage?: () => void }) {
+function BlockToolbar({ editor, top, onImage }: { editor: Editor; top: string; onImage?: () => void }) {
   const a = useActive(editor);
   return (
-    <div className="no-print sticky top-11 z-10 -mx-1 mb-3 flex flex-wrap items-center gap-0.5 bg-bg/95 py-1 opacity-60 backdrop-blur-sm transition-opacity focus-within:opacity-100 group-hover/editor:opacity-100">
+    <div className={cn("no-print sticky z-10 -mx-1 mb-3 flex flex-wrap items-center gap-0.5 bg-bg/95 py-1 opacity-60 backdrop-blur-sm transition-opacity focus-within:opacity-100 group-hover/editor:opacity-100", top)}>
       <ToolButton label="Heading 1" active={a.h1} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
         <Heading1 className="size-4" />
       </ToolButton>

@@ -8,9 +8,11 @@ import { TASK_PRIORITIES } from "@/lib/constants";
 import { statusChange, statusOptions, taskStatusValue } from "@/lib/task-statuses";
 import type { Task, TaskStatus, UUID } from "@/lib/types";
 import { nowISO, timeAgo } from "@/lib/utils";
+import { useDebouncedSave } from "@/lib/hooks";
+import { plainTextToHtml } from "@/lib/markdown";
 import { SidePeek } from "@/components/ui/side-peek";
 import { EditableText } from "@/components/ui/input";
-import { MentionTextarea } from "@/components/ui/mention-textarea";
+import { RichEditor } from "@/components/editor/rich-editor";
 import { DateField, MilestoneField, OptionField, PeopleField, ProjectField, PropertyRow } from "@/components/ui/fields";
 import { assigneesPatch, taskAssignees } from "@/lib/selectors";
 import { sortMilestones } from "@/lib/milestones";
@@ -78,14 +80,6 @@ function TaskPeek({ taskId, onClose, onOpen }: { taskId: UUID | null; onClose: (
   const task = data.tasks.find((t) => t.id === taskId);
   const project = task?.project_id ? data.projects.find((p) => p.id === task.project_id) : undefined;
   const attachments = useMemo(() => (taskId ? data.attachments.filter((a) => a.task_id === taskId) : []), [data.attachments, taskId]);
-  const [description, setDescription] = useState(task?.description ?? "");
-  // Reset the draft when switching tasks or when someone else edits the description.
-  const sourceKey = `${task?.id}:${task?.description ?? ""}`;
-  const [seen, setSeen] = useState(sourceKey);
-  if (sourceKey !== seen) {
-    setSeen(sourceKey);
-    setDescription(task?.description ?? "");
-  }
 
   if (!task) return <SidePeek open={false} onClose={onClose}>{null}</SidePeek>;
   const set = (patch: Partial<Task>) => void update("tasks", task.id, patch);
@@ -170,18 +164,28 @@ function TaskPeek({ taskId, onClose, onOpen }: { taskId: UUID | null; onClose: (
         </PropertyRow>
       </div>
       <div className="mt-4 border-t border-line pt-4">
-        <MentionTextarea
-          value={description}
-          onChange={setDescription}
-          onBlur={() => description !== (task.description ?? "") && set({ description: description || null })}
-          placeholder="Add a description… type @ to mention someone"
-          className="min-h-24 text-[15px] leading-relaxed"
-        />
+        <TaskDescription key={task.id} task={task} />
       </div>
       <div className="mt-4 border-t border-line pt-3">
         <div className="mb-1 px-2 text-[12px] font-medium uppercase tracking-wide text-fg-3">Files &amp; links</div>
         <AttachmentList items={attachments} owner={{ task_id: task.id }} folder={`tasks/${task.id}`} compact {...NOTE_FILE_LIMIT} />
       </div>
     </SidePeek>
+  );
+}
+
+/** Rich-text description (same editor as calendar notes). Keyed by task, so a pending save flushes when switching. */
+function TaskDescription({ task }: { task: Task }) {
+  const { update, upload } = useWorkspace();
+  const { schedule } = useDebouncedSave<string>((html) => void update("tasks", task.id, { description: html || null }));
+  return (
+    <RichEditor
+      value={plainTextToHtml(task.description)}
+      onChange={schedule}
+      onUploadImage={async (file) => (await upload(file, `tasks/${task.id}`)).url}
+      placeholder="Add a description… type @ to mention someone"
+      className="min-h-24"
+      toolbarTop="top-0"
+    />
   );
 }

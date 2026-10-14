@@ -7,6 +7,7 @@ import { CalendarDays, CircleCheck, FileText, Link2, Search } from "lucide-react
 import { useWorkspace } from "@/lib/store";
 import { NAV_ITEMS } from "@/lib/constants";
 import { hasClient } from "@/lib/selectors";
+import { plainText } from "@/lib/mentions";
 import { cn, formatDay } from "@/lib/utils";
 import { NAV_ICONS } from "./icons";
 
@@ -59,7 +60,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       );
     if (q) {
       data.tasks
-        .filter((t) => match(t.title, t.description))
+        .filter((t) => match(t.title, t.description && plainText(t.description)))
         .slice(0, 6)
         .forEach((t) =>
           out.push({

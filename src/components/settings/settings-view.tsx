@@ -22,6 +22,7 @@ import { isGooglePickerConfigured } from "@/components/library/google-picker";
 import { isGoogleCalendarConfigured } from "@/lib/google-calendar";
 import { SettingsRow, SettingsSection } from "./settings-ui";
 import { DESKTOP_NOTIFY_PREF } from "@/components/shell/inbox";
+import { NOTIFY_SOUND_PREF, SOUND_OPTIONS, playSound, type NotifySound } from "@/lib/sounds";
 import { FinanceSettings } from "./finance-settings";
 import { PushToFix } from "./push-to-fix";
 import { useConfirm } from "@/components/ui/confirm";
@@ -309,8 +310,33 @@ function Notifications() {
         <SettingsRow label="Desktop notifications" description={status}>
           {action}
         </SettingsRow>
+        <NotificationSound />
       </SettingsSection>
     </>
+  );
+}
+
+/** Sound that plays when a notification arrives. Picking one plays it, so you hear what you chose. */
+function NotificationSound() {
+  const [sound, setSound] = usePref<NotifySound>(NOTIFY_SOUND_PREF, "chime");
+  return (
+    <SettingsRow label="Notification sound" description="Plays when a notification arrives while Spot OS is open. Click one to hear it. Saved on this device.">
+      <div className="flex flex-wrap gap-1">
+        {SOUND_OPTIONS.map((o) => (
+          <Button
+            key={o.value}
+            variant={sound === o.value ? "primary" : "secondary"}
+            aria-pressed={sound === o.value}
+            onClick={() => {
+              setSound(o.value);
+              playSound(o.value);
+            }}
+          >
+            {o.label}
+          </Button>
+        ))}
+      </div>
+    </SettingsRow>
   );
 }
 
