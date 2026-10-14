@@ -6,6 +6,7 @@ import { AtSign, CheckCheck, Inbox as InboxIcon } from "lucide-react";
 import type { Notification as SpotNotification } from "@/lib/types";
 import { useProfiles, useWorkspace } from "@/lib/store";
 import { readPref } from "@/lib/hooks";
+import { playChime, SOUND_PREF } from "@/lib/sound";
 import { cn, firstName, nowISO, timeAgo } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { Popover, usePopover } from "@/components/ui/popover";
@@ -161,6 +162,7 @@ export function NotificationWatcher() {
       if (n.read_at) continue;
       const who = firstName(people.get(n.actor_id)?.full_name) || "Someone";
       const title = `${who} mentioned you`;
+      if (readPref(SOUND_PREF, true)) playChime();
       toast.show({ title, description: n.entity_label, action: { label: "Open", onClick: () => router.push(n.href) } });
       if (readPref(DESKTOP_NOTIFY_PREF, false) && typeof Notification !== "undefined" && Notification.permission === "granted" && document.visibilityState !== "visible") {
         const dn = new Notification(`${title} · Spot OS`, { body: `${n.entity_label}${n.excerpt ? ` — ${n.excerpt}` : ""}`, tag: n.id });

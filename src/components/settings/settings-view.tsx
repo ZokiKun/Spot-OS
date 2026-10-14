@@ -15,13 +15,14 @@ import { Page } from "@/components/shell/page";
 import { PALETTES, TYPEFACES, useTheme } from "@/components/shell/theme";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { EditableText, TextInput } from "@/components/ui/input";
+import { EditableText, TextInput, Toggle } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { Popover, usePopover } from "@/components/ui/popover";
 import { isGooglePickerConfigured } from "@/components/library/google-picker";
 import { isGoogleCalendarConfigured } from "@/lib/google-calendar";
 import { SettingsRow, SettingsSection } from "./settings-ui";
 import { DESKTOP_NOTIFY_PREF } from "@/components/shell/inbox";
+import { playChime, SOUND_PREF } from "@/lib/sound";
 import { FinanceSettings } from "./finance-settings";
 import { PushToFix } from "./push-to-fix";
 import { useConfirm } from "@/components/ui/confirm";
@@ -206,6 +207,7 @@ const UNBLOCK_STEPS = [
 function Notifications() {
   const toast = useToast();
   const [desktop, setDesktop] = usePref(DESKTOP_NOTIFY_PREF, false);
+  const [sound, setSound] = usePref(SOUND_PREF, true);
   const permission = useSyncExternalStore(subscribePermission, readPermission, () => "default" as NotifyPermission);
   // "asking": the prompt is up (or Chrome tucked it into the address bar); "dismissed": closed without choosing.
   const [ask, setAsk] = useState<"idle" | "asking" | "dismissed">("idle");
@@ -308,6 +310,12 @@ function Notifications() {
       >
         <SettingsRow label="Desktop notifications" description={status}>
           {action}
+        </SettingsRow>
+        <SettingsRow label="Notification sound" description="Play a soft chime when a new notification arrives while Spot OS is open. Saved on this device.">
+          <div className="flex items-center gap-2">
+            <Button onClick={playChime}>Play sample</Button>
+            <Toggle checked={sound} onChange={setSound} label="Notification sound" />
+          </div>
         </SettingsRow>
       </SettingsSection>
     </>
