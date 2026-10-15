@@ -15,6 +15,8 @@ import { EmptyState } from "@/components/ui/misc";
 import { statusPatch, useTaskPeek } from "./task-peek";
 import { useTaskSelection } from "./task-selection";
 import { ProjectIcon } from "@/components/ui/project-icon";
+import { SortHead, nextSort } from "@/components/ui/sort";
+import type { TaskSort, TaskSortKey } from "@/lib/task-sort";
 
 /**
  * Drag-and-drop between stacked task tables (the project timeline). Each table is a "group"
@@ -42,8 +44,13 @@ export function TaskTable({
   emptyLabel = "No tasks here",
   showHeader = true,
   dndGroup,
+  sort,
+  onSort,
 }: {
   tasks: Task[];
+  /** With `onSort`, the column headers sort the table (the parent applies the order). */
+  sort?: TaskSort;
+  onSort?: (sort: TaskSort) => void;
   showProject?: boolean;
   newTaskDefaults?: Partial<Task>;
   emptyLabel?: string;
@@ -80,13 +87,13 @@ export function TaskTable({
     },
   };
 
-  const head = [
-    { icon: <Type className="size-3.5" />, label: "Name" },
-    { icon: <CircleDot className="size-3.5" />, label: "Status" },
-    { icon: <Users className="size-3.5" />, label: "Assignees" },
-    { icon: <CalendarDays className="size-3.5" />, label: "Due" },
-    { icon: <Flag className="size-3.5" />, label: "Priority" },
-    ...(showProject ? [{ icon: <FolderKanban className="size-3.5" />, label: "Project" }] : []),
+  const head: { icon: React.ReactNode; label: string; sort: TaskSortKey }[] = [
+    { icon: <Type className="size-3.5" />, label: "Name", sort: "title" },
+    { icon: <CircleDot className="size-3.5" />, label: "Status", sort: "status" },
+    { icon: <Users className="size-3.5" />, label: "Assignees", sort: "assignees" },
+    { icon: <CalendarDays className="size-3.5" />, label: "Due", sort: "due" },
+    { icon: <Flag className="size-3.5" />, label: "Priority", sort: "priority" },
+    ...(showProject ? [{ icon: <FolderKanban className="size-3.5" />, label: "Project", sort: "project" as const }] : []),
   ];
 
   return (
@@ -105,12 +112,24 @@ export function TaskTable({
                 />
               )}
             </div>
-            {head.map((h, i) => (
-              <div key={h.label} className={cn("flex h-8 items-center gap-1.5 px-2", i > 0 && "border-l border-line")}>
-                <span className="text-fg-3">{h.icon}</span>
-                {h.label}
-              </div>
-            ))}
+            {head.map((h, i) =>
+              onSort ? (
+                <div key={h.label} className={cn("min-w-0", i > 0 && "border-l border-line")}>
+                  <SortHead
+                    label={h.label}
+                    icon={h.icon}
+                    active={sort?.by === h.sort}
+                    reverse={sort?.reverse}
+                    onClick={() => onSort(nextSort(sort ?? { by: "manual" }, h.sort, "manual"))}
+                  />
+                </div>
+              ) : (
+                <div key={h.label} className={cn("flex h-8 items-center gap-1.5 px-2", i > 0 && "border-l border-line")}>
+                  <span className="text-fg-3">{h.icon}</span>
+                  {h.label}
+                </div>
+              ),
+            )}
           </div>
         ) : (
           <div className="border-t border-line" />

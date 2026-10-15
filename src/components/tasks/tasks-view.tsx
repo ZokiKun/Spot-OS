@@ -1,7 +1,9 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useWorkspace } from "@/lib/store";
+import { useProfiles, useWorkspace } from "@/lib/store";
+import { sortTasksBy, TASK_SORTS, type TaskSort, type TaskSortKey } from "@/lib/task-sort";
+import { SortMenu, type SortOption } from "@/components/ui/sort";
 import type { Project, Task } from "@/lib/types";
 import { filterTasks, sortTasks, type TaskFilter } from "@/lib/selectors";
 import { firstName, todayISO } from "@/lib/utils";
@@ -17,6 +19,13 @@ import { usePageAdd, useQuickAdd } from "@/components/shell/quick-add";
 import { ProjectIcon } from "@/components/ui/project-icon";
 
 const TASK_VIEWS: TaskView[] = ["table", "board", "list", "grid", "gantt"];
+
+/** "manual" here is the page's default order: open first, then due date, then priority. */
+const PAGE_SORTS: SortOption<TaskSortKey>[] = [
+  { value: "manual", label: "Default (due date, priority)" },
+  ...TASK_SORTS.filter((o) => o.value !== "manual"),
+  { value: "project", label: "Project", order: ["A to Z", "Z to A"] },
+];
 
 /** Gantt rows grouped by project (tasks without one last). */
 function ganttGroups(tasks: Task[], projects: Project[]) {
@@ -62,8 +71,13 @@ export function TasksView() {
     { value: "completed", label: "Completed" },
   ];
 
+  const people = useProfiles();
+  const [sort, setSort] = usePref<TaskSort>("tasks-sort", { by: "manual" });
   const list = filterTasks(data.tasks, filter, meId);
-  const tasks = filter.kind === "completed" ? list : sortTasks(list);
+  const tasks = sortTasksBy(filter.kind === "completed" ? list : sortTasks(list), sort, {
+    person: people.get,
+    projectOf: (id) => data.projects.find((p) => p.id === id),
+  });
 
   const defaults =
     // Tasks start unassigned, except on a person's tab (else the new task would vanish from it).
@@ -91,11 +105,14 @@ export function TasksView() {
       <PageTitle title="Tasks" description="Every task across projects. Click a task to open it." />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <ViewTabs className="min-w-0 grow" value={keyOf(filter)} onChange={(v) => router.replace(`${pathname}?filter=${v}`)} items={tabs} />
+        <SortMenu options={PAGE_SORTS} sort={sort} onChange={setSort} noun="tasks" />
         <TaskViewSwitcher value={view} onChange={setView} views={TASK_VIEWS} />
       </div>
       {view === "table" && (
         <TaskTable
           tasks={tasks}
+          sort={sort}
+          onSort={setSort}
           newTaskDefaults={defaults}
           emptyLabel={filter.kind === "overdue" ? "Nothing overdue 🎉" : filter.kind === "completed" ? "No completed tasks yet" : "No open tasks"}
         />

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -24,7 +24,9 @@ import type { Project, ProjectStatus } from "@/lib/types";
 import { PROJECT_STATUSES, PROJECT_TYPES, optionFor } from "@/lib/constants";
 import { useProfiles, useWorkspace } from "@/lib/store";
 import { PROJECT_STATUS_ORDER, hasClient, projectProgress } from "@/lib/selectors";
-import { readPref, writePref } from "@/lib/hooks";
+import { readPref, usePref, writePref } from "@/lib/hooks";
+import { DEFAULT_PROJECT_SORT, PROJECT_SORT_PREF, sortProjectsBy, type ProjectSort, type ProjectSortKey } from "@/lib/project-sort";
+import { SortHead, nextSort } from "@/components/ui/sort";
 import { cn, formatDay, daysUntil, nowISO } from "@/lib/utils";
 import { DateField, OptionField, PersonField } from "@/components/ui/fields";
 import { Avatar } from "@/components/ui/avatar";
@@ -73,7 +75,31 @@ function useWidth<T extends HTMLElement>() {
   return [ref, width] as const;
 }
 
-export function ProjectTable({ projects, grouped = true }: { projects: Project[]; grouped?: boolean }) {
+/** Sort used by each column header ("status" = the default status-then-deadline order). */
+const COLUMN_SORT: Record<ColKey, ProjectSortKey> = {
+  name: "name",
+  status: "default",
+  type: "type",
+  tags: "tags",
+  lead: "lead",
+  deadline: "deadline",
+  progress: "progress",
+  next: "next",
+  note: "note",
+};
+
+/**
+ * Projects table. Click a column header to sort by it (again to reverse, a third time for the
+ * default order); the choice is shared with the Projects page's Sort menu and saved per device.
+ */
+export function ProjectTable({ projects: input, grouped = true }: { projects: Project[]; grouped?: boolean }) {
+  const { data } = useWorkspace();
+  const people = useProfiles();
+  const [sort, setSort] = usePref<ProjectSort>(PROJECT_SORT_PREF, DEFAULT_PROJECT_SORT);
+  const projects = useMemo(
+    () => sortProjectsBy(input, sort, { tasks: data.tasks, milestones: data.milestones, person: people.get }),
+    [input, sort, data.tasks, data.milestones, people],
+  );
   const [collapsed, setCollapsed] = useState<ProjectStatus[]>(() => readPref<ProjectStatus[]>("project-groups-collapsed", []));
   const [ref, width] = useWidth<HTMLDivElement>();
   const toggleGroup = (s: ProjectStatus) => {
@@ -92,12 +118,20 @@ export function ProjectTable({ projects, grouped = true }: { projects: Project[]
   return (
     <div ref={ref} className="text-[14px]">
       <div className="grid border-y border-line text-[13px] text-fg-2" style={{ gridTemplateColumns: template }}>
-        {cols.map((h, i) => (
-          <div key={h.key} className={cn("flex h-8 min-w-0 items-center gap-1.5 px-2", i > 0 && "border-l border-line")}>
-            <span className="shrink-0 text-fg-3">{h.icon}</span>
-            <span className="truncate">{h.label}</span>
-          </div>
-        ))}
+        {cols.map((h, i) => {
+          const key = COLUMN_SORT[h.key];
+          return (
+            <div key={h.key} className={cn("min-w-0", i > 0 && "border-l border-line")}>
+              <SortHead
+                label={h.label}
+                icon={h.icon}
+                active={sort.by === key && key !== "default"}
+                reverse={sort.reverse}
+                onClick={() => setSort(nextSort(sort, key, "default"))}
+              />
+            </div>
+          );
+        })}
       </div>
       {groups.map((g) => {
         const opt = g.status ? optionFor(PROJECT_STATUSES, g.status)! : null;

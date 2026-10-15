@@ -21,7 +21,8 @@ import {
 } from "lucide-react";
 import type { LibraryItem, LibraryItemType } from "@/lib/types";
 import { useTags } from "@/lib/tags";
-import { readPref, writePref } from "@/lib/hooks";
+import { readPref, usePref, writePref } from "@/lib/hooks";
+import { SortMenu, sortByKey, type SortOption, type SortState } from "@/components/ui/sort";
 import { LIBRARY_TYPES } from "@/lib/constants";
 import { useWorkspace } from "@/lib/store";
 import { usePageAdd } from "@/components/shell/quick-add";
@@ -40,6 +41,31 @@ import { LibraryItemDialog } from "./library-item-dialog";
 import { LibraryIcon } from "./library-meta";
 
 type Tab = "resources" | "finance" | "performance";
+
+type LibrarySortKey = "updated" | "name" | "created" | "type" | "project";
+const LIBRARY_SORTS: SortOption<LibrarySortKey>[] = [
+  { value: "updated", label: "Recently edited" },
+  { value: "name", label: "Name", order: ["A to Z", "Z to A"] },
+  { value: "created", label: "Date added", order: ["Newest first", "Oldest first"] },
+  { value: "type", label: "Type", order: ["A to Z", "Z to A"] },
+  { value: "project", label: "Project", order: ["A to Z", "Z to A"] },
+];
+
+/** Library items in the chosen order (they arrive most recently edited first, which breaks ties). */
+function librarySort(items: LibraryItem[], sort: SortState<LibrarySortKey>, projectName: (id: string) => string | undefined) {
+  switch (sort.by) {
+    case "name":
+      return sortByKey(items, (i) => i.name.trim().toLowerCase() || null, sort.reverse);
+    case "created":
+      return sortByKey(items, (i) => i.created_at, !sort.reverse); // newest first is the natural order here
+    case "type":
+      return sortByKey(items, (i) => i.type, sort.reverse);
+    case "project":
+      return sortByKey(items, (i) => (i.project_id ? projectName(i.project_id)?.toLowerCase() : null), sort.reverse);
+    default:
+      return items;
+  }
+}
 
 export function LibraryView() {
   const router = useRouter();
@@ -99,10 +125,11 @@ function Resources({ adding, setAdding }: { adding: boolean; setAdding: (v: bool
   const { setAnchor: tagAnchorRef, ...tagPop } = usePopover();
   const meId = me?.id ?? "";
 
+  const [sort, setSort] = usePref<SortState<LibrarySortKey>>("library-sort", { by: "updated" });
   const isPinned = (i: LibraryItem) => i.pinned || i.pinned_by.includes(meId);
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return data.library_items
+    const list = data.library_items
       .filter(
         (i) =>
           (!type || i.type === type) &&
@@ -112,7 +139,8 @@ function Resources({ adding, setAdding }: { adding: boolean; setAdding: (v: bool
           (!q || [i.name, i.description, i.url, i.tags.join(" ")].some((f) => f?.toLowerCase().includes(q))),
       )
       .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
-  }, [data.library_items, query, type, tags, projectId, pins, meId]);
+    return librarySort(list, sort, (id) => data.projects.find((p) => p.id === id)?.name);
+  }, [data.library_items, data.projects, query, type, tags, projectId, pins, meId, sort]);
 
   const typeCounts = useMemo(() => {
     const m = new Map<LibraryItemType, number>();
@@ -156,6 +184,7 @@ function Resources({ adding, setAdding }: { adding: boolean; setAdding: (v: bool
               </button>
             )}
           </label>
+          <SortMenu options={LIBRARY_SORTS} sort={sort} onChange={setSort} noun="items" />
           <ViewTabs<Layout>
             value={layout}
             onChange={setLayout}

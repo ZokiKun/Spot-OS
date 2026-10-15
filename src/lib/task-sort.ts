@@ -2,7 +2,7 @@ import type { Profile, Project, Task, TaskPriority, UUID } from "./types";
 import { statusOptions, taskStatusValue } from "./task-statuses";
 import { taskAssignees } from "./selectors";
 
-export type TaskSortKey = "manual" | "created" | "priority" | "assignees" | "due" | "status";
+export type TaskSortKey = "manual" | "title" | "created" | "priority" | "assignees" | "due" | "status" | "project";
 export interface TaskSort {
   by: TaskSortKey;
   /** false = the natural direction (oldest, most urgent, A→Z, soonest, first status). */
@@ -12,6 +12,7 @@ export interface TaskSort {
 /** `order`: the natural direction, then the reversed one — in words that fit the field. */
 export const TASK_SORTS: { value: TaskSortKey; label: string; order?: [string, string] }[] = [
   { value: "manual", label: "Custom order" },
+  { value: "title", label: "Name", order: ["A to Z", "Z to A"] },
   { value: "created", label: "Date created", order: ["Oldest first", "Newest first"] },
   { value: "priority", label: "Priority", order: ["Urgent first", "Low first"] },
   { value: "assignees", label: "Assignee", order: ["A to Z", "Z to A"] },
@@ -25,11 +26,19 @@ const PRIORITY_RANK: Record<TaskPriority, number> = { urgent: 0, high: 1, medium
  * Tasks in the chosen order. `tasks` arrive in custom order, which breaks ties. Tasks with no
  * value to sort by (no due date, nobody assigned) stay last in either direction.
  */
-export function sortTasksBy(tasks: Task[], sort: TaskSort, ctx: { project?: Project | null; person: (id: UUID) => Profile | undefined }): Task[] {
+export function sortTasksBy(
+  tasks: Task[],
+  sort: TaskSort,
+  ctx: { project?: Project | null; person: (id: UUID) => Profile | undefined; projectOf?: (id: UUID) => Project | undefined },
+): Task[] {
   if (sort.by === "manual") return tasks;
   const options = statusOptions(ctx.project);
   const key = (t: Task): string | number | null => {
     switch (sort.by) {
+      case "title":
+        return t.title.trim().toLowerCase() || null;
+      case "project":
+        return t.project_id ? (ctx.projectOf?.(t.project_id)?.name.toLowerCase() ?? null) : null;
       case "created":
         return t.created_at;
       case "priority":

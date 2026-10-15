@@ -11,6 +11,7 @@ import { DateField, OptionField } from "@/components/ui/fields";
 import { Button, IconButton } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/misc";
 import { useConfirm } from "@/components/ui/confirm";
+import { SortHead, nextSort, sortByKey, type SortState } from "@/components/ui/sort";
 
 export const INVOICE_STATUSES: Option<InvoiceStatus>[] = [
   { value: "not_sent", label: "Not sent", color: "gray" },
@@ -19,6 +20,41 @@ export const INVOICE_STATUSES: Option<InvoiceStatus>[] = [
 ];
 
 const COLS = "minmax(110px,0.7fr) minmax(180px,1.6fr) 130px 104px 104px 120px 44px 36px";
+
+type InvoiceSortKey = "default" | "number" | "title" | "amount" | "issued" | "due" | "status";
+const STATUS_RANK: Record<InvoiceStatus, number> = { not_sent: 0, sent: 1, cleared: 2 };
+const HEADERS: { label: string; sort?: InvoiceSortKey }[] = [
+  { label: "Invoice", sort: "number" },
+  { label: "For", sort: "title" },
+  { label: "Amount", sort: "amount" },
+  { label: "Issued", sort: "issued" },
+  { label: "Due", sort: "due" },
+  { label: "Status", sort: "status" },
+  { label: "Link" },
+  { label: "" },
+];
+
+function sortInvoices(invoices: Invoice[], sort: SortState<InvoiceSortKey>) {
+  const key = (i: Invoice): string | number | null => {
+    switch (sort.by) {
+      case "number":
+        return i.number.toLowerCase() || null;
+      case "title":
+        return i.title.trim().toLowerCase() || null;
+      case "amount":
+        return i.amount;
+      case "issued":
+        return i.issue_date;
+      case "due":
+        return i.due_date;
+      case "status":
+        return STATUS_RANK[i.status] ?? 9;
+      default:
+        return null;
+    }
+  };
+  return sort.by === "default" ? invoices : sortByKey(invoices, key, sort.reverse);
+}
 
 /** Next number after the highest one used so far, keeping its prefix and padding (INV-007 → INV-008). */
 function nextNumber(invoices: Invoice[]) {
@@ -45,6 +81,9 @@ export function ProjectInvoices({ project }: { project: Project }) {
     [data.invoices, project.id],
   );
   const today = todayISO();
+  // Click a header to sort (again to reverse, a third time for newest-issued first). Not saved.
+  const [sort, setSort] = useState<SortState<InvoiceSortKey>>({ by: "default" });
+  const rows = useMemo(() => sortInvoices(invoices, sort), [invoices, sort]);
 
   const totals = useMemo(() => {
     const sum = (s?: InvoiceStatus) => invoices.filter((i) => !s || i.status === s).reduce((t, i) => t + (i.amount ?? 0), 0);
@@ -98,13 +137,19 @@ export function ProjectInvoices({ project }: { project: Project }) {
         <div className="-mx-2 overflow-x-auto px-2">
           <div className="min-w-[820px] text-[14px]">
             <div className="grid border-y border-line text-[13px] text-fg-2" style={{ gridTemplateColumns: COLS }}>
-              {["Invoice", "For", "Amount", "Issued", "Due", "Status", "Link", ""].map((h, i) => (
-                <div key={i} className={cn("flex h-8 items-center px-2", i > 0 && h && "border-l border-line")}>
-                  {h}
-                </div>
-              ))}
+              {HEADERS.map((h, i) =>
+                h.sort ? (
+                  <div key={i} className={cn("min-w-0", i > 0 && "border-l border-line")}>
+                    <SortHead label={h.label} active={sort.by === h.sort} reverse={sort.reverse} onClick={() => setSort(nextSort(sort, h.sort!, "default"))} />
+                  </div>
+                ) : (
+                  <div key={i} className={cn("flex h-8 items-center px-2", i > 0 && h.label && "border-l border-line")}>
+                    {h.label}
+                  </div>
+                ),
+              )}
             </div>
-            {invoices.map((inv) => (
+            {rows.map((inv) => (
               <div key={inv.id} className="group grid border-b border-line hover:bg-subtle" style={{ gridTemplateColumns: COLS }}>
                 <div className="flex min-w-0 items-center px-2">
                   <EditableText value={inv.number} placeholder="Number" onCommit={(number) => set(inv, { number })} className="font-medium tabular" />

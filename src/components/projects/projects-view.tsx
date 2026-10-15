@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowDownUp, CircleCheck, Columns3, ListFilter, Plus, Search, Table2 } from "lucide-react";
+import { CircleCheck, Columns3, ListFilter, Plus, Search, Table2 } from "lucide-react";
 import type { ProjectType } from "@/lib/types";
 import { PROJECT_TYPES } from "@/lib/constants";
 import { useProfiles, useWorkspace } from "@/lib/store";
 import { DEFAULT_PROJECT_SORT, PROJECT_SORT_PREF, PROJECT_SORTS, sortProjectsBy, type ProjectSort } from "@/lib/project-sort";
 import { usePref } from "@/lib/hooks";
+import { SortMenu } from "@/components/ui/sort";
 import { useTags } from "@/lib/tags";
 import { cn } from "@/lib/utils";
 import { Page, PageTitle } from "@/components/shell/page";
@@ -53,9 +54,9 @@ export function ProjectsView() {
           (!q || [p.name, p.client, p.description, p.note, p.tags.join(" ")].some((f) => f?.toLowerCase().includes(q))),
       ),
       sort,
-      { tasks: data.tasks, person: people.get },
+      { tasks: data.tasks, milestones: data.milestones, person: people.get },
     );
-  }, [data.projects, data.tasks, query, types, tags, sort, people]);
+  }, [data.projects, data.tasks, data.milestones, query, types, tags, sort, people]);
   const tagDefs = useTags("project");
 
   const Icon = NAV_ICONS.projects!;
@@ -70,7 +71,7 @@ export function ProjectsView() {
         </Button>
       }
     >
-      <PageTitle title="Projects" description="Every studio project, grouped by status: active first, then review, completed and archived. Use Sort to order the projects inside each group." />
+      <PageTitle title="Projects" description="Every studio project, grouped by status: active first, then review, completed and archived. Click a column, or use Sort, to order the projects inside each group." />
       <div className="mb-2 flex flex-wrap items-center gap-2 border-b border-line pb-1.5">
         <ViewTabs<View>
           value={view}
@@ -99,7 +100,7 @@ export function ProjectsView() {
           >
             <ListFilter className="size-3.5" /> Filter{activeFilters ? ` · ${activeFilters}` : ""}
           </button>
-          <SortMenu sort={sort} onChange={setSort} />
+          <SortMenu options={PROJECT_SORTS} sort={sort} onChange={setSort} noun="projects" />
           <Popover open={filter.open} onClose={filter.close} anchor={filter.anchor} align="end" width={220}>
             <MenuList>
               <MenuLabel>Type</MenuLabel>
@@ -151,57 +152,3 @@ export function ProjectsView() {
   );
 }
 
-/** "Sort" button + menu. Shows the active sort so it's clear the order isn't the default one. Saved on this device. */
-function SortMenu({ sort, onChange }: { sort: ProjectSort; onChange: (s: ProjectSort) => void }) {
-  const { setAnchor, ...pop } = usePopover();
-  const active = PROJECT_SORTS.find((o) => o.value === sort.by) ?? PROJECT_SORTS[0]!;
-  const sorted = sort.by !== "default";
-  return (
-    <>
-      <button
-        ref={setAnchor}
-        type="button"
-        onClick={pop.toggle}
-        title={sorted ? `Sorted by ${active.label.toLowerCase()} — ${active.order?.[sort.reverse ? 1 : 0].toLowerCase()}` : "Sort projects"}
-        className={cn("flex h-7 items-center gap-1.5 rounded-md px-2 text-[14px] hover:bg-hover", sorted ? "text-accent" : "text-fg-2")}
-      >
-        <ArrowDownUp className="size-3.5" /> {sorted ? `Sort: ${active.label}` : "Sort"}
-      </button>
-      <Popover open={pop.open} onClose={pop.close} anchor={pop.anchor} align="end" width={220}>
-        <MenuList>
-          <MenuLabel>Sort projects by</MenuLabel>
-          {PROJECT_SORTS.map((o) => (
-            <MenuItem
-              key={o.value}
-              selected={o.value === sort.by}
-              onSelect={() => {
-                onChange({ by: o.value });
-                if (!o.order) pop.close();
-              }}
-            >
-              {o.label}
-            </MenuItem>
-          ))}
-          {active.order && (
-            <>
-              <MenuDivider />
-              <MenuLabel>Order</MenuLabel>
-              {active.order.map((label, i) => (
-                <MenuItem
-                  key={label}
-                  selected={!!sort.reverse === (i === 1)}
-                  onSelect={() => {
-                    onChange({ ...sort, reverse: i === 1 });
-                    pop.close();
-                  }}
-                >
-                  {label}
-                </MenuItem>
-              ))}
-            </>
-          )}
-        </MenuList>
-      </Popover>
-    </>
-  );
-}

@@ -1,7 +1,9 @@
-import type { Profile, Project, Task, UUID } from "./types";
+import type { Milestone, Profile, Project, Task, UUID } from "./types";
 import { projectProgress, sortProjects } from "./selectors";
+import { projectTimeline } from "./milestones";
+import { plainText } from "./mentions";
 
-export type ProjectSortKey = "default" | "deadline" | "name" | "start" | "created" | "updated" | "progress" | "lead" | "client";
+export type ProjectSortKey = "default" | "deadline" | "name" | "start" | "created" | "updated" | "progress" | "lead" | "client" | "type" | "tags" | "next" | "note";
 export interface ProjectSort {
   by: ProjectSortKey;
   /** false = the natural direction (soonest, A→Z, oldest, least done). */
@@ -19,6 +21,10 @@ export const PROJECT_SORTS: { value: ProjectSortKey; label: string; order?: [str
   { value: "progress", label: "Progress", order: ["Least done first", "Most done first"] },
   { value: "lead", label: "Lead", order: ["A to Z", "Z to A"] },
   { value: "client", label: "Client", order: ["A to Z", "Z to A"] },
+  { value: "type", label: "Type", order: ["A to Z", "Z to A"] },
+  { value: "tags", label: "Tags", order: ["A to Z", "Z to A"] },
+  { value: "next", label: "Next step", order: ["A to Z", "Z to A"] },
+  { value: "note", label: "Note", order: ["A to Z", "Z to A"] },
 ];
 
 export const PROJECT_SORT_PREF = "projects-sort";
@@ -28,7 +34,7 @@ export const DEFAULT_PROJECT_SORT: ProjectSort = { by: "default" };
  * Projects in the chosen order. The default order (status, then deadline) breaks ties, and
  * projects with no value to sort by (no deadline, no lead…) stay last in either direction.
  */
-export function sortProjectsBy(projects: Project[], sort: ProjectSort, ctx: { tasks: Task[]; person: (id: UUID) => Profile | undefined }): Project[] {
+export function sortProjectsBy(projects: Project[], sort: ProjectSort, ctx: { tasks: Task[]; milestones?: Milestone[]; person: (id: UUID) => Profile | undefined }): Project[] {
   const base = sortProjects(projects);
   if (sort.by === "default") return base;
   const key = (p: Project): string | number | null => {
@@ -51,6 +57,16 @@ export function sortProjectsBy(projects: Project[], sort: ProjectSort, ctx: { ta
         return p.lead_id ? (ctx.person(p.lead_id)?.full_name.toLowerCase() ?? null) : null;
       case "client":
         return p.client?.trim().toLowerCase() || null;
+      case "type":
+        return p.type;
+      case "tags":
+        return [...(p.tags ?? [])].sort()[0] ?? null;
+      case "next": {
+        const m = ctx.milestones ? projectTimeline(p.id, { milestones: ctx.milestones, tasks: ctx.tasks }).current?.milestone : null;
+        return (m?.title ?? p.next_action)?.trim().toLowerCase() || null;
+      }
+      case "note":
+        return p.note ? plainText(p.note).trim().toLowerCase() || null : null;
       default:
         return null;
     }
