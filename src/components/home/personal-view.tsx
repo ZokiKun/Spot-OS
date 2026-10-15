@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarClock, CircleCheck, FolderKanban, Target } from "lucide-react";
+import { CalendarClock, CheckCheck, CircleCheck, FolderKanban, Target } from "lucide-react";
 import type { Task } from "@/lib/types";
 import { PROJECT_STATUSES, optionFor } from "@/lib/constants";
-import { isOpen, projectProgress } from "@/lib/selectors";
+import { projectProgress } from "@/lib/selectors";
 import { useWorkspace } from "@/lib/store";
 import { addDaysISO, cn, daysUntil, formatDay } from "@/lib/utils";
 import { EmptyState, ProgressBar, SectionHeading } from "@/components/ui/misc";
@@ -27,7 +27,7 @@ export function PersonalView({ layout }: { layout: HomeLayout }) {
     case "agenda":
       return (
         <Agenda
-          items={datedItems([...d.myOpen, ...d.doneToday], d.projects.filter((p) => p.deadline))}
+          items={datedItems(withDoneToday(d), d.projects.filter((p) => p.deadline))}
           today={d.today}
           until={addDaysISO(d.today, 30)}
           emptyTitle="Nothing dated in the next 30 days"
@@ -36,7 +36,7 @@ export function PersonalView({ layout }: { layout: HomeLayout }) {
     case "week":
       return (
         <div className="space-y-8">
-          <WeekStrip items={datedItems([...d.myOpen, ...d.doneToday], d.projects.filter((p) => p.deadline))} today={d.today} />
+          <WeekStrip items={datedItems(withDoneToday(d), d.projects.filter((p) => p.deadline))} today={d.today} />
           <ProjectChips d={d} />
         </div>
       );
@@ -46,6 +46,9 @@ export function PersonalView({ layout }: { layout: HomeLayout }) {
       return <PersonalTable d={d} />;
   }
 }
+
+/** Open tasks plus the ones ticked off today that were due today, for the date-based layouts. */
+const withDoneToday = (d: PersonalData) => [...d.myOpen, ...d.completedToday.filter((t) => t.due_date === d.today)];
 
 const projectsLink = (
   <Link href="/projects" className="rounded px-1 hover:bg-hover">
@@ -89,11 +92,12 @@ function PersonalTable({ d }: { d: PersonalData }) {
 }
 
 function TaskGroups({ d, limit = 6 }: { d: PersonalData; limit?: number }) {
-  if (d.overdue.length + d.dueToday.length + d.upcoming.length === 0) return clearWeek;
+  if (d.overdue.length + d.dueToday.length + d.upcoming.length + d.completedToday.length === 0) return clearWeek;
   return (
     <div className="space-y-3">
       {d.overdue.length > 0 && <Group label="Overdue" tone="danger" tasks={d.overdue} limit={limit} />}
       {d.dueToday.length > 0 && <Group label="Today" tasks={d.dueToday} limit={limit} />}
+      {d.completedToday.length > 0 && <Group label="Completed today" tasks={d.completedToday} limit={limit} />}
       {d.upcoming.length > 0 && <Group label="Next 7 days" tasks={d.upcoming} limit={limit} />}
     </div>
   );
@@ -137,21 +141,31 @@ function PersonalList({ d }: { d: PersonalData }) {
     { label: "Today", items: datedItems(d.dueToday, deadlinesToday) },
     { label: "Next 7 days", items: datedItems(d.upcoming, deadlinesWeek), showDate: true },
   ].filter((g) => g.items.length);
+  const done = d.completedToday;
+  const empty = groups.length === 0 && done.length === 0;
+  const doneGroup = (
+    <section>
+      <GroupLabel label="Completed today" count={done.length} />
+      <TaskList tasks={done} showAssignee={false} />
+    </section>
+  );
 
   return (
     <div className="max-w-[760px] space-y-6">
-      {groups.length === 0
-        ? clearWeek
-        : groups.map((g) => (
-            <section key={g.label}>
-              <GroupLabel label={g.label} count={g.items.length} tone={g.tone} />
-              {g.items.map((i) => (
-                <DatedRow key={i.kind === "task" ? i.task.id : i.project.id} item={i} showDate={g.showDate} />
-              ))}
-            </section>
-          ))}
+      {empty && clearWeek}
+      {groups
+        .filter((g) => g.label !== "Next 7 days")
+        .map((g) => (
+          <ListGroup key={g.label} {...g} />
+        ))}
+      {done.length > 0 && doneGroup}
+      {groups
+        .filter((g) => g.label === "Next 7 days")
+        .map((g) => (
+          <ListGroup key={g.label} {...g} />
+        ))}
 
-      <details className="group/projects border-t border-line pt-4" open={groups.length === 0}>
+      <details className="group/projects border-t border-line pt-4" open={empty}>
         <summary className="flex h-7 cursor-pointer list-none items-center gap-1.5 rounded-md px-2 text-[12px] font-medium text-fg-2 hover:bg-hover [&::-webkit-details-marker]:hidden">
           <FolderKanban className="size-3.5" /> Your projects <span className="font-normal text-fg-3">{d.projects.length}</span>
           <span className="ml-auto text-fg-3 group-open/projects:hidden">Show</span>
@@ -160,6 +174,17 @@ function PersonalList({ d }: { d: PersonalData }) {
         <div className="mt-1">{d.projects.length ? d.projects.map((p) => <ProjectLine key={p.id} id={p.id} />) : noProjects}</div>
       </details>
     </div>
+  );
+}
+
+function ListGroup({ label, tone, items, showDate }: { label: string; tone?: "danger"; items: ReturnType<typeof datedItems>; showDate?: boolean }) {
+  return (
+    <section>
+      <GroupLabel label={label} count={items.length} tone={tone} />
+      {items.map((i) => (
+        <DatedRow key={i.kind === "task" ? i.task.id : i.project.id} item={i} showDate={showDate} />
+      ))}
+    </section>
   );
 }
 
@@ -182,11 +207,12 @@ function ProjectLine({ id }: { id: string }) {
   );
 }
 
-/** Projects as cards, tasks as three short columns. */
+/** Projects as cards, tasks as four short columns. */
 function PersonalGrid({ d }: { d: PersonalData }) {
   const cols = [
     { label: "Overdue", tasks: d.overdue, tone: "danger" as const, empty: "Nothing overdue" },
     { label: "Today", tasks: d.dueToday, empty: "Nothing due today" },
+    { label: "Completed today", tasks: d.completedToday, empty: "Nothing ticked off yet" },
     { label: "Next 7 days", tasks: d.upcoming, empty: "Nothing this week" },
   ];
   return (
@@ -201,7 +227,7 @@ function PersonalGrid({ d }: { d: PersonalData }) {
         <SectionHeading icon={<CircleCheck className="size-3.5" />} action={tasksLink}>
           My tasks
         </SectionHeading>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           {cols.map((c) => (
             <Panel
               key={c.label}
@@ -258,7 +284,7 @@ function PersonalBento({ d }: { d: PersonalData }) {
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <StatTile label="Overdue" value={d.overdue.length} tone={d.overdue.length ? "danger" : undefined} href="/projects/tasks?filter=mine" />
-      <StatTile label="Due today" value={d.dueToday.filter(isOpen).length} href="/projects/tasks?filter=mine" />
+      <StatTile label="Due today" value={d.dueToday.length} href="/projects/tasks?filter=mine" />
       <StatTile label="Active projects" value={d.projects.length} hint={`${d.myOpen.length} open tasks`} href="/projects" />
       <StatTile
         label="Next deadline"
@@ -296,7 +322,11 @@ function PersonalBento({ d }: { d: PersonalData }) {
         <DeadlineRows d={d} limit={4} />
       </Panel>
 
-      <Panel title="Next 7 days" icon={<CircleCheck className="size-3.5" />} className="col-span-2 lg:col-span-4">
+      <Panel title={<>Completed today <span className="font-normal text-fg-3">{d.completedToday.length}</span></>} icon={<CheckCheck className="size-3.5" />} className="col-span-2">
+        {d.completedToday.length ? <TaskList tasks={d.completedToday} showAssignee={false} limit={6} /> : <div className="px-2 py-3 text-[13px] text-fg-3">Nothing ticked off yet today</div>}
+      </Panel>
+
+      <Panel title="Next 7 days" icon={<CircleCheck className="size-3.5" />} className="col-span-2">
         {d.upcoming.length ? <TaskList tasks={d.upcoming} showAssignee={false} limit={6} /> : <div className="px-2 py-3 text-[13px] text-fg-3">Nothing scheduled this week</div>}
       </Panel>
     </div>

@@ -6,7 +6,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, LogOut, Monitor, Moon, Palette, RotateCcw, Search, Sun, Users } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/constants";
 import { useWorkspace } from "@/lib/store";
-import { isActiveProject, sortProjects } from "@/lib/selectors";
+import { isActiveProject, isMyProject, sortProjects } from "@/lib/selectors";
 import { cn } from "@/lib/utils";
 import { usePref } from "@/lib/hooks";
 import { getDemoAdapter } from "@/lib/data";
@@ -67,8 +67,39 @@ function useTopOrder() {
   return { order, custom: saved != null, save: setSaved, reset: () => setSaved(undefined) };
 }
 
-/** Drag-to-reorder list of the sidebar's top buttons; the moved row shows where it will land. */
-function ReorderableTop({ order, onReorder, render }: { order: string[]; onReorder: (next: string[]) => void; render: (key: string) => ReactNode }) {
+type ProjectScope = "mine" | "everyone";
+const SCOPE_PREF = "sidebar-projects-scope";
+const projectOrderPref = (meId: string | null) => `sidebar-project-order:${meId ?? "anon"}`;
+
+/**
+ * The sidebar's active projects. "Only you": the ones you're on, in the order you dragged them into
+ * (saved per person on this device; newly joined projects join at the end). "Everyone": all of them, by status then deadline.
+ */
+function useSidebarProjects() {
+  const { data, me } = useWorkspace();
+  const meId = me?.id ?? null;
+  const [scope, setScope] = usePref<ProjectScope>(SCOPE_PREF, "mine");
+  const [saved, setSaved] = usePref<string[] | null>(projectOrderPref(meId), null);
+  const projects = useMemo(() => {
+    const active = sortProjects(data.projects.filter(isActiveProject));
+    if (scope === "everyone") return active;
+    const mine = active.filter((p) => isMyProject(p, data, meId));
+    const byId = new Map(mine.map((p) => [p.id, p]));
+    const kept = (saved ?? []).filter((id) => byId.has(id));
+    return [...kept.map((id) => byId.get(id)!), ...mine.filter((p) => !kept.includes(p.id))];
+  }, [data, meId, scope, saved]);
+  return {
+    scope,
+    setScope,
+    projects,
+    custom: saved != null,
+    reorder: (ids: string[]) => setSaved(ids),
+    reset: () => setSaved(undefined),
+  };
+}
+
+/** Drag-to-reorder list of sidebar rows; the moved row shows where it will land. */
+function Reorderable({ order, onReorder, render }: { order: string[]; onReorder: (next: string[]) => void; render: (key: string) => ReactNode }) {
   const [drag, setDrag] = useState<{ key: string; over: string | null; after: boolean } | null>(null);
   const drop = () => {
     if (drag?.over && drag.over !== drag.key) {
@@ -128,7 +159,8 @@ export function Sidebar() {
   const workspaceName = (data.settings.find((s) => s.key === "workspace")?.value.name as string) ?? "Studio Spot";
 
   const top = useTopOrder();
-  const activeProjects = useMemo(() => sortProjects(data.projects.filter(isActiveProject)), [data.projects]);
+  const sidebarProjects = useSidebarProjects();
+  const activeProjects = sidebarProjects.projects;
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href) || (href === "/library" && pathname.startsWith("/spot-base")); // Spot Base lives in Library
@@ -178,11 +210,12 @@ export function Sidebar() {
             >
               Colour theme…
             </MenuItem>
-            {top.custom && (
+            {(top.custom || sidebarProjects.custom) && (
               <MenuItem
                 icon={<RotateCcw className="size-4" />}
                 onSelect={() => {
                   top.reset();
+                  sidebarProjects.reset();
                   menu.close();
                 }}
               >
@@ -226,7 +259,7 @@ export function Sidebar() {
       </div>
 
       <div className="px-2 pt-1">
-        <ReorderableTop
+        <Reorderable
           order={top.order}
           onReorder={top.save}
           render={(key) => {
@@ -264,20 +297,55 @@ export function Sidebar() {
       </div>
 
       <div className="mt-5 min-h-0 flex-1 overflow-y-auto px-2">
-        <div className="mb-0.5 flex h-6 items-center px-2 text-[12px] font-medium text-fg-2">Active projects</div>
+        <div className="mb-0.5 flex h-6 items-center gap-2 pl-2 pr-1">
+          <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-fg-2">Active projects</span>
+          <div role="radiogroup" aria-label="Which projects" className="flex shrink-0 rounded-md bg-hover p-px">
+            {(
+              [
+                ["mine", "Only you"],
+                ["everyone", "Everyone"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={sidebarProjects.scope === value}
+                onClick={() => sidebarProjects.setScope(value)}
+                className={cn(
+                  "h-5 rounded-[5px] px-1.5 text-[11px] transition-colors",
+                  sidebarProjects.scope === value ? "bg-bg font-medium text-fg shadow-sm" : "text-fg-3 hover:text-fg-2",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         {status === "loading" && <div className="px-2 py-1 text-[13px] text-fg-3">Loading…</div>}
-        {activeProjects.map((p) => (
-          <NavRow
-            key={p.id}
-            href={`/projects/${p.id}`}
-            label={p.name}
-            icon={<span className="text-[15px] leading-none">{p.icon ?? "📁"}</span>}
-            active={pathname === `/projects/${p.id}`}
-            onNavigate={closeMobileNav}
-          />
-        ))}
+        {(() => {
+          const row = (id: string) => {
+            const p = activeProjects.find((x) => x.id === id)!;
+            return (
+              <NavRow
+                href={`/projects/${p.id}`}
+                label={p.name}
+                icon={<span className="text-[15px] leading-none">{p.icon ?? "📁"}</span>}
+                active={pathname === `/projects/${p.id}`}
+                onNavigate={closeMobileNav}
+              />
+            );
+          };
+          const ids = activeProjects.map((p) => p.id);
+          // Only your own list is hand-ordered; Everyone stays by status and deadline.
+          return sidebarProjects.scope === "mine" ? (
+            <Reorderable order={ids} onReorder={sidebarProjects.reorder} render={row} />
+          ) : (
+            ids.map((id) => <div key={id}>{row(id)}</div>)
+          );
+        })()}
         {status === "ready" && activeProjects.length === 0 && (
-          <div className="px-2 py-1 text-[13px] text-fg-3">No active projects</div>
+          <div className="px-2 py-1 text-[13px] text-fg-3">{sidebarProjects.scope === "mine" ? "You’re not on any active project" : "No active projects"}</div>
         )}
       </div>
 
