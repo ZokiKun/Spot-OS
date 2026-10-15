@@ -14,6 +14,7 @@ import { TaskBoard, TaskGantt, TaskGrid, TaskViewSwitcher, type TaskView } from 
 import { usePref } from "@/lib/hooks";
 import { EmptyState } from "@/components/ui/misc";
 import { usePageAdd, useQuickAdd } from "@/components/shell/quick-add";
+import { ProjectIcon } from "@/components/ui/project-icon";
 
 const TASK_VIEWS: TaskView[] = ["table", "board", "list", "grid", "gantt"];
 
@@ -23,7 +24,7 @@ function ganttGroups(tasks: Task[], projects: Project[]) {
   return ids
     .map((id) => {
       const p = projects.find((x) => x.id === id);
-      return { key: id ?? "none", label: p ? `${p.icon ?? "📁"} ${p.name}` : "No project", tasks: tasks.filter((t) => t.project_id === id), due: p?.deadline ?? null };
+      return { key: id ?? "none", label: p ? <><ProjectIcon icon={p.icon} /> {p.name}</> : "No project", tasks: tasks.filter((t) => t.project_id === id), due: p?.deadline ?? null };
     })
     .sort((a, b) => (a.key === "none" ? 1 : b.key === "none" ? -1 : 0));
 }

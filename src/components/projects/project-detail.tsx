@@ -55,10 +55,9 @@ import { ProjectInvoices } from "./project-invoices";
 import { ProjectTasks } from "./project-tasks";
 import { TaskStatusesDialog } from "./project-statuses";
 import { useConfirm } from "@/components/ui/confirm";
+import { IconPicker, ProjectIcon } from "@/components/ui/project-icon";
 
 type Tab = "overview" | "tasks" | "invoices" | "files" | "links" | "notes" | "activity";
-const ICONS = ["📁", "🧭", "🪶", "🫙", "🟠", "⚙️", "📓", "🔤", "🎨", "📐", "🖼️", "🎬", "📦", "🌱", "✳️", "🔶", "🧪", "💡"];
-
 export function ProjectDetail({ id }: { id: string }) {
   const { data, update, remove, status } = useWorkspace();
   const ask = useConfirm();
@@ -101,7 +100,7 @@ export function ProjectDetail({ id }: { id: string }) {
       banner={project?.cover ? <ProjectCover project={project} /> : undefined}
       crumbs={[
         { label: "Projects", href: "/projects", icon: <Icon className="size-4" /> },
-        { label: project?.name ?? "…", icon: <span>{project?.icon}</span> },
+        { label: project?.name ?? "…", icon: <span>{project && <ProjectIcon icon={project.icon} />}</span> },
       ]}
       actions={
         project && (
@@ -163,26 +162,18 @@ export function ProjectDetail({ id }: { id: string }) {
               className={cn("-ml-1 mb-1 flex size-[72px] items-center justify-center rounded-lg text-[56px] leading-none hover:bg-hover", project.cover && "hover:bg-bg/60")}
               aria-label="Change icon"
             >
-              {project.icon ?? "📁"}
+              <ProjectIcon icon={project.icon} />
             </button>
             {!project.cover && <AddCoverButton project={project} />}
           </div>
           <Popover open={iconPop.open} onClose={iconPop.close} anchor={iconPop.anchor} width={300}>
-            <div className="grid grid-cols-8 gap-0.5 p-2">
-              {ICONS.map((i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => {
-                    set({ icon: i });
-                    iconPop.close();
-                  }}
-                  className="flex size-8 items-center justify-center rounded-md text-[18px] hover:bg-hover"
-                >
-                  {i}
-                </button>
-              ))}
-            </div>
+            <IconPicker
+              value={project.icon}
+              onPick={(icon) => {
+                set({ icon });
+                iconPop.close();
+              }}
+            />
           </Popover>
           <EditableText
             value={project.name}

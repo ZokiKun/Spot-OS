@@ -18,6 +18,7 @@ import { ViewTabs } from "@/components/ui/tabs";
 import { MiniMonth, MonthGrid } from "./month-grid";
 import { CalendarExportMenu } from "./export-menu";
 import { NoteCard } from "./note-card";
+import { ProjectIcon } from "@/components/ui/project-icon";
 
 type View = "month" | "quarter" | "year";
 
@@ -97,7 +98,7 @@ export function CalendarView() {
     return [
       ...data.projects
         .filter((p) => p.deadline && p.deadline >= start && p.deadline < end && p.status !== "archived")
-        .map((p) => ({ id: `d-${p.id}`, date: p.deadline!, label: p.name, icon: p.icon ?? "📁", deadline: true, note: undefined as string | undefined })),
+        .map((p) => ({ id: `d-${p.id}`, date: p.deadline!, label: p.name, icon: p.icon, deadline: true, note: undefined as string | undefined })),
       ...data.calendar_notes
         .filter((n) => n.date >= start && n.date < end)
         .map((n) => ({ id: n.id, date: n.date, label: n.title || "Untitled note", icon: "📝", deadline: false, note: n.id })),
@@ -179,7 +180,7 @@ export function CalendarView() {
                             className="flex min-h-9 items-center gap-2.5 rounded-md px-2 py-1 hover:bg-hover"
                           >
                             <span className="w-12 shrink-0 text-[12.5px] text-fg-2 tabular">{format(parseDate(a.date)!, "MMM d")}</span>
-                            <span className="shrink-0">{a.icon}</span>
+                            <span className="shrink-0"><ProjectIcon icon={a.icon} /></span>
                             <span className={cn("line-clamp-2 min-w-0 flex-1 text-[14px] leading-snug", a.deadline && "text-danger")} title={a.label}>
                               {a.label}
                               {a.deadline && <span className="text-[12px] opacity-80"> · deadline</span>}
@@ -224,7 +225,7 @@ export function CalendarView() {
                   <SectionHeading>Deadlines</SectionHeading>
                   {day.deadlines.map((p) => (
                     <Link key={p.id} href={`/projects/${p.id}`} className="flex h-8 items-center gap-2 rounded-md px-2 text-[14px] hover:bg-hover">
-                      <span>{p.icon}</span> {p.name}
+                      <span><ProjectIcon icon={p.icon} /></span> {p.name}
                     </Link>
                   ))}
                 </div>

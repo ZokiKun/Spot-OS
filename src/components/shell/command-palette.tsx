@@ -10,6 +10,7 @@ import { hasClient } from "@/lib/selectors";
 import { plainText } from "@/lib/mentions";
 import { cn, formatDay } from "@/lib/utils";
 import { NAV_ICONS } from "./icons";
+import { ProjectIcon } from "@/components/ui/project-icon";
 
 interface Result {
   id: string;
@@ -56,7 +57,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       .filter((p) => match(p.name, p.client, p.description))
       .slice(0, q ? 6 : 4)
       .forEach((p) =>
-        out.push({ id: p.id, group: "Projects", label: p.name, hint: (hasClient(p) && p.client) || undefined, icon: <span className="text-[14px]">{p.icon ?? "📁"}</span>, href: `/projects/${p.id}` }),
+        out.push({ id: p.id, group: "Projects", label: p.name, hint: (hasClient(p) && p.client) || undefined, icon: <span className="text-[14px]"><ProjectIcon icon={p.icon} /></span>, href: `/projects/${p.id}` }),
       );
     if (q) {
       data.tasks

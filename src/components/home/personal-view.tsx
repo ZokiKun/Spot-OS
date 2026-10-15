@@ -14,6 +14,7 @@ import { ProjectTable } from "@/components/projects/project-views";
 import { DatedRow, GroupLabel, Panel, PanelLink, ProjectGrid, StatTile, relativeDue } from "./home-blocks";
 import { Agenda, WeekStrip } from "./home-timeline";
 import { datedItems, usePersonalData, type HomeLayout } from "./home-data";
+import { ProjectIcon } from "@/components/ui/project-icon";
 
 type PersonalData = ReturnType<typeof usePersonalData>;
 
@@ -121,7 +122,7 @@ function DeadlineRows({ d, limit }: { d: PersonalData; limit?: number }) {
         return (
           <Link key={p.id} href={`/projects/${p.id}`} className="flex h-9 items-center gap-3 rounded-md px-2 hover:bg-hover">
             <span className={cn("w-20 shrink-0 text-[13px] tabular", days <= 3 ? "font-medium text-danger" : "text-fg-2")}>{formatDay(p.deadline)}</span>
-            <span>{p.icon}</span>
+            <span><ProjectIcon icon={p.icon} /></span>
             <span className="min-w-0 flex-1 truncate text-[14px]">{p.name}</span>
             <span className="text-[12px] text-fg-3">{relativeDue(p.deadline!)}</span>
           </Link>
@@ -195,7 +196,7 @@ function ProjectLine({ id }: { id: string }) {
   const status = optionFor(PROJECT_STATUSES, p.status)!;
   return (
     <Link href={`/projects/${p.id}`} className="flex h-9 items-center gap-2.5 rounded-md px-2 hover:bg-hover">
-      <span className="w-5 shrink-0 text-center">{p.icon ?? "📁"}</span>
+      <span className="w-5 shrink-0 text-center"><ProjectIcon icon={p.icon} /></span>
       <span className="min-w-0 flex-1 truncate text-[14px]">{p.name}</span>
       <StatusTag color={status.color}>{status.label}</StatusTag>
       <span className="hidden w-24 items-center gap-1.5 text-[12px] text-fg-3 tabular sm:flex">
@@ -263,7 +264,7 @@ function ProjectChips({ d }: { d: PersonalData }) {
                 href={`/projects/${p.id}`}
                 className="flex h-8 max-w-full items-center gap-2 rounded-md px-2.5 text-[13px] shadow-[inset_0_0_0_1px_var(--border)] hover:bg-hover"
               >
-                <span>{p.icon ?? "📁"}</span>
+                <span><ProjectIcon icon={p.icon} /></span>
                 <span className="truncate font-medium">{p.name}</span>
                 <span className={`dot-${status.color} size-2 shrink-0 rounded-full`} title={status.label} />
               </Link>
@@ -339,7 +340,7 @@ function ProgressLine({ id }: { id: string }) {
   const prog = projectProgress(p.id, data.tasks);
   return (
     <Link href={`/projects/${p.id}`} className="flex h-8 items-center gap-2.5 rounded-md px-2 hover:bg-hover">
-      <span className="w-5 shrink-0 text-center">{p.icon ?? "📁"}</span>
+      <span className="w-5 shrink-0 text-center"><ProjectIcon icon={p.icon} /></span>
       <span className="min-w-0 flex-1 truncate text-[13px]">{p.name}</span>
       <div className="w-20 shrink-0 sm:w-28">
         <ProgressBar value={prog.ratio} tone={prog.total && prog.ratio === 1 ? "green" : "default"} />

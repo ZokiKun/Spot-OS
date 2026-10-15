@@ -18,6 +18,7 @@ import { NAV_ICONS, SpotMark } from "./icons";
 import { useShell } from "./shell-context";
 import { useTheme } from "./theme";
 import { InboxButton } from "./inbox";
+import { ProjectIcon } from "@/components/ui/project-icon";
 
 function NavRow({
   href,
@@ -330,7 +331,7 @@ export function Sidebar() {
               <NavRow
                 href={`/projects/${p.id}`}
                 label={p.name}
-                icon={<span className="text-[15px] leading-none">{p.icon ?? "📁"}</span>}
+                icon={<span className="text-[15px] leading-none"><ProjectIcon icon={p.icon} /></span>}
                 active={pathname === `/projects/${p.id}`}
                 onNavigate={closeMobileNav}
               />

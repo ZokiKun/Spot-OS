@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Flag, Plus, X } from "lucide-react";
+import { Flag, Plus, SmilePlus, X } from "lucide-react";
 import { todayISO } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import type { ProjectType } from "@/lib/types";
@@ -11,12 +11,14 @@ import { Dialog } from "@/components/ui/dialog";
 import { Button, IconButton } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
 import { DateField, OptionField, PersonField } from "@/components/ui/fields";
+import { Popover, usePopover } from "@/components/ui/popover";
+import { IconPicker, PROJECT_ICONS, ProjectIcon } from "@/components/ui/project-icon";
 
 type DraftMilestone = { key: number; title: string; due: string | null };
 const PLACEHOLDERS = ["Discovery", "Design", "Delivery"];
 const blankMilestones = (): DraftMilestone[] => PLACEHOLDERS.map((_, key) => ({ key, title: "", due: null }));
 
-const ICONS = ["📁", "🧭", "🪶", "🫙", "🟠", "⚙️", "📓", "🔤", "🎨", "📐", "🖼️", "🎬", "📦", "🌱", "✳️", "🔶"];
+const ICONS = PROJECT_ICONS.slice(0, 15);
 
 export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { create, me } = useWorkspace();
@@ -24,6 +26,7 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
   const router = useRouter();
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("📁");
+  const { setAnchor: moreAnchorRef, ...more } = usePopover<HTMLButtonElement>();
   const [type, setType] = useState<ProjectType>("client");
   const [client, setClient] = useState("");
   const [lead, setLead] = useState<string | null>(me?.id ?? null);
@@ -95,16 +98,35 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
       >
         <div>
           <div className="mb-1.5 flex flex-wrap gap-0.5">
-            {ICONS.map((i) => (
+            {(ICONS.includes(icon) ? ICONS : [icon, ...ICONS]).map((i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => setIcon(i)}
                 className={`flex size-8 items-center justify-center rounded-md text-[17px] hover:bg-hover ${icon === i ? "bg-active" : ""}`}
               >
-                {i}
+                <ProjectIcon icon={i} />
               </button>
             ))}
+            <button
+              ref={moreAnchorRef}
+              type="button"
+              onClick={more.toggle}
+              title="Any emoji, or upload your own"
+              aria-label="More icons"
+              className="flex size-8 items-center justify-center rounded-md text-fg-3 hover:bg-hover hover:text-fg-2"
+            >
+              <SmilePlus className="size-4" />
+            </button>
+            <Popover open={more.open} onClose={more.close} anchor={more.anchor} width={300}>
+              <IconPicker
+                value={icon}
+                onPick={(i) => {
+                  setIcon(i);
+                  more.close();
+                }}
+              />
+            </Popover>
           </div>
           <TextInput autoFocus placeholder="Project name" value={name} onChange={(e) => setName(e.target.value)} className="h-10 text-[16px]" />
         </div>

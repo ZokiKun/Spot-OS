@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/misc";
 import { useTaskPeek } from "@/components/tasks/task-peek";
 import { DatedRow, GroupLabel, relativeDue } from "./home-blocks";
 import type { DatedItem } from "./home-data";
+import { ProjectIcon } from "@/components/ui/project-icon";
 
 /** Day-by-day agenda: overdue items first, then one block per day that has something. */
 export function Agenda({
@@ -202,7 +203,7 @@ function WeekChip({ item, showAssignee, late }: { item: DatedItem; showAssignee?
         late && "max-w-[260px] bg-bg",
       )}
     >
-      {project?.icon && <span className="shrink-0">{project.icon}</span>}
+      {project?.icon && <span className="shrink-0"><ProjectIcon icon={project.icon} /></span>}
       <span className="min-w-0 flex-1 break-words">{t.title}</span>
       {late && <span className="shrink-0 font-medium text-danger tabular">{relativeDue(item.date)}</span>}
       {showAssignee && (taskAssignees(t).length ? <AvatarStack profiles={taskAssignees(t).map((id) => people.get(id))} size={16} /> : <Avatar profile={null} size={16} />)}

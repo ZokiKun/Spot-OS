@@ -8,6 +8,7 @@ import { ActivityFeed } from "@/components/activity-feed";
 import { DatedRow, Panel, PersonCard, ProjectGrid, StatTile, WorkloadLegend, WorkloadRow, relativeDue } from "./home-blocks";
 import { Agenda, WeekStrip } from "./home-timeline";
 import { datedItems, useStudioData, type HomeLayout } from "./home-data";
+import { ProjectIcon } from "@/components/ui/project-icon";
 
 type StudioData = ReturnType<typeof useStudioData>;
 
@@ -63,7 +64,7 @@ function Deadlines({ d, limit }: { d: StudioData; limit?: number }) {
       {d.deadlines.slice(0, limit).map((p) => (
         <Link key={p.id} href={`/projects/${p.id}`} className="flex h-9 items-center gap-3 rounded-md px-2 hover:bg-hover">
           <span className="w-20 shrink-0 text-[13px] text-fg-2 tabular">{formatDay(p.deadline)}</span>
-          <span>{p.icon}</span>
+          <span><ProjectIcon icon={p.icon} /></span>
           <span className="min-w-0 flex-1 truncate text-[14px]">{p.name}</span>
           <span className="text-[12px] text-fg-3">{relativeDue(p.deadline!)}</span>
         </Link>

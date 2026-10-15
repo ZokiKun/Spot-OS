@@ -37,6 +37,7 @@ import { MenuItem, MenuList } from "@/components/ui/menu";
 import { TagList, TagsField } from "@/components/ui/tags-field";
 import { ProjectNoteField } from "./project-note-field";
 import { coverStyle } from "./project-cover";
+import { ProjectIcon } from "@/components/ui/project-icon";
 
 export function projectStatusPatch(status: ProjectStatus): Partial<Project> {
   return { status, completed_at: status === "completed" ? nowISO() : null };
@@ -134,7 +135,7 @@ function ProjectRow({ project: p, cols, template }: { project: Project; cols: Co
     name: (
       <div className="flex min-w-0 items-center">
         <Link href={`/projects/${p.id}`} className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 font-medium">
-          <span className={cn("w-5 shrink-0 text-center text-[15px]", p.status === "archived" && "opacity-60")}>{p.icon ?? "📁"}</span>
+          <span className={cn("w-5 shrink-0 text-center text-[15px]", p.status === "archived" && "opacity-60")}><ProjectIcon icon={p.icon} /></span>
           <span className="truncate">{p.name}</span>
         </Link>
         <IconButton ref={setAnchor} label="Project actions" onClick={menu.toggle} className="mr-1 opacity-0 group-hover:opacity-100 focus:opacity-100">
@@ -263,7 +264,7 @@ export function ProjectBoard({ projects }: { projects: Project[] }) {
                   >
                     {p.cover && <div className="-mx-2.5 -mt-2 mb-2 h-12" style={coverStyle(p.cover, p.cover_position)} />}
                     <div className="flex items-start gap-2 text-[14px] font-medium">
-                      <span>{p.icon ?? "📁"}</span>
+                      <span><ProjectIcon icon={p.icon} /></span>
                       <span className="min-w-0 flex-1">{p.name}</span>
                     </div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">

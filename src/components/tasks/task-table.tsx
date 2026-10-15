@@ -14,6 +14,7 @@ import { assigneesPatch, taskAssignees } from "@/lib/selectors";
 import { EmptyState } from "@/components/ui/misc";
 import { statusPatch, useTaskPeek } from "./task-peek";
 import { useTaskSelection } from "./task-selection";
+import { ProjectIcon } from "@/components/ui/project-icon";
 
 /**
  * Drag-and-drop between stacked task tables (the project timeline). Each table is a "group"
@@ -360,7 +361,7 @@ function TaskListRow({
         {task.status === "blocked" && <span className="shrink-0 rounded-[3px] bg-[var(--tag-red-bg)] px-1 text-[11px] text-[var(--tag-text)]">Blocked</span>}
         {projectLabel && (
           <span className="hidden min-w-0 shrink-[4] items-center gap-1 text-[12px] text-fg-3 sm:inline-flex">
-            <span className="shrink-0">{projectLabel.icon}</span>
+            <span className="shrink-0"><ProjectIcon icon={projectLabel.icon} /></span>
             <span className="truncate">{projectLabel.name}</span>
           </span>
         )}

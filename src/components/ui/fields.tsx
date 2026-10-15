@@ -9,6 +9,7 @@ import { Picker } from "./picker";
 import { StatusTag, Tag } from "./tag";
 import { Avatar, AvatarStack, PersonChip } from "./avatar";
 import { MiniCalendar } from "./mini-calendar";
+import { ProjectIcon } from "@/components/ui/project-icon";
 
 /** "chip": a compact toolbar button (e.g. the bulk-edit bar). */
 type FieldVariant = "cell" | "property" | "chip";
@@ -265,7 +266,7 @@ export function ProjectField({
   const current = projects.find((p) => p.id === value);
   const label = (p: Project) => (
     <span className="inline-flex min-w-0 items-center gap-1.5">
-      <span className="w-4 shrink-0 text-center text-[13px]">{p.icon ?? "📁"}</span>
+      <span className="w-4 shrink-0 text-center text-[13px]"><ProjectIcon icon={p.icon} /></span>
       <span className="truncate">{p.name}</span>
     </span>
   );

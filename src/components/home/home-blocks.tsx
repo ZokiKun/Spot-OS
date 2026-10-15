@@ -16,6 +16,7 @@ import { StatusTag, Tag } from "@/components/ui/tag";
 import { statusPatch, useTaskPeek } from "@/components/tasks/task-peek";
 import { NextStepText } from "@/components/projects/project-timeline";
 import type { DatedItem, HomeLayout } from "./home-data";
+import { ProjectIcon } from "@/components/ui/project-icon";
 
 const LAYOUT_META: Record<HomeLayout, { label: string; icon: ReactNode }> = {
   table: { label: "Table", icon: <Table2 className="size-4" /> },
@@ -128,7 +129,7 @@ export function DatedRow({ item, showDate, showAssignee }: { item: DatedItem; sh
     return (
       <Link href={`/projects/${p.id}`} className="flex h-[34px] items-center gap-2.5 rounded-md px-2 hover:bg-hover">
         <Flag className="size-3.5 shrink-0 text-fg-3" />
-        <span className="shrink-0 text-[14px]">{p.icon}</span>
+        <span className="shrink-0 text-[14px]"><ProjectIcon icon={p.icon} /></span>
         <span className="min-w-0 flex-1 truncate text-[14px]">{p.name}</span>
         <span className="shrink-0 text-[12px] text-fg-3">Deadline</span>
         {showDate && <span className="w-16 shrink-0 text-right text-[12px] text-fg-2 tabular">{formatDay(item.date)}</span>}
@@ -186,7 +187,7 @@ export function ProjectCard({ project: p }: { project: Project }) {
       className="flex min-w-0 flex-col rounded-lg p-3 shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-hover"
     >
       <div className="flex items-start gap-2">
-        <span className="text-[22px] leading-none">{p.icon ?? "📁"}</span>
+        <span className="text-[22px] leading-none"><ProjectIcon icon={p.icon} /></span>
         <span className="ml-auto flex flex-wrap justify-end gap-1">
           {type && <Tag color={type.color}>{type.label}</Tag>}
           <StatusTag color={status.color}>{status.label}</StatusTag>

@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/misc";
 import { StatusTag, Tag } from "@/components/ui/tag";
 import { usePref } from "@/lib/hooks";
 import { statusPatch, useTaskPeek } from "./task-peek";
+import { ProjectIcon } from "@/components/ui/project-icon";
 
 export type TaskView = "table" | "timeline" | "board" | "list" | "grid" | "gantt";
 
@@ -94,7 +95,7 @@ function TaskCard({ task, showProject, draggable, onDragStart, dragging }: { tas
       </div>
       {showProject && project && (
         <div className="mt-1.5 flex min-w-0 items-center gap-1 pl-6 text-[12px] text-fg-3">
-          <span className="shrink-0">{project.icon ?? "📁"}</span>
+          <span className="shrink-0"><ProjectIcon icon={project.icon} /></span>
           <span className="truncate">{project.name}</span>
         </div>
       )}
