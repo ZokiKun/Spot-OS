@@ -27,6 +27,16 @@ type Action =
   | { type: "error"; error: string }
   | { type: "change"; change: Change };
 
+/** In-house projects were merged into Studio — rows not yet migrated (0014) read as studio. */
+function normalizeRow<T extends { id: UUID }>(table: TableName, row: T): T {
+  if (table === "projects" && (row as unknown as { type?: string }).type === "in_house") return { ...row, type: "studio" };
+  return row;
+}
+
+function normalizeSnapshot(data: Snapshot): Snapshot {
+  return { ...data, projects: data.projects.map((p) => normalizeRow("projects", p)) };
+}
+
 function applyChange(data: Snapshot, change: Change): Snapshot {
   const rows = data[change.table] as { id: UUID }[];
   let next: { id: UUID }[];
@@ -34,11 +44,12 @@ function applyChange(data: Snapshot, change: Change): Snapshot {
     if (!rows.some((r) => r.id === change.id)) return data;
     next = rows.filter((r) => r.id !== change.id);
   } else {
-    const idx = rows.findIndex((r) => r.id === change.row.id);
-    if (idx === -1) next = change.table === "activity_log" ? [change.row, ...rows] : [...rows, change.row];
+    const row = normalizeRow(change.table, change.row);
+    const idx = rows.findIndex((r) => r.id === row.id);
+    if (idx === -1) next = change.table === "activity_log" ? [row, ...rows] : [...rows, row];
     else {
       next = rows.slice();
-      next[idx] = change.row;
+      next[idx] = row;
     }
   }
   return { ...data, [change.table]: next };
@@ -47,7 +58,7 @@ function applyChange(data: Snapshot, change: Change): Snapshot {
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "loaded":
-      return { data: action.data, status: "ready", error: null };
+      return { data: normalizeSnapshot(action.data), status: "ready", error: null };
     case "error":
       return { ...state, status: "error", error: action.error };
     case "change":

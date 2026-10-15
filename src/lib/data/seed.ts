@@ -81,7 +81,7 @@ export function buildSeed(): Snapshot {
     tags: ["packaging", "print"],
     cover: "gradient:clay",
   });
-  const site = project("Studio Spot site v2", "🟠", "in_house", "active", {
+  const site = project("Studio Spot site v2", "🟠", "studio", "active", {
     lead_id: jordan!.id,
     deadline: addDaysISO(t, 40),
     description: "New studio website with case studies.",

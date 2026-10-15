@@ -4,7 +4,8 @@ export type UUID = string;
 export type ISODate = string; // YYYY-MM-DD
 export type ISODateTime = string;
 
-export type ProjectType = "client" | "in_house" | "studio" | "personal";
+/** "in_house" was merged into "studio" (migration 0014); the store reads any leftover rows as studio. */
+export type ProjectType = "client" | "studio" | "personal";
 export type ProjectStatus = "backlog" | "active" | "blocked" | "review" | "completed" | "archived";
 export type TaskStatus = "todo" | "in_progress" | "blocked" | "review" | "done";
 export type TaskPriority = "low" | "medium" | "high" | "urgent";

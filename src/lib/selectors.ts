@@ -8,7 +8,7 @@ export const isDueToday = (t: Task, today = todayISO()) => isOpen(t) && t.due_da
 export const isUpcoming = (t: Task, today = todayISO(), days = 7) =>
   isOpen(t) && !!t.due_date && t.due_date > today && t.due_date <= addDaysISO(today, days);
 export const isActiveProject = (p: Project) => ACTIVE_PROJECT_STATUSES.includes(p.status);
-/** Client name and contact only mean something on client work — studio, in-house and personal projects hide them. */
+/** Client name and contact only mean something on client work — studio and personal projects hide them. */
 export const hasClient = (p: Pick<Project, "type">) => p.type === "client";
 
 /** Everyone assigned to a task, primary first (falls back to the single assignee on old rows). */

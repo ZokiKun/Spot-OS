@@ -35,7 +35,6 @@ export const PROJECT_STATUSES: Option<ProjectStatus>[] = [
 
 export const PROJECT_TYPES: Option<ProjectType>[] = [
   { value: "client", label: "Client", color: "orange" },
-  { value: "in_house", label: "In-house", color: "blue" },
   { value: "studio", label: "Studio", color: "brown" },
   { value: "personal", label: "Personal", color: "pink" },
 ];
