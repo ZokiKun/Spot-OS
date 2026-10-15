@@ -14,6 +14,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    id: "2026-10-15-3",
+    date: "2026-10-15",
+    title: "Task descriptions in project notes",
+    items: [
+      { title: "All descriptions in one place", body: "A project's Notes tab now lists every task description below your notes, each under its task's title. Click a title to open the task." },
+    ],
+  },
+  {
     id: "2026-10-15-2",
     date: "2026-10-15",
     title: "Filters, a sidebar shortcut and this screen",

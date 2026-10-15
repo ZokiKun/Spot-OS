@@ -44,6 +44,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { TaskList } from "@/components/tasks/task-table";
 import { ActivityFeed } from "@/components/activity-feed";
 import { AttachmentList } from "@/components/attachments";
+import { plainTextToHtml } from "@/lib/markdown";
 import { RichEditor } from "@/components/editor/rich-editor";
 import { LibraryItemDialog } from "@/components/library/library-item-dialog";
 import { LibraryRow } from "@/components/library/library-row";
@@ -497,14 +498,38 @@ function ProjectLinks({ projectId }: { projectId: string }) {
 }
 
 function ProjectNotes({ project }: { project: Project }) {
-  const { update, upload } = useWorkspace();
+  const { data, update, upload } = useWorkspace();
   const { schedule } = useDebouncedSave<string>((html) => void update("projects", project.id, { notes_html: html || null }));
+  const described = useMemo(
+    () =>
+      data.tasks
+        .filter((t) => t.project_id === project.id && plainTextToHtml(t.description).replace(/<[^>]*>/g, "").trim())
+        .sort((a, b) => a.created_at.localeCompare(b.created_at)),
+    [data.tasks, project.id],
+  );
   return (
-    <RichEditor
-      value={project.notes_html ?? ""}
-      onChange={schedule}
-      placeholder="Meeting notes, decisions, context… Type # for a heading, - for a list, [ ] for a checklist."
-      onUploadImage={async (file) => (await upload(file, `projects/${project.id}/notes`)).url}
-    />
+    <div>
+      <RichEditor
+        value={project.notes_html ?? ""}
+        onChange={schedule}
+        placeholder="Meeting notes, decisions, context… Type # for a heading, - for a list, [ ] for a checklist."
+        onUploadImage={async (file) => (await upload(file, `projects/${project.id}/notes`)).url}
+      />
+      {described.length > 0 && (
+        <div className="mt-8 border-t border-line pt-4">
+          <SectionHeading>Task descriptions</SectionHeading>
+          <div className="mt-2 space-y-5">
+            {described.map((t) => (
+              <section key={t.id}>
+                <Link href={`?tab=notes&task=${t.id}`} className="text-[15px] font-semibold text-fg hover:underline">
+                  {t.title || "Untitled"}
+                </Link>
+                <RichEditor key={t.description} value={plainTextToHtml(t.description)} onChange={() => {}} editable={false} className="min-h-0" />
+              </section>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
