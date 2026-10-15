@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import { ChevronDown, LogOut, Monitor, Moon, Palette, PanelLeftClose, PanelLeftOpen, RotateCcw, Search, Sun, Users } from "lucide-react";
+import { ChevronDown, LogOut, Monitor, Moon, Palette, PanelLeftClose, PanelLeftOpen, RotateCcw, Search, Sparkles, Sun, Users } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/constants";
 import { useWorkspace } from "@/lib/store";
 import { isActiveProject, isMyProject, sortProjects } from "@/lib/selectors";
@@ -18,11 +18,36 @@ import { NAV_ICONS, SpotMark } from "./icons";
 import { useShell } from "./shell-context";
 import { useTheme } from "./theme";
 import { InboxButton } from "./inbox";
+import { openWhatsNew, useHasUnseenRelease } from "./whats-new";
 import { ProjectIcon } from "@/components/ui/project-icon";
 
 /** Icon-only sidebar (desktop): rows show just their icon, with the name as a tooltip. */
 const CollapsedContext = createContext(false);
 export const SIDEBAR_COLLAPSED_PREF = "sidebar-collapsed";
+
+/** Opens the "What's new" screen; a dot while there's a release this device hasn't seen. */
+function WhatsNewRow({ onOpen }: { onOpen?: () => void }) {
+  const collapsed = useContext(CollapsedContext);
+  const unseen = useHasUnseenRelease();
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        onOpen?.();
+        openWhatsNew();
+      }}
+      title={collapsed ? "What’s new" : undefined}
+      aria-label={collapsed ? "What’s new" : undefined}
+      className={cn("flex h-[30px] w-full items-center gap-2 rounded-md text-[14px] text-fg-2 transition-colors duration-75 hover:bg-hover", collapsed ? "justify-center" : "px-2")}
+    >
+      <span className="relative flex size-[22px] shrink-0 items-center justify-center">
+        <Sparkles className="size-[17px]" strokeWidth={1.8} />
+        {unseen && <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-accent" />}
+      </span>
+      {!collapsed && <span className="min-w-0 flex-1 truncate text-left">What’s new</span>}
+    </button>
+  );
+}
 
 function NavRow({
   href,
@@ -207,7 +232,7 @@ export function Sidebar({ collapsed = false, onToggleCollapse }: { collapsed?: b
           <button
             type="button"
             onClick={onToggleCollapse}
-            title={collapsed ? "Expand sidebar (⌘\\)" : "Collapse sidebar (⌘\\)"}
+            title={collapsed ? "Expand sidebar (Shift+S or ⌘\\)" : "Collapse sidebar (Shift+S or ⌘\\)"}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             className={cn(
               "flex size-7 shrink-0 items-center justify-center rounded-md text-fg-3 hover:bg-hover hover:text-fg-2",
@@ -396,6 +421,7 @@ export function Sidebar({ collapsed = false, onToggleCollapse }: { collapsed?: b
       </div>
 
       <div className={cn("border-t border-line py-2", collapsed ? "px-1.5" : "px-2")}>
+        <WhatsNewRow onOpen={closeMobileNav} />
         <NavRow
           href="/settings"
           label="Settings"

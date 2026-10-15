@@ -13,8 +13,13 @@ import { NotificationWatcher } from "./inbox";
 import { markPopState, recordVisit } from "./nav-history";
 import { QuickAddProvider } from "./quick-add";
 import { VoiceTyping } from "./voice-typing";
+import { WhatsNew } from "./whats-new";
 import { usePref } from "@/lib/hooks";
 import { SIDEBAR_COLLAPSED_PREF } from "./sidebar";
+import { hasOpenPopover } from "@/components/ui/popover";
+
+const isTyping = (t: EventTarget | null) =>
+  t instanceof HTMLElement && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName));
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -34,6 +39,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       if ((e.metaKey || e.ctrlKey) && e.key === "\\") {
         e.preventDefault();
         toggleCollapsed();
+      }
+      // Shift+S — the same, when not typing, in a dialog or with a menu open. Opens/closes the drawer on phones.
+      if (e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey && !e.repeat && e.key.toLowerCase() === "s") {
+        if (isTyping(e.target) || hasOpenPopover() || document.querySelector('[aria-modal="true"]')) return;
+        e.preventDefault();
+        if (window.matchMedia("(min-width: 768px)").matches) toggleCollapsed();
+        else setMobileNavOpen((o) => !o);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -86,6 +98,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
       <NotificationWatcher />
       <VoiceTyping />
+      <WhatsNew />
     </ShellContext>
   );
 }

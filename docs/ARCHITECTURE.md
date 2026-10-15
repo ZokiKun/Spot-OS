@@ -94,6 +94,12 @@ src/
 
 **Shift+A** runs the current page's add action (`usePageAdd`): Projects → new project, Tasks and a project → new task (in its current milestone), Calendar → note, Library → link, Reviews → new review, Spot Base → page, Home → the Quick Add menu. Elsewhere it opens the Quick Add chooser. It's ignored while typing or with a dialog/menu open.
 
+**Shift+S** collapses/expands the desktop sidebar (same as ⌘\), or opens/closes the drawer on phones. Same guards as Shift+A.
+
+**Task filters** (`lib/task-filter.ts`, `TaskFilterMenu`): status, assignee (incl. Unassigned), due date bucket (overdue / today / next 7 days / later / none) and priority. OR within a group, AND across groups. The Tasks page filters on built-in statuses and saves its filters per device (`tasks-filters`); a project's Tasks tab uses that project's own statuses, saves per project (`project-task-filters:<id>`) and applies to every view. Milestone progress counts ignore filters, and dragging into a filtered milestone only moves the task (no reordering), as with a sorted one.
+
+**What's new** (`lib/changelog.ts`, `shell/whats-new.tsx`): a release list written for the team. The screen opens by itself once per release a device hasn't seen (`whats-new-seen`), and from the sidebar's "What's new". Add a release (or items to today's) whenever you ship something people will notice. `next.config.ts` bakes `VERCEL_GIT_COMMIT_SHA` into the build as `APP_VERSION`. Open tabs poll `/api/version` (on focus, and every 5 min) and offer a Reload when a newer deploy is live.
+
 ## 4. Realtime architecture
 
 - On load, the client fetches a full snapshot. For a 3-person studio this is a few hundred rows. `activity_log` is capped at 300 rows and snapshots at 10.

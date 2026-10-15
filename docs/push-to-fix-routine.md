@@ -54,6 +54,8 @@ Steps:
    - Implement it in the existing style (classic Notion-style layout in src/components, src/lib).
    - Keep changes focused on that task.
    - Run `npx eslint <changed files>` and `npm run build`. Fix anything you broke.
+   - If people will notice the change, add it to src/lib/changelog.ts (a new release at the top
+     for today, or more items in today's), written for the team, not for developers.
    - Commit with a clear message ("Board view: …") ending with
      "Co-Authored-By: Claude <noreply@anthropic.com>".
    - If a task needs a database change, add a new numbered file in supabase/migrations/ and make

@@ -6,6 +6,8 @@ import { sortTasksBy, TASK_SORTS, type TaskSort, type TaskSortKey } from "@/lib/
 import { SortMenu, type SortOption } from "@/components/ui/sort";
 import type { Project, Task } from "@/lib/types";
 import { filterTasks, sortTasks, type TaskFilter } from "@/lib/selectors";
+import { applyTaskFilters, countFilters, NO_FILTERS, type TaskFilters } from "@/lib/task-filter";
+import { statusOptions } from "@/lib/task-statuses";
 import { firstName, todayISO } from "@/lib/utils";
 import { Page, PageTitle } from "@/components/shell/page";
 import { ViewTabs } from "@/components/ui/tabs";
@@ -17,6 +19,7 @@ import { usePref } from "@/lib/hooks";
 import { EmptyState } from "@/components/ui/misc";
 import { usePageAdd, useQuickAdd } from "@/components/shell/quick-add";
 import { ProjectIcon } from "@/components/ui/project-icon";
+import { TaskFilterMenu } from "./task-filter-menu";
 
 const TASK_VIEWS: TaskView[] = ["table", "board", "list", "grid", "gantt"];
 
@@ -73,7 +76,10 @@ export function TasksView() {
 
   const people = useProfiles();
   const [sort, setSort] = usePref<TaskSort>("tasks-sort", { by: "manual" });
-  const list = filterTasks(data.tasks, filter, meId);
+  const [filters, setFilters] = usePref<TaskFilters>("tasks-filters", NO_FILTERS);
+  // Across projects, status filters use the built-in statuses (custom ones each map onto one).
+  const list = applyTaskFilters(filterTasks(data.tasks, filter, meId), filters, (t) => t.status);
+  const filtered = countFilters(filters) > 0;
   const tasks = sortTasksBy(filter.kind === "completed" ? list : sortTasks(list), sort, {
     person: people.get,
     projectOf: (id) => data.projects.find((p) => p.id === id),
@@ -105,6 +111,7 @@ export function TasksView() {
       <PageTitle title="Tasks" description="Every task across projects. Click a task to open it." />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <ViewTabs className="min-w-0 grow" value={keyOf(filter)} onChange={(v) => router.replace(`${pathname}?filter=${v}`)} items={tabs} />
+        <TaskFilterMenu filters={filters} onChange={setFilters} statuses={statusOptions(null)} />
         <SortMenu options={PAGE_SORTS} sort={sort} onChange={setSort} noun="tasks" />
         <TaskViewSwitcher value={view} onChange={setView} views={TASK_VIEWS} />
       </div>
@@ -114,11 +121,11 @@ export function TasksView() {
           sort={sort}
           onSort={setSort}
           newTaskDefaults={defaults}
-          emptyLabel={filter.kind === "overdue" ? "Nothing overdue 🎉" : filter.kind === "completed" ? "No completed tasks yet" : "No open tasks"}
+          emptyLabel={filtered ? "No tasks match the filters" : filter.kind === "overdue" ? "Nothing overdue 🎉" : filter.kind === "completed" ? "No completed tasks yet" : "No open tasks"}
         />
       )}
       {view === "board" && <TaskBoard tasks={tasks} />}
-      {view === "list" && (tasks.length ? <TaskList tasks={tasks} /> : <EmptyState title="No tasks here" />)}
+      {view === "list" && (tasks.length ? <TaskList tasks={tasks} /> : <EmptyState title={filtered ? "No tasks match the filters" : "No tasks here"} />)}
       {view === "grid" && <TaskGrid tasks={tasks} />}
       {view === "gantt" && <TaskGantt groups={ganttGroups(tasks, data.projects)} />}
     </Page>

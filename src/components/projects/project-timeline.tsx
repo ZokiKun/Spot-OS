@@ -132,8 +132,8 @@ export function NextStepCallout({ project, onOpenTimeline, onComplete }: { proje
   );
 }
 
-/** The Timeline tab: milestones in order, each with its tasks. */
-export function ProjectTimeline({ project }: { project: Project }) {
+/** The Timeline tab: milestones in order, each with its tasks. `filter` narrows the tasks shown (not the progress counts). */
+export function ProjectTimeline({ project, filter }: { project: Project; filter?: (tasks: Task[]) => Task[] }) {
   const timeline = useTimeline(project.id);
   const { steps, loose } = timeline;
   // Finished milestones start folded; a click overrides that per milestone.
@@ -155,8 +155,8 @@ export function ProjectTimeline({ project }: { project: Project }) {
     if (!task) return;
     const { group, index } = d.over;
     const milestoneId = group === LOOSE ? null : group;
-    // A sorted group decides its own order: dropping there only moves the task into it.
-    if (readPref<TaskSort>(timelineSortPref(group === LOOSE ? `${LOOSE}:${project.id}` : group), MANUAL).by !== "manual") {
+    // A sorted or filtered group decides its own order: dropping there only moves the task into it.
+    if (filter || readPref<TaskSort>(timelineSortPref(group === LOOSE ? `${LOOSE}:${project.id}` : group), MANUAL).by !== "manual") {
       if ((task.milestone_id ?? null) !== milestoneId) void update("tasks", task.id, { milestone_id: milestoneId });
       return;
     }
@@ -238,17 +238,18 @@ export function ProjectTimeline({ project }: { project: Project }) {
           onDragEnd={() => setDrag(null)}
           taskDrop={dropOnGroup(step.milestone.id)}
           taskOver={!!taskDrag && taskDrag.over?.group === step.milestone.id}
+          filter={filter}
         />
       ))}
       <AddMilestone projectId={project.id} empty={!steps.length} />
       {(loose.length > 0 || !steps.length || taskDrag) && (
-        <LooseSection project={project} tasks={loose} label={steps.length ? "Not in a milestone" : "Tasks"} drop={dropOnGroup(LOOSE)}>
+        <LooseSection project={project} tasks={filter ? filter(loose) : loose} label={steps.length ? "Not in a milestone" : "Tasks"} drop={dropOnGroup(LOOSE)}>
           {(sorted) => (
           <TaskTable
             tasks={sorted}
             showProject={false}
             newTaskDefaults={{ project_id: project.id }}
-            emptyLabel={steps.length ? "Every task is in a milestone" : "No tasks yet"}
+            emptyLabel={filter ? "No tasks match the filters" : steps.length ? "Every task is in a milestone" : "No tasks yet"}
             dndGroup={LOOSE}
           />
           )}
@@ -396,6 +397,7 @@ function MilestoneSection({
   onDragEnd,
   taskDrop,
   taskOver,
+  filter,
 }: {
   step: TimelineStep;
   first: boolean;
@@ -415,13 +417,15 @@ function MilestoneSection({
   taskDrop: { onDragOver: (e: React.DragEvent) => void; onDrop: (e: React.DragEvent) => void };
   /** A dragged task would land in this milestone. */
   taskOver: boolean;
+  filter?: (tasks: Task[]) => Task[];
 }) {
   const { update, remove } = useWorkspace();
   const ask = useConfirm();
   const { setAnchor, ...menu } = usePopover();
   const sectionRef = useRef<HTMLElement>(null);
   const m = step.milestone;
-  const { sort, setSort, sorted } = useGroupSort(m.id, step.tasks, project);
+  const shown = useMemo(() => (filter ? filter(step.tasks) : step.tasks), [filter, step.tasks]);
+  const { sort, setSort, sorted } = useGroupSort(m.id, shown, project);
   const move = (dir: -1 | 1) => {
     onMove(dir);
     menu.close();
@@ -544,7 +548,7 @@ function MilestoneSection({
             showProject={false}
             showHeader={showHeader}
             newTaskDefaults={{ project_id: project.id, milestone_id: m.id }}
-            emptyLabel="No tasks yet — add the first one below"
+            emptyLabel={filter && step.tasks.length ? "No tasks match the filters" : "No tasks yet — add the first one below"}
             dndGroup={m.id}
           />
         </div>

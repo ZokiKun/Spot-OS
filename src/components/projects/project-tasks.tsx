@@ -5,11 +5,14 @@ import type { Project } from "@/lib/types";
 import { useWorkspace } from "@/lib/store";
 import { usePref } from "@/lib/hooks";
 import { sortTasks } from "@/lib/selectors";
-import { statusOptions } from "@/lib/task-statuses";
+import { statusOptions, taskStatusValue } from "@/lib/task-statuses";
+import { applyTaskFilters, countFilters, NO_FILTERS, type TaskFilters } from "@/lib/task-filter";
+import type { Task } from "@/lib/types";
 import { StatusTag } from "@/components/ui/tag";
 import { TaskList } from "@/components/tasks/task-table";
 import { TaskBoard, TaskGantt, TaskGrid, TaskViewSwitcher, type TaskView } from "@/components/tasks/task-views";
 import { EmptyState } from "@/components/ui/misc";
+import { TaskFilterMenu } from "@/components/tasks/task-filter-menu";
 import { ProjectTimeline, useTimeline } from "./project-timeline";
 
 const VIEWS: TaskView[] = ["timeline", "board", "list", "grid", "gantt"];
@@ -20,12 +23,23 @@ export function ProjectTasks({ project, onEditStatuses }: { project: Project; on
   const [saved, setView] = usePref<TaskView>("project-task-view", "timeline");
   const view = VIEWS.includes(saved) ? saved : "timeline";
   const timeline = useTimeline(project.id);
-  const tasks = useMemo(() => sortTasks(data.tasks.filter((t) => t.project_id === project.id)), [data.tasks, project.id]);
+  const [filters, setFilters] = usePref<TaskFilters>(`project-task-filters:${project.id}`, NO_FILTERS);
+  const filtered = countFilters(filters) > 0;
+  const keep = useMemo(
+    () => (filtered ? (list: Task[]) => applyTaskFilters(list, filters, (t) => taskStatusValue(t, project)) : undefined),
+    [filtered, filters, project],
+  );
+  const tasks = useMemo(() => {
+    const own = sortTasks(data.tasks.filter((t) => t.project_id === project.id));
+    return keep ? keep(own) : own;
+  }, [data.tasks, project.id, keep]);
+  const show = (list: Task[]) => (keep ? keep(list) : list);
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
         <TaskViewSwitcher value={view} onChange={setView} views={VIEWS} />
+        <TaskFilterMenu filters={filters} onChange={setFilters} statuses={statusOptions(project)} />
         <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5 text-[12px] text-fg-3">
           {statusOptions(project).map((o) => (
             <StatusTag key={o.value} color={o.color}>
@@ -37,15 +51,15 @@ export function ProjectTasks({ project, onEditStatuses }: { project: Project; on
           </button>
         </div>
       </div>
-      {view === "timeline" && <ProjectTimeline project={project} />}
+      {view === "timeline" && <ProjectTimeline project={project} filter={keep} />}
       {view === "board" && <TaskBoard tasks={tasks} project={project} />}
-      {view === "list" && (tasks.length ? <TaskList tasks={tasks} /> : <EmptyState title="No tasks yet" />)}
+      {view === "list" && (tasks.length ? <TaskList tasks={tasks} /> : <EmptyState title={filtered ? "No tasks match the filters" : "No tasks yet"} />)}
       {view === "grid" && <TaskGrid tasks={tasks} showProject={false} />}
       {view === "gantt" && (
         <TaskGantt
           groups={[
-            ...timeline.steps.map((s) => ({ key: s.milestone.id, label: `${s.index}. ${s.milestone.title}`, tasks: s.tasks, due: s.milestone.due_date })),
-            ...(timeline.loose.length ? [{ key: "loose", label: timeline.steps.length ? "Not in a milestone" : "Tasks", tasks: timeline.loose }] : []),
+            ...timeline.steps.map((s) => ({ key: s.milestone.id, label: `${s.index}. ${s.milestone.title}`, tasks: show(s.tasks), due: s.milestone.due_date })),
+            ...(timeline.loose.length ? [{ key: "loose", label: timeline.steps.length ? "Not in a milestone" : "Tasks", tasks: show(timeline.loose) }] : []),
           ]}
         />
       )}
