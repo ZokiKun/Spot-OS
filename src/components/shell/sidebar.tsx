@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo, useState, type ReactNode } from "react";
-import { ChevronDown, LogOut, Monitor, Moon, Palette, RotateCcw, Search, Sun, Users } from "lucide-react";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { ChevronDown, LogOut, Monitor, Moon, Palette, PanelLeftClose, PanelLeftOpen, RotateCcw, Search, Sun, Users } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/constants";
 import { useWorkspace } from "@/lib/store";
 import { isActiveProject, isMyProject, sortProjects } from "@/lib/selectors";
@@ -20,6 +20,10 @@ import { useTheme } from "./theme";
 import { InboxButton } from "./inbox";
 import { ProjectIcon } from "@/components/ui/project-icon";
 
+/** Icon-only sidebar (desktop): rows show just their icon, with the name as a tooltip. */
+const CollapsedContext = createContext(false);
+export const SIDEBAR_COLLAPSED_PREF = "sidebar-collapsed";
+
 function NavRow({
   href,
   icon,
@@ -35,19 +39,26 @@ function NavRow({
   badge?: number;
   onNavigate?: () => void;
 }) {
+  const collapsed = useContext(CollapsedContext);
   return (
     <Link
       href={href}
       onClick={onNavigate}
       draggable={false}
+      title={collapsed ? label : undefined}
+      aria-label={collapsed ? label : undefined}
       className={cn(
-        "group flex h-[30px] items-center gap-2 rounded-md px-2 text-[14px] transition-colors duration-75",
+        "group flex h-[30px] items-center gap-2 rounded-md text-[14px] transition-colors duration-75",
+        collapsed ? "justify-center" : "px-2",
         active ? "bg-active font-medium text-fg" : "text-fg-2 hover:bg-hover",
       )}
     >
-      <span className={cn("flex size-[22px] shrink-0 items-center justify-center", active ? "text-fg" : "text-fg-2")}>{icon}</span>
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      {badge != null && badge > 0 && (
+      <span className={cn("relative flex size-[22px] shrink-0 items-center justify-center", active ? "text-fg" : "text-fg-2")}>
+        {icon}
+        {collapsed && badge != null && badge > 0 && <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-[var(--dot-red)]" />}
+      </span>
+      {!collapsed && <span className="min-w-0 flex-1 truncate">{label}</span>}
+      {!collapsed && badge != null && badge > 0 && (
         <span className="rounded-full bg-[var(--dot-red)] px-1.5 text-[11px] font-medium leading-4 text-white">{badge}</span>
       )}
     </Link>
@@ -150,7 +161,11 @@ function Reorderable({ order, onReorder, render }: { order: string[]; onReorder:
   );
 }
 
-export function Sidebar() {
+/**
+ * The app sidebar. `collapsed` (desktop only) shrinks it to an icon rail; `onToggleCollapse`
+ * shows the collapse/expand button (⌘\ does the same).
+ */
+export function Sidebar({ collapsed = false, onToggleCollapse }: { collapsed?: boolean; onToggleCollapse?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const { data, me, mode, signOut, status, canEdit } = useWorkspace();
@@ -168,20 +183,40 @@ export function Sidebar() {
   const demo = getDemoAdapter();
 
   return (
+    <CollapsedContext value={collapsed}>
     <nav className="flex h-full w-full flex-col bg-sidebar text-fg" aria-label="Main">
       {/* Workspace switcher */}
-      <div className="px-2 pt-2">
+      <div className={cn("pt-2", collapsed ? "flex flex-col items-center gap-1 px-1.5" : "group/ws flex items-center gap-0.5 px-2")}>
         <button
           ref={menuAnchorRef}
           type="button"
           onClick={menu.toggle}
-          className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-left hover:bg-hover"
+          title={collapsed ? workspaceName : undefined}
+          className={cn("flex h-9 items-center gap-2 rounded-md text-left hover:bg-hover", collapsed ? "w-9 justify-center" : "min-w-0 flex-1 px-2")}
         >
           <SpotMark size={24} />
-          <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">{workspaceName}</span>
-          {!canEdit && <span className="shrink-0 rounded-[3px] bg-active px-1.5 text-[11px] text-fg-2">View only</span>}
-          <ChevronDown className="size-3.5 text-fg-3" />
+          {!collapsed && (
+            <>
+              <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">{workspaceName}</span>
+              {!canEdit && <span className="shrink-0 rounded-[3px] bg-active px-1.5 text-[11px] text-fg-2">View only</span>}
+              <ChevronDown className="size-3.5 text-fg-3" />
+            </>
+          )}
         </button>
+        {onToggleCollapse && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            title={collapsed ? "Expand sidebar (⌘\\)" : "Collapse sidebar (⌘\\)"}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className={cn(
+              "flex size-7 shrink-0 items-center justify-center rounded-md text-fg-3 hover:bg-hover hover:text-fg-2",
+              !collapsed && "opacity-0 focus-visible:opacity-100 group-hover/ws:opacity-100",
+            )}
+          >
+            {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+          </button>
+        )}
         <Popover open={menu.open} onClose={menu.close} anchor={menu.anchor} width={260}>
           <div className="flex items-center gap-2.5 px-3 pb-2 pt-3">
             <Avatar profile={me} size={32} />
@@ -259,7 +294,7 @@ export function Sidebar() {
         </Popover>
       </div>
 
-      <div className="px-2 pt-1">
+      <div className={cn("pt-1", collapsed ? "px-1.5" : "px-2")}>
         <Reorderable
           order={top.order}
           onReorder={top.save}
@@ -272,16 +307,22 @@ export function Sidebar() {
                     closeMobileNav();
                     openSearch();
                   }}
-                  className="flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-[14px] text-fg-2 hover:bg-hover"
+                  title={collapsed ? "Search (⌘K)" : undefined}
+                  aria-label={collapsed ? "Search" : undefined}
+                  className={cn("flex h-[30px] w-full items-center gap-2 rounded-md text-[14px] text-fg-2 hover:bg-hover", collapsed ? "justify-center" : "px-2")}
                 >
                   <span className="flex size-[22px] items-center justify-center">
                     <Search className="size-[18px]" strokeWidth={1.8} />
                   </span>
-                  <span className="flex-1 text-left">Search</span>
-                  <Kbd>⌘K</Kbd>
+                  {!collapsed && (
+                    <>
+                      <span className="flex-1 text-left">Search</span>
+                      <Kbd>⌘K</Kbd>
+                    </>
+                  )}
                 </button>
               );
-            if (key === "inbox") return <InboxButton onNavigate={closeMobileNav} />;
+            if (key === "inbox") return <InboxButton onNavigate={closeMobileNav} compact={collapsed} />;
             const item = NAV_ITEMS.find((i) => i.href === key)!;
             const Icon = NAV_ICONS[item.icon]!;
             return (
@@ -297,7 +338,10 @@ export function Sidebar() {
         />
       </div>
 
-      <div className="mt-5 min-h-0 flex-1 overflow-y-auto px-2">
+      <div className={cn("mt-5 min-h-0 flex-1 overflow-y-auto", collapsed ? "px-1.5" : "px-2")}>
+        {collapsed ? (
+          <div className="mx-auto mb-2 h-px w-6 bg-line" aria-hidden />
+        ) : (
         <div className="mb-0.5 flex h-6 items-center gap-2 pl-2 pr-1">
           <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-fg-2">Active projects</span>
           <div role="radiogroup" aria-label="Which projects" className="flex shrink-0 rounded-md bg-hover p-px">
@@ -323,7 +367,8 @@ export function Sidebar() {
             ))}
           </div>
         </div>
-        {status === "loading" && <div className="px-2 py-1 text-[13px] text-fg-3">Loading…</div>}
+        )}
+        {status === "loading" && !collapsed && <div className="px-2 py-1 text-[13px] text-fg-3">Loading…</div>}
         {(() => {
           const row = (id: string) => {
             const p = activeProjects.find((x) => x.id === id)!;
@@ -345,12 +390,12 @@ export function Sidebar() {
             ids.map((id) => <div key={id}>{row(id)}</div>)
           );
         })()}
-        {status === "ready" && activeProjects.length === 0 && (
+        {status === "ready" && !collapsed && activeProjects.length === 0 && (
           <div className="px-2 py-1 text-[13px] text-fg-3">{sidebarProjects.scope === "mine" ? "You’re not on any active project" : "No active projects"}</div>
         )}
       </div>
 
-      <div className="border-t border-line px-2 py-2">
+      <div className={cn("border-t border-line py-2", collapsed ? "px-1.5" : "px-2")}>
         <NavRow
           href="/settings"
           label="Settings"
@@ -362,13 +407,15 @@ export function Sidebar() {
           <Link
             href="/settings?section=data"
             onClick={closeMobileNav}
-            className="mt-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-[12px] text-fg-2 hover:bg-hover"
+            title={collapsed ? "Demo mode — local data only" : undefined}
+            className={cn("mt-1 flex items-center gap-2 rounded-md py-1.5 text-[12px] text-fg-2 hover:bg-hover", collapsed ? "justify-center" : "px-2")}
           >
             <span className="size-1.5 rounded-full bg-[var(--dot-orange)]" />
-            Demo mode — local data only
+            {!collapsed && "Demo mode — local data only"}
           </Link>
         )}
       </div>
     </nav>
+    </CollapsedContext>
   );
 }

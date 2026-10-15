@@ -32,7 +32,7 @@ export function useMyNotifications() {
 }
 
 /** Sidebar row + popover inbox. */
-export function InboxButton({ onNavigate }: { onNavigate?: () => void }) {
+export function InboxButton({ onNavigate, compact }: { onNavigate?: () => void; compact?: boolean }) {
   const mine = useMyNotifications();
   const unread = mine.filter((n) => !n.read_at).length;
   const { setAnchor: anchorRef, ...pop } = usePopover<HTMLButtonElement>();
@@ -42,13 +42,20 @@ export function InboxButton({ onNavigate }: { onNavigate?: () => void }) {
         ref={anchorRef}
         type="button"
         onClick={pop.toggle}
-        className={cn("flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-[14px] transition-colors duration-75", pop.open ? "bg-active text-fg" : "text-fg-2 hover:bg-hover")}
+        title={compact ? `Inbox${unread ? ` · ${unread} unread` : ""}` : undefined}
+        aria-label={compact ? "Inbox" : undefined}
+        className={cn(
+          "flex h-[30px] w-full items-center gap-2 rounded-md text-[14px] transition-colors duration-75",
+          compact ? "justify-center" : "px-2",
+          pop.open ? "bg-active text-fg" : "text-fg-2 hover:bg-hover",
+        )}
       >
-        <span className="flex size-[22px] items-center justify-center">
+        <span className="relative flex size-[22px] items-center justify-center">
           <InboxIcon className="size-[18px]" strokeWidth={1.8} />
+          {compact && unread > 0 && <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-[var(--dot-red)] ring-2 ring-[var(--sidebar)]" />}
         </span>
-        <span className="flex-1 text-left">Inbox</span>
-        {unread > 0 && <span className="rounded-full bg-[var(--dot-red)] px-1.5 text-[11px] font-medium leading-4 text-white">{unread}</span>}
+        {!compact && <span className="flex-1 text-left">Inbox</span>}
+        {!compact && unread > 0 && <span className="rounded-full bg-[var(--dot-red)] px-1.5 text-[11px] font-medium leading-4 text-white">{unread}</span>}
       </button>
       <Popover open={pop.open} onClose={pop.close} anchor={pop.anchor} width={380}>
         <InboxPanel

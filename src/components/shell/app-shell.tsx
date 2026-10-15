@@ -13,10 +13,14 @@ import { NotificationWatcher } from "./inbox";
 import { markPopState, recordVisit } from "./nav-history";
 import { QuickAddProvider } from "./quick-add";
 import { VoiceTyping } from "./voice-typing";
+import { usePref } from "@/lib/hooks";
+import { SIDEBAR_COLLAPSED_PREF } from "./sidebar";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [collapsed, setCollapsed] = usePref(SIDEBAR_COLLAPSED_PREF, false);
+  const toggleCollapsed = useCallback(() => setCollapsed(!collapsed), [setCollapsed, collapsed]);
   const pathname = usePathname();
   useTheme(); // keeps data-theme in sync with the stored preference
 
@@ -26,10 +30,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         e.preventDefault();
         setSearchOpen((o) => !o);
       }
+      // ⌘\ — collapse / expand the sidebar (as in Notion).
+      if ((e.metaKey || e.ctrlKey) && e.key === "\\") {
+        e.preventDefault();
+        toggleCollapsed();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [toggleCollapsed]);
 
   useEffect(() => {
     window.addEventListener("popstate", markPopState);
@@ -57,8 +66,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <TaskSelectionProvider>
       <QuickAddProvider>
       <div className="flex h-dvh overflow-hidden">
-        <aside className="no-print hidden w-60 shrink-0 border-r border-line md:block">
-          <Sidebar />
+        <aside className={cn("no-print hidden shrink-0 border-r border-line transition-[width] duration-150 md:block", collapsed ? "w-[52px]" : "w-60")}>
+          <Sidebar collapsed={collapsed} onToggleCollapse={toggleCollapsed} />
         </aside>
         {mobileNavOpen && (
           <div className="anim-fade fixed inset-0 z-40 bg-[rgba(15,15,15,0.4)] md:hidden" onClick={closeMobileNav}>
