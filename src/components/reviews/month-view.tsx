@@ -17,8 +17,9 @@ import { useConfirm } from "@/components/ui/confirm";
 import { Money, RevealToggle, useMoneyVisible } from "@/components/insights/money";
 import { Card, MonthPicker, PersonBars, PersonPicker, TagLegend, useEnsureMonthReview, useMembers, useMonthMoney } from "./review-ui";
 import { CommitmentSummary, Commitments } from "./commitments";
+import { TimeSpent, TimeSpentSummary } from "./time-spent";
 
-/** Reviews → Month: what each person did, the money, Claude's report and the commitments. */
+/** Reviews → Month: what each person did, the money, Claude's report, where everyone's time went and the commitments. */
 export function MonthView({ months, person, onChange }: { months: string[]; person: UUID | null; onChange: (patch: { months?: string[]; person?: UUID | null }) => void }) {
   const { data } = useWorkspace();
   const members = useMembers();
@@ -47,6 +48,18 @@ export function MonthView({ months, person, onChange }: { months: string[]; pers
             <Report month={sorted[0]!} person={person} />
           </div>
         )}
+      </Card>
+
+      <Card
+        title="Time spent"
+        subtitle={
+          single
+            ? `Where each of you says ${monthName(sorted[0]!)} went: your own split across projects, to 100%. Fill yours in by the end of the month.`
+            : "Each person’s own split of their time, averaged over the months they filled in."
+        }
+        action={single ? <TimeSpentSummary month={sorted[0]!} people={people} /> : <TagLegend />}
+      >
+        <TimeSpent key={sorted.join()} months={sorted} people={people} credits={credits} />
       </Card>
 
       {single ? (

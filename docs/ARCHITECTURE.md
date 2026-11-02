@@ -21,6 +21,7 @@ This document answers the brief's "first task" list: schema, routes, components,
 | `reviews` | Monthly and quarterly reviews | `period` = `month`/`quarter`, `unique(period, period_start)`. Replaces the two separate review tables. |
 | `commitments` | What the studio or one person commits to for a month; ticked done, or not done + why | Migration 0011. Keyed by `month` (first day). |
 | `goals` | Monthly or quarterly goals (open / done / missed), owner, optional domain | Migration 0011. Reviews → Goals timeline. |
+| `time_splits` | Each person's own split of a month across projects, in percent (null project = other work); a person's rows add up to 100 | Migration 0015. Everyone reads; RLS lets each editor write only their own rows. |
 | `activity_log` | Lightweight history | Written **only by the database** (`log_activity` trigger). Clients can read it but can't write to it. |
 | `kb_pages` | Spot Base pages (Markdown) | **SPOT.md is derived from these pages**, not stored a second time. |
 | `finance_sources` | Source kind (`upload` / `demo`), last uploaded file name + configurable column **mapping** (`jsonb`) | |
@@ -35,7 +36,7 @@ This document answers the brief's "first task" list: schema, routes, components,
 ### Reviews (migration 0011)
 
 `/reviews` has three tabs, with filters in the URL (`?months=`, `?who=`, `?tab=goals&quarter=`, `?tab=overview&range=&at=`):
-- **Month** (default; in a month's first week it opens on last month): revenue collected and burn, typed in on that month's `reviews` row and pre-filled from the finance sheet; one bar per person of completed tasks split Client / Studio / Personal (project type; no project = Studio; a task with two assignees gives each 0.5); Claude's report; the month's commitments. Several months can be selected: bars and money add up, and each month folds out below.
+- **Month** (default; in a month's first week it opens on last month): revenue collected and burn, typed in on that month's `reviews` row and pre-filled from the finance sheet; one bar per person of completed tasks split Client / Studio / Personal (project type; no project = Studio; a task with two assignees gives each 0.5); Claude's report; **Time spent** — each person's own split of the month across projects, to 100% (`time_splits`; you edit only yours, Home reminds you over the month's last 5 days and the next month's first week); the month's commitments. Several months can be selected: bars and money add up, Time spent shows each person's average over the months they filled in, and each month folds out below.
 - **Goals:** one quarter as a timeline, with quarter goals across the top and month goals under each month.
 - **Overview:** month / quarter / year. Money, project status, tasks per domain, people.
 

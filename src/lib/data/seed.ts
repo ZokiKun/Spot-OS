@@ -373,7 +373,8 @@ export function buildSeed(): Snapshot {
 
 /**
  * Six months of review history: domains, completed tasks across Client / Studio / Personal, money,
- * commitments with results, goals for this quarter and last, and Claude reports for recent months.
+ * everyone's own time splits, commitments with results, goals for this quarter and last, and Claude
+ * reports for recent months.
  */
 function seedStudioReview(
   s: Snapshot,
@@ -517,6 +518,27 @@ Client milestones and the Instagram plan landed. The showreel section and the si
 - Halcyon showed up after the month was planned and pushed the studio work aside. Is there a rule for how much of a month an unplanned client can take?
 - ${first(jordan)} is holding up most of the studio's own work; spread it out, or make it explicitly theirs?`,
   });
+
+  // Time spent: each person's own split. Everyone filled in older months; Jordan hasn't done last month yet.
+  const round5 = (n: number) => Math.round(n / 5) * 5;
+  for (let m = 6; m >= 1; m--) {
+    const month = shiftMonth(thisMonth, -m);
+    for (const id of [alex.id, sam.id, jordan.id]) {
+      if (m === 1 && id === jordan.id) continue;
+      const b = base[id]!;
+      const client = round5(Math.min(80, b.client * (m === 1 ? 1.3 : clientPush[m]!)));
+      const personal = round5(b.personal * 0.8);
+      const other = 10;
+      const shares: [string | null, number][] =
+        m === 1 && id !== jordan.id
+          ? [[halcyon.id, client - 20], [pools.client[id]![0]!.id, 20]]
+          : [[pools.client[id]![0]!.id, client - 15], [pools.client[id]![1]!.id, 15]];
+      shares.push([pools.studio[id]![0]!.id, 100 - client - personal - other], [pools.personal[id]![0]!.id, personal], [null, other]);
+      shares.forEach(([project_id, percent]) =>
+        s.time_splits.push({ id: uid(), month, profile_id: id, project_id, percent, created_by: id, created_at: iso(addDaysISO(month, 27), 18), updated_at: iso(addDaysISO(month, 27), 18) }),
+      );
+    }
+  }
 
   // Commitments: a few per month. Older months are reviewed; last month is half-reviewed (to try ticking).
   const templates: [string, string, "studio" | "personal"][] = [

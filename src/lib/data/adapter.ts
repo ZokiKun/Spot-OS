@@ -44,6 +44,7 @@ export function emptySnapshot(): Snapshot {
     reviews: [],
     commitments: [],
     goals: [],
+    time_splits: [],
     activity_log: [],
     kb_pages: [],
     finance_sources: [],
@@ -69,6 +70,7 @@ export function normalizeSnapshot(s: Snapshot): Snapshot {
     invoices: s.invoices ?? [],
     commitments: s.commitments ?? [],
     goals: s.goals ?? [],
+    time_splits: s.time_splits ?? [],
     attachments: s.attachments.map((a) => ({ ...a, kb_page_id: a.kb_page_id ?? null, task_id: a.task_id ?? null })),
     notifications: s.notifications ?? [],
   };

@@ -15,7 +15,7 @@ const MAX_DIGEST = 60_000; // characters — a busy month is a few thousand
 
 const SYSTEM = `You write the monthly review for a small creative studio (about three people) that does client work, its own studio work (website, social media, outreach, events) and personal growth (courses, practice).
 
-You get one month of data from their studio OS: each person's completed tasks grouped by project, with the project type in brackets ([client], [studio], [personal]), the commitments they made at the start of the month and whether they were done, projects started during the month, and sometimes the money.
+You get one month of data from their studio OS: each person's completed tasks grouped by project, with the project type in brackets ([client], [studio], [personal]), each person's own split of their time across projects in percent (when they've filled it in, this is the better signal of where their time went; tasks only show what got ticked off), the commitments they made at the start of the month and whether they were done, projects started during the month, and sometimes the money.
 
 Write the report in Markdown, in this shape:
 

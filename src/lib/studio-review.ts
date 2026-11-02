@@ -131,11 +131,62 @@ export function tagCounts(credits: Credit[]): TagCounts {
 /** Tasks rounded for display: 3, 2.5, 0.3 → "3", "2.5", "0.3". */
 export const fmtCount = (n: number) => String(Math.round(n * 10) / 10);
 
+// ─── Time spent: each person's own split of their month ───
+
+export const OTHER_WORK = "Other work";
+
+/** One project's share of a person's month, in percent. projectId null = other work. */
+export interface TimeShare {
+  projectId: UUID | null;
+  project: Project | undefined;
+  tag: WorkTag;
+  percent: number;
+}
+
+/** `total` is 100 once the split is filled in; `filled` counts the months that are. */
+export interface TimeSplitSummary {
+  shares: TimeShare[];
+  total: number;
+  filled: number;
+}
+
+export const shareLabel = (s: TimeShare) => s.project?.name ?? OTHER_WORK;
+
+/** One person's split of one month, biggest share first. */
+export function monthTimeSplit(data: Pick<Snapshot, "time_splits" | "projects">, month: string, profileId: UUID): TimeSplitSummary {
+  const projects = new Map(data.projects.map((p) => [p.id, p]));
+  const by = new Map<UUID | null, number>();
+  data.time_splits.forEach((r) => {
+    if (r.month === month && r.profile_id === profileId) by.set(r.project_id, (by.get(r.project_id) ?? 0) + r.percent);
+  });
+  const shares = [...by].map(([projectId, percent]) => {
+    const project = projectId ? projects.get(projectId) : undefined;
+    return { projectId, project, tag: taskTag(project), percent };
+  });
+  shares.sort((a, b) => b.percent - a.percent);
+  const total = shares.reduce((sum, x) => sum + x.percent, 0);
+  return { shares, total, filled: total === 100 ? 1 : 0 };
+}
+
+/** Several months: the average over the months the person filled in. */
+export function timeSplitAcross(data: Pick<Snapshot, "time_splits" | "projects">, months: string[], profileId: UUID): TimeSplitSummary {
+  if (months.length === 1) return monthTimeSplit(data, months[0]!, profileId);
+  const done = months.map((m) => monthTimeSplit(data, m, profileId)).filter((s) => s.total === 100);
+  const by = new Map<UUID | null, TimeShare>();
+  done.forEach((s) => s.shares.forEach((x) => by.set(x.projectId, { ...x, percent: (by.get(x.projectId)?.percent ?? 0) + x.percent / done.length })));
+  const shares = [...by.values()].sort((a, b) => b.percent - a.percent);
+  return { shares, total: done.length ? 100 : 0, filled: done.length };
+}
+
+/** "Monsters Comic 40% · Spot OS 30% · Other work 30%" */
+export const sharesText = (shares: TimeShare[], sep = " · ") => shares.map((x) => `${shareLabel(x)} ${Math.round(x.percent)}%`).join(sep);
+
 // ─── Digest for Claude's report ───
 
 /**
  * Plain-text summary of one month's data, sent to Claude to write the report. Only what's needed:
- * names, project names and types, task titles, commitments and the money (when it's been entered).
+ * names, project names and types, task titles, each person's own time split, commitments and the money
+ * (when it's been entered).
  */
 export function monthDigest(data: Snapshot, month: string, currency: string): string {
   const end = shiftMonth(month, 1);
@@ -153,6 +204,14 @@ export function monthDigest(data: Snapshot, month: string, currency: string): st
     lines.push(
       `## ${person.full_name}${person.role_title ? ` (${person.role_title})` : ""}`,
       `Tasks completed: ${fmtCount(counts.total)} — client ${fmtCount(counts.client)}, studio ${fmtCount(counts.studio)}, personal ${fmtCount(counts.personal)}`,
+    );
+    const time = monthTimeSplit(data, month, person.id);
+    lines.push(
+      time.total === 100
+        ? `Time spent (their own split): ${sharesText(time.shares, ", ")}`
+        : time.total
+          ? `Time spent (their own split, only ${time.total}% filled in): ${sharesText(time.shares, ", ")}`
+          : "Time spent: not filled in",
     );
     const byProject = new Map<string, Credit[]>();
     mine.forEach((c) => {

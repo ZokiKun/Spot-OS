@@ -250,6 +250,19 @@ export interface Goal {
   updated_at: ISODateTime;
 }
 
+/** One person's share of their month on one project (Reviews → Month → Time spent). A person's rows for a month add up to 100. */
+export interface TimeSplit {
+  id: UUID;
+  month: ISODate; // first day of the month
+  profile_id: UUID;
+  /** null = other work outside projects (admin, meetings, learning). */
+  project_id: UUID | null;
+  percent: number;
+  created_by: UUID | null;
+  created_at: ISODateTime;
+  updated_at: ISODateTime;
+}
+
 export interface ActivityEntry {
   id: UUID;
   actor_id: UUID | null;
@@ -368,6 +381,7 @@ export interface Tables {
   reviews: Review;
   commitments: Commitment;
   goals: Goal;
+  time_splits: TimeSplit;
   activity_log: ActivityEntry;
   kb_pages: KbPage;
   finance_sources: FinanceSource;
@@ -392,6 +406,7 @@ export const TABLE_NAMES: TableName[] = [
   "reviews",
   "commitments",
   "goals",
+  "time_splits",
   "activity_log",
   "kb_pages",
   "finance_sources",

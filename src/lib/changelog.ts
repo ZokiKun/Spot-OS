@@ -14,6 +14,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    id: "2026-11-02-2",
+    date: "2026-11-02",
+    title: "Time spent: say where your month went",
+    items: [
+      {
+        title: "Split your month, to 100%",
+        body: "Reviews → Month has a new Time spent chart. At the end of each month, press Fill in yours and give each project (or other work) its share of your time — it saves once it adds up to 100%. Start from my tasks fills it in from what you ticked off, for you to adjust.",
+      },
+      { title: "See everyone's", body: "One bar per person, hover for each project's share. Pick several months to see each person's average. Home reminds you at the month's end until yours is in." },
+    ],
+  },
+  {
     id: "2026-11-02",
     date: "2026-11-02",
     title: "Reviews: the month at a glance, goals and an overview",

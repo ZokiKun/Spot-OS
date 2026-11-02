@@ -17,7 +17,7 @@ import { HOME_LAYOUTS, isHomeLayout, useSavedLayout, type HomeLayout } from "./h
 import { PersonalView } from "./personal-view";
 import { StudioView } from "./studio-view";
 import { QuickAddFab } from "@/components/shell/quick-add";
-import { findMonthReview, monthName, monthStartOf, shiftMonth } from "@/lib/studio-review";
+import { findMonthReview, monthName, monthStartOf, monthTimeSplit, shiftMonth } from "@/lib/studio-review";
 
 type View = "personal" | "studio";
 
@@ -137,10 +137,11 @@ export function HomeView() {
 
 /**
  * The monthly review rhythm: in a month's first week, last month's report and commitments are due;
- * after that, this month should have its commitments written down.
+ * at each month's end, everyone splits their own time; after that, this month should have its
+ * commitments written down.
  */
 function ReviewNudge() {
-  const { data } = useWorkspace();
+  const { data, me } = useWorkspace();
   const today = new Date();
   const month = monthStartOf(today);
   const prev = shiftMonth(month, -1);
@@ -153,6 +154,14 @@ function ReviewNudge() {
       text = `${monthName(prev)}’s review is due: ${!findMonthReview(data, prev)?.report_md ? "write the report" : "tick the commitments"}.`;
       cta = `Review ${monthName(prev)}`;
     }
+  }
+  // Your own time split: due over the month's last 5 days and the next month's first week.
+  const lastDays = today.getDate() > new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate() - 5;
+  const splitMonth = today.getDate() <= 7 ? prev : lastDays ? month : null;
+  if (!text && me && splitMonth && monthTimeSplit(data, splitMonth, me.id).total !== 100) {
+    text = `Where did your ${monthName(splitMonth)} go? Split your time across projects, to 100%.`;
+    cta = "Fill it in";
+    href = `/reviews?months=${splitMonth}`;
   }
   if (!text && !data.commitments.some((c) => c.month === month)) {
     text = `No commitments written down for ${monthName(month)} yet.`;
