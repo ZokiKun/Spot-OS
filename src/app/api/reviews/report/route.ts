@@ -37,6 +37,11 @@ Rules: use only facts from the data and never invent numbers, tasks or reasons. 
 
 const fail = (status: number, error: string) => NextResponse.json({ error }, { status });
 
+/** Whether Generate report can work here — the button is hidden when there's no key. */
+export async function GET() {
+  return NextResponse.json({ enabled: Boolean(process.env.ANTHROPIC_API_KEY) });
+}
+
 export async function POST(request: NextRequest) {
   if (!process.env.ANTHROPIC_API_KEY)
     return fail(503, "Claude isn’t connected yet. Add ANTHROPIC_API_KEY to the environment (Vercel → Settings → Environment Variables, or .env.local).");

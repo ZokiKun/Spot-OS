@@ -150,7 +150,7 @@ function ReviewNudge() {
   if (today.getDate() <= 7) {
     const prevOpen = data.commitments.some((c) => c.month === prev && !c.status);
     if (!findMonthReview(data, prev)?.report_md || prevOpen) {
-      text = `${monthName(prev)}’s review is due: ${!findMonthReview(data, prev)?.report_md ? "generate the report" : "tick the commitments"}.`;
+      text = `${monthName(prev)}’s review is due: ${!findMonthReview(data, prev)?.report_md ? "write the report" : "tick the commitments"}.`;
       cta = `Review ${monthName(prev)}`;
     }
   }

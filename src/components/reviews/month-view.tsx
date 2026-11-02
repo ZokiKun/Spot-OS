@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { NotebookText, Pencil, RefreshCw, Sparkles } from "lucide-react";
 import type { UUID } from "@/lib/types";
@@ -222,6 +222,29 @@ function sectionFor(md: string, firstName: string | null) {
 /** Claude writes Markdown; links become plain text so nothing in the report can point elsewhere. */
 const reportHtml = (md: string) => renderMarkdown(md.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1"));
 
+/** Is Claude connected (ANTHROPIC_API_KEY set)? Asked once per page load. */
+let claudeEnabled: Promise<boolean> | null = null;
+function useClaudeEnabled() {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    claudeEnabled ??= fetch("/api/reviews/report")
+      .then((r) => r.json())
+      .then((b: { enabled?: boolean }) => !!b.enabled)
+      .catch(() => false);
+    let live = true;
+    void claudeEnabled.then((v) => live && setEnabled(v));
+    return () => {
+      live = false;
+    };
+  }, []);
+  return enabled;
+}
+
+/**
+ * The month's written report. With ANTHROPIC_API_KEY set, Generate asks Claude to write it; without
+ * it, someone writes it by hand (or asks Claude in Claude Code at month end) using the month's data
+ * shown next to the editor.
+ */
 function Report({ month, person }: { month: string; person: UUID | null }) {
   const { data, update, canEdit, me } = useWorkspace();
   const people = useProfiles();
@@ -237,6 +260,7 @@ function Report({ month, person }: { month: string; person: UUID | null }) {
   const firstName = person ? (people.get(person)?.full_name.split(" ")[0] ?? null) : null;
   const shown = reportHtml(sectionFor(report, firstName));
   const ongoing = month >= today;
+  const claude = useClaudeEnabled();
 
   const generate = async () => {
     if (report && !(await ask({ title: "Write a new report?", description: "Claude rewrites it from this month’s tasks. Edits you made to the current report are replaced.", confirmLabel: "Regenerate", danger: false })))
@@ -263,7 +287,9 @@ function Report({ month, person }: { month: string; person: UUID | null }) {
   const saveEdit = async () => {
     if (editing == null) return;
     const r = await ensure();
-    void update("reviews", r.id, { report_md: editing.trim() || null, updated_by: me?.id ?? null });
+    const text = editing.trim() || null;
+    const stamp = text && !r.report_md ? { report_generated_at: new Date().toISOString(), report_generated_by: me?.id ?? null } : {};
+    void update("reviews", r.id, { report_md: text, ...stamp, updated_by: me?.id ?? null });
     setEditing(null);
   };
 
@@ -271,24 +297,26 @@ function Report({ month, person }: { month: string; person: UUID | null }) {
     <div>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Sparkles className="size-4 text-[var(--dot-purple)]" />
-        <h3 className="text-[14px] font-semibold">Claude’s report{firstName && report ? ` · ${firstName}` : ""}</h3>
+        <h3 className="text-[14px] font-semibold">Monthly report{firstName && report ? ` · ${firstName}` : ""}</h3>
         {review?.report_generated_at && (
           <span className="text-[12px] text-fg-3">
             Written {formatDay(review.report_generated_at.slice(0, 10))}
-            {review.report_generated_by ? ` · asked by ${people.get(review.report_generated_by)?.full_name.split(" ")[0] ?? "someone"}` : ""}
+            {review.report_generated_by ? ` · by ${people.get(review.report_generated_by)?.full_name.split(" ")[0] ?? "someone"}` : ""}
           </span>
         )}
         {canEdit && (
           <div className="ml-auto flex items-center gap-1">
-            {report && editing == null && (
-              <Button variant="ghost" onClick={() => setEditing(report)}>
-                <Pencil className="size-3.5" /> Edit
+            {editing == null && (
+              <Button variant={report || claude ? "ghost" : "secondary"} onClick={() => setEditing(report)}>
+                <Pencil className="size-3.5" /> {report ? "Edit" : "Write report"}
               </Button>
             )}
-            <Button variant={report ? "ghost" : "primary"} disabled={busy || editing != null} onClick={() => void generate()}>
-              {report ? <RefreshCw className={cn("size-3.5", busy && "animate-spin")} /> : <Sparkles className="size-3.5" />}
-              {busy ? "Claude is reading the month…" : report ? "Regenerate" : "Generate report"}
-            </Button>
+            {claude && (
+              <Button variant={report ? "ghost" : "primary"} disabled={busy || editing != null} onClick={() => void generate()}>
+                {report ? <RefreshCw className={cn("size-3.5", busy && "animate-spin")} /> : <Sparkles className="size-3.5" />}
+                {busy ? "Claude is reading the month…" : report ? "Regenerate" : "Generate report"}
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -297,10 +325,18 @@ function Report({ month, person }: { month: string; person: UUID | null }) {
         <div>
           <AutoTextarea
             autoFocus
+            aria-label="Report (Markdown)"
             value={editing}
             onChange={(e) => setEditing(e.target.value)}
+            placeholder={"## In short\n…\n\n## People\n### Name\n- …\n\n## Commitments\n…\n\n## Worth discussing\n- …"}
             className="min-h-[160px] rounded-md bg-input p-3 font-mono text-[13px] leading-relaxed shadow-[inset_0_0_0_1px_var(--border-strong)]"
           />
+          <details className="mt-2 rounded-md bg-subtle px-3 py-2" open={!report}>
+            <summary className="cursor-pointer text-[12.5px] font-medium text-fg-2">{monthName(month)}’s data — completed tasks per person, commitments</summary>
+            <pre aria-label={`${monthName(month)} data`} className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap font-mono text-[12px] leading-relaxed text-fg-2">
+              {monthDigest(data, month, fin.currency)}
+            </pre>
+          </details>
           <div className="mt-2 flex justify-end gap-1.5">
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Cancel
@@ -317,8 +353,8 @@ function Report({ month, person }: { month: string; person: UUID | null }) {
           {busy
             ? "Claude is reading this month’s tasks and commitments…"
             : ongoing
-              ? `${monthName(month)} isn’t over yet. At the end of the month, Claude reads everyone’s completed tasks and commitments and writes what each person did and where the time went.`
-              : `No report yet. Claude reads ${monthName(month)}’s completed tasks and commitments and writes what each person did and where the time went.`}
+              ? `${monthName(month)} isn’t over yet. At the end of the month, write what each person did and where the time went — or ask Claude to write it from the month’s tasks.`
+              : `No report yet. Write what each person did and where the time went — or ask Claude to write it from ${monthName(month)}’s tasks.`}
         </p>
       )}
     </div>
