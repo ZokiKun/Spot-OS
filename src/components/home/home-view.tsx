@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Building2, FileSpreadsheet, House, Pin, User } from "lucide-react";
+import { Building2, ClipboardCheck, FileSpreadsheet, House, Pin, User } from "lucide-react";
 import { useWorkspace } from "@/lib/store";
 import { useFinance } from "@/lib/finance/use-finance";
 import { isActiveProject, isAssignedTo, isDueToday, isOverdue } from "@/lib/selectors";
@@ -17,6 +17,7 @@ import { HOME_LAYOUTS, isHomeLayout, useSavedLayout, type HomeLayout } from "./h
 import { PersonalView } from "./personal-view";
 import { StudioView } from "./studio-view";
 import { QuickAddFab } from "@/components/shell/quick-add";
+import { findMonthReview, monthName, monthStartOf, shiftMonth } from "@/lib/studio-review";
 
 type View = "personal" | "studio";
 
@@ -94,6 +95,7 @@ export function HomeView() {
           {greeting()}, {firstName(me?.full_name) || "there"}
         </h1>
         <p className="mt-1.5 text-[15px] text-fg-2">{summary}</p>
+        <ReviewNudge />
         {fin.stale && (
           <Link href="/settings?section=finance" className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-fg-2 hover:text-fg">
             <FileSpreadsheet className="size-3.5" />
@@ -130,5 +132,38 @@ export function HomeView() {
       {view === "studio" && <StudioView layout={layout} />}
       <QuickAddFab />
     </Page>
+  );
+}
+
+/**
+ * The monthly review rhythm: in a month's first week, last month's report and commitments are due;
+ * after that, this month should have its commitments written down.
+ */
+function ReviewNudge() {
+  const { data } = useWorkspace();
+  const today = new Date();
+  const month = monthStartOf(today);
+  const prev = shiftMonth(month, -1);
+  let text: string | null = null;
+  let cta = "Open Reviews";
+  let href = "/reviews";
+  if (today.getDate() <= 7) {
+    const prevOpen = data.commitments.some((c) => c.month === prev && !c.status);
+    if (!findMonthReview(data, prev)?.report_md || prevOpen) {
+      text = `${monthName(prev)}’s review is due: ${!findMonthReview(data, prev)?.report_md ? "generate the report" : "tick the commitments"}.`;
+      cta = `Review ${monthName(prev)}`;
+    }
+  }
+  if (!text && !data.commitments.some((c) => c.month === month)) {
+    text = `No commitments written down for ${monthName(month)} yet.`;
+    cta = "Add them";
+    href = `/reviews?months=${month}`;
+  }
+  if (!text) return null;
+  return (
+    <Link href={href} className="mt-2 flex w-fit items-center gap-1.5 text-[13px] text-fg-2 hover:text-fg">
+      <ClipboardCheck className="size-3.5" />
+      {text} <span className="font-medium text-accent">{cta}</span>
+    </Link>
   );
 }

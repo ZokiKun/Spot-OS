@@ -2,7 +2,9 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Bell, Bot, Building2, Database, FlaskConical, Palette, Plug, Settings, Wallet } from "lucide-react";
+import { ArrowDown, ArrowUp, Bell, Bot, Building2, Database, FlaskConical, Palette, Plug, Settings, Trash2, Wallet } from "lucide-react";
+import { useDomains } from "@/lib/domains";
+import { PersonField } from "@/components/ui/fields";
 import type { Profile } from "@/lib/types";
 import { MEMBER_COLORS } from "@/lib/constants";
 import { useWorkspace } from "@/lib/store";
@@ -13,7 +15,7 @@ import { usePref } from "@/lib/hooks";
 import { cn, downloadFile, timeAgo } from "@/lib/utils";
 import { Page } from "@/components/shell/page";
 import { PALETTES, TYPEFACES, useTheme } from "@/components/shell/theme";
-import { Button } from "@/components/ui/button";
+import { Button, IconButton } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { EditableText, TextInput } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
@@ -379,7 +381,70 @@ function WorkspaceSettings() {
           <MemberRow key={p.id} profile={p} />
         ))}
       </SettingsSection>
+      <DomainSettings />
     </>
+  );
+}
+
+/** The studio's verticals. Each has one owner; colours follow the order (chart-safe). */
+function DomainSettings() {
+  const { data, canEdit } = useWorkspace();
+  const domains = useDomains();
+  const ask = useConfirm();
+  const [draft, setDraft] = useState("");
+  const planners = data.profiles.filter((p) => p.access !== "viewer");
+  const used = (id: string) => data.projects.filter((p) => p.domain === id).length;
+  return (
+    <SettingsSection
+      title="Domains"
+      description="The verticals the studio keeps moving forward (e.g. Animation, UI/UX, Social media). Each has one owner who is accountable for it — others still work in it. Projects pick a domain; a task can override its project’s. Reviews → Insights shows where the work went."
+    >
+      {domains.list.length === 0 && <p className="py-3 text-[13px] text-fg-3">No domains yet.</p>}
+      {domains.list.map((d, i) => (
+        <div key={d.id} className="flex items-center gap-3 border-b border-line py-2 last:border-0">
+          <span className={`dot-${d.color} size-2.5 shrink-0 rounded-full`} />
+          <EditableText value={d.name} onCommit={(name) => name && domains.edit(d.id, { name })} className="min-w-0 flex-1 text-[14px]" />
+          <span className="hidden text-[12px] text-fg-3 sm:inline">{used(d.id)} project{used(d.id) === 1 ? "" : "s"}</span>
+          <div className="w-40">
+            <PersonField people={planners} value={d.owner_id} placeholder="No owner" onChange={(owner_id) => domains.edit(d.id, { owner_id })} />
+          </div>
+          {canEdit && (
+            <div className="flex items-center">
+              <IconButton label="Move up" disabled={i === 0} onClick={() => domains.move(d.id, -1)}>
+                <ArrowUp className="size-3.5" />
+              </IconButton>
+              <IconButton label="Move down" disabled={i === domains.list.length - 1} onClick={() => domains.move(d.id, 1)}>
+                <ArrowDown className="size-3.5" />
+              </IconButton>
+              <IconButton
+                label="Delete domain"
+                onClick={() =>
+                  void ask({ title: `Delete “${d.name}”?`, description: "Projects and tasks in it will show “No domain”." }).then((ok) => ok && domains.remove(d.id))
+                }
+              >
+                <Trash2 className="size-3.5" />
+              </IconButton>
+            </div>
+          )}
+        </div>
+      ))}
+      {canEdit && (
+        <form
+          className="mt-2 flex items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            domains.add(draft);
+            setDraft("");
+          }}
+        >
+          <TextInput value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="New domain, e.g. Animation" className="max-w-64" />
+          <Button type="submit" disabled={!draft.trim()}>
+            Add domain
+          </Button>
+        </form>
+      )}
+      {domains.list.length > 5 && <p className="mt-2 text-[12px] text-fg-3">Charts show the first five domains by colour; the rest are grouped as “Other”.</p>}
+    </SettingsSection>
   );
 }
 

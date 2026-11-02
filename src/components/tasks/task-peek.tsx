@@ -2,7 +2,8 @@
 
 import { createContext, Suspense, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { CalendarDays, CircleDot, Copy, Flag, FolderKanban, Milestone as MilestoneIcon, Trash2, Users, Clock } from "lucide-react";
+import { CalendarDays, CircleDot, Compass, Copy, Flag, FolderKanban, Milestone as MilestoneIcon, Trash2, Users, Clock } from "lucide-react";
+import { useDomains } from "@/lib/domains";
 import { useWorkspace, useProfiles, type NewRow } from "@/lib/store";
 import { TASK_PRIORITIES } from "@/lib/constants";
 import { statusChange, statusOptions, taskStatusValue } from "@/lib/task-statuses";
@@ -146,6 +147,7 @@ function TaskPeek({ taskId, onClose, onOpen }: { taskId: UUID | null; onClose: (
             onChange={(project_id) => project_id !== task.project_id && set({ project_id, milestone_id: null })}
           />
         </PropertyRow>
+        <TaskDomain domain={task.domain ?? null} projectDomain={project?.domain ?? null} onChange={(domain) => set({ domain })} />
         {project && (
           <PropertyRow icon={<MilestoneIcon className="size-4" />} label="Milestone">
             <MilestoneField
@@ -187,5 +189,25 @@ function TaskDescription({ task }: { task: Task }) {
       className="min-h-24"
       toolbarTop="top-0"
     />
+  );
+}
+
+/** A task counts towards its project's domain unless it overrides it (e.g. an animation task in a UI/UX project). */
+function TaskDomain({ domain, projectDomain, onChange }: { domain: string | null; projectDomain: string | null; onChange: (v: string | null) => void }) {
+  const domains = useDomains();
+  if (!domains.list.length) return null;
+  const inherited = domains.get(projectDomain);
+  const options = [...domains.list.map((d) => ({ value: d.id, label: d.name, color: d.color })), { value: "", label: inherited ? `Same as project (${inherited.name})` : "Same as project", color: "default" as const }];
+  return (
+    <PropertyRow icon={<Compass className="size-4" />} label="Domain">
+      <OptionField
+        variant="property"
+        kind="select"
+        options={options}
+        value={domains.get(domain) ? domain : null}
+        placeholder={inherited ? `${inherited.name} (from project)` : "No domain"}
+        onChange={(v) => onChange(v || null)}
+      />
+    </PropertyRow>
   );
 }

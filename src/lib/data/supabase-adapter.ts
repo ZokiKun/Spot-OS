@@ -9,7 +9,7 @@ import { getSupabaseBrowserClient } from "../supabase/client";
 import { STORAGE_BUCKET } from "../supabase/env";
 import { uid } from "../utils";
 
-const OPTIONAL_TABLES: TableName[] = ["milestones", "invoices"];
+const OPTIONAL_TABLES: TableName[] = ["milestones", "invoices", "commitments", "goals"];
 const MISSING_TABLE = ["42P01", "PGRST205"];
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365; // 1 year — see docs/ARCHITECTURE.md §6
 

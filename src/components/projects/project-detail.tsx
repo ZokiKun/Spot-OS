@@ -9,6 +9,7 @@ import {
   CalendarDays,
   CalendarPlus,
   CircleDot,
+  Compass,
   Contact,
   Ellipsis,
   Link2,
@@ -27,6 +28,7 @@ import {
 import type { Project } from "@/lib/types";
 import { PROJECT_STATUSES, PROJECT_TYPES } from "@/lib/constants";
 import { useProfiles, useWorkspace } from "@/lib/store";
+import { useDomains } from "@/lib/domains";
 import { hasClient, isAssignedTo, isOpen, isOverdue, projectProgress, sortTasks } from "@/lib/selectors";
 import { useDebouncedSave, usePref } from "@/lib/hooks";
 import { cn, formatDay, timeAgo } from "@/lib/utils";
@@ -250,6 +252,7 @@ export function ProjectDetail({ id }: { id: string }) {
 function ProjectProperties({ project, narrow = false }: { project: Project; narrow?: boolean }) {
   const { update } = useWorkspace();
   const people = useProfiles();
+  const domains = useDomains();
   const set = (patch: Partial<Project>) => void update("projects", project.id, patch);
   return (
     <div className="space-y-0.5">
@@ -258,6 +261,16 @@ function ProjectProperties({ project, narrow = false }: { project: Project; narr
       </PropertyRow>
       <PropertyRow narrow={narrow} icon={<TagIcon className="size-4" />} label="Type">
         <OptionField variant="property" kind="select" options={PROJECT_TYPES} value={project.type} onChange={(type) => set({ type })} />
+      </PropertyRow>
+      <PropertyRow narrow={narrow} icon={<Compass className="size-4" />} label="Domain">
+        <OptionField
+          variant="property"
+          kind="select"
+          options={domains.options}
+          value={domains.get(project.domain) ? project.domain! : null}
+          placeholder="No domain"
+          onChange={(v) => set({ domain: v || null })}
+        />
       </PropertyRow>
       <PropertyRow narrow={narrow} icon={<Tags className="size-4" />} label="Tags">
         <TagsField variant="property" scope="project" value={project.tags} onChange={(tags) => set({ tags })} />

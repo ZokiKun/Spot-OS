@@ -6,6 +6,7 @@ import { todayISO } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import type { ProjectType } from "@/lib/types";
 import { PROJECT_TYPES } from "@/lib/constants";
+import { useDomains } from "@/lib/domains";
 import { useProfiles, useWorkspace } from "@/lib/store";
 import { Dialog } from "@/components/ui/dialog";
 import { Button, IconButton } from "@/components/ui/button";
@@ -28,6 +29,8 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
   const [icon, setIcon] = useState("📁");
   const { setAnchor: moreAnchorRef, ...more } = usePopover<HTMLButtonElement>();
   const [type, setType] = useState<ProjectType>("client");
+  const [domain, setDomain] = useState<string>("");
+  const domains = useDomains();
   const [client, setClient] = useState("");
   const [lead, setLead] = useState<string | null>(me?.id ?? null);
   const [deadline, setDeadline] = useState<string | null>(null);
@@ -39,6 +42,7 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
     setDeadline(null);
     setMilestones(blankMilestones());
     setIcon("📁");
+    setDomain("");
   };
 
   const submit = async () => {
@@ -47,6 +51,7 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
       name: name.trim(),
       icon,
       type,
+      domain: domain || null,
       status: "active",
       client: type === "client" ? client.trim() || null : null,
       client_contact: null,
@@ -135,6 +140,14 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
           <div className="-ml-1.5">
             <OptionField variant="property" kind="select" options={PROJECT_TYPES} value={type} onChange={setType} />
           </div>
+          {domains.list.length > 0 && (
+            <>
+              <span className="text-fg-2">Domain</span>
+              <div className="-ml-1.5">
+                <OptionField variant="property" kind="select" options={domains.options} value={domain || null} placeholder="No domain" onChange={setDomain} />
+              </div>
+            </>
+          )}
           {type === "client" && (
             <>
               <span className="text-fg-2">Client</span>

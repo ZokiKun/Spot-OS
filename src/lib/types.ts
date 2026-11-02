@@ -59,6 +59,8 @@ export interface Project {
   notes_html: string | null;
   /** The project's own task statuses (migration 0010); null = the built-in ones. */
   task_statuses?: CustomTaskStatus[] | null;
+  /** Primary domain (id from the "domains" setting); its tasks inherit it. Migration 0011. */
+  domain?: string | null;
   created_by: UUID | null;
   created_at: ISODateTime;
   updated_at: ISODateTime;
@@ -132,6 +134,8 @@ export interface Task {
   custom_status?: string | null;
   /** Hand-set position inside its milestone (drag to reorder); null until dragged. Migration 0008. */
   sort_order?: number | null;
+  /** Overrides the project's domain for this task (null = inherit). Migration 0011. */
+  domain?: string | null;
   created_by: UUID | null;
   created_at: ISODateTime;
   updated_at: ISODateTime;
@@ -199,8 +203,49 @@ export interface Review {
   lessons: string;
   next_period: string;
   numbers: string;
+  /** Month: revenue collected and burn (money spent), typed in. Migration 0011. */
+  revenue?: number | null;
+  burn?: number | null;
+  /** Month: Claude's written report of what each person did (Markdown). */
+  report_md?: string | null;
+  report_generated_at?: ISODateTime | null;
+  report_generated_by?: UUID | null;
   created_by: UUID | null;
   updated_by: UUID | null;
+  created_at: ISODateTime;
+  updated_at: ISODateTime;
+}
+
+/** Something the studio or one person commits to for a month; ticked (or not, with why) at month end. */
+export interface Commitment {
+  id: UUID;
+  month: ISODate; // first day of the month
+  title: string;
+  owner_id: UUID | null;
+  scope: "studio" | "personal";
+  /** null = not reviewed yet. */
+  status: "done" | "not_done" | null;
+  why: string | null;
+  sort_order: number;
+  created_by: UUID | null;
+  created_at: ISODateTime;
+  updated_at: ISODateTime;
+}
+
+export type GoalStatus = "open" | "done" | "missed";
+
+/** A monthly or quarterly studio goal (Reviews → Goals). */
+export interface Goal {
+  id: UUID;
+  period: ReviewPeriod;
+  period_start: ISODate;
+  title: string;
+  owner_id: UUID | null;
+  domain: string | null;
+  status: GoalStatus;
+  note: string | null;
+  sort_order: number;
+  created_by: UUID | null;
   created_at: ISODateTime;
   updated_at: ISODateTime;
 }
@@ -321,6 +366,8 @@ export interface Tables {
   attachments: Attachment;
   library_items: LibraryItem;
   reviews: Review;
+  commitments: Commitment;
+  goals: Goal;
   activity_log: ActivityEntry;
   kb_pages: KbPage;
   finance_sources: FinanceSource;
@@ -343,6 +390,8 @@ export const TABLE_NAMES: TableName[] = [
   "attachments",
   "library_items",
   "reviews",
+  "commitments",
+  "goals",
   "activity_log",
   "kb_pages",
   "finance_sources",

@@ -14,6 +14,24 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    id: "2026-11-02",
+    date: "2026-11-02",
+    title: "Reviews: the month at a glance, goals and an overview",
+    items: [
+      {
+        title: "Month",
+        body: "Reviews opens on the month: who did what (one bar per person, split Client / Studio / Personal, hover for the projects), revenue collected and burn, and the month's commitments to tick off — anything not done asks why. Pick several months or one person at the top.",
+      },
+      {
+        title: "Claude writes the monthly report",
+        body: "Press Generate report and Claude reads the month's completed tasks and commitments and writes what each person did and where the time went. It's saved with the month, and you can edit it.",
+      },
+      { title: "Goals", body: "The quarter on one screen: quarter goals as a tick list on top, each month's goals (its commitments) underneath." },
+      { title: "Overview", body: "Month, quarter or year: money in and out, where every project stands, tasks per domain and per person." },
+      { title: "Domains", body: "Add the studio's domains (Animation, UI/UX, Social media…) and their owners in Settings → Workspace, then pick one on each project." },
+    ],
+  },
+  {
     id: "2026-10-15-2",
     date: "2026-10-15",
     title: "Filters, a sidebar shortcut and this screen",

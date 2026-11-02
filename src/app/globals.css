@@ -35,3 +35,16 @@ html,
 body {
   height: 100%;
 }
+
+/* Claude's monthly report (Reviews → Month): compact headings, readable lists. */
+.review-report { font-size: 14px; line-height: 1.6; color: var(--text); }
+.review-report h2 { margin: 18px 0 4px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-2); }
+.review-report h3 { margin: 12px 0 2px; font-size: 14.5px; font-weight: 600; }
+.review-report > :first-child { margin-top: 0; }
+.review-report p { margin: 2px 0; }
+.review-report ul, .review-report ol { margin: 2px 0; padding-left: 20px; }
+.review-report ul { list-style: disc; }
+.review-report ol { list-style: decimal; }
+.review-report li { margin: 2px 0; }
+.review-report li::marker { color: var(--text-3); }
+.review-report strong { font-weight: 600; }

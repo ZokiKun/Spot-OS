@@ -19,6 +19,8 @@ This document answers the brief's "first task" list: schema, routes, components,
 | `attachments` | **Native uploads**: calendar, project and review files | One table with three nullable FKs + `check (num_nonnulls(...) = 1)`. Replaces `calendar_attachments` and `project_files`. |
 | `library_items` | Indexed links and docs (Drive, Docs, Sheets, PDFs, templates, URLs) | `project_id` nullable. This replaces `links`, `documents` **and** `project_links`. A project's Links tab is just a filtered view. |
 | `reviews` | Monthly and quarterly reviews | `period` = `month`/`quarter`, `unique(period, period_start)`. Replaces the two separate review tables. |
+| `commitments` | What the studio or one person commits to for a month; ticked done, or not done + why | Migration 0011. Keyed by `month` (first day). |
+| `goals` | Monthly or quarterly goals (open / done / missed), owner, optional domain | Migration 0011. Reviews → Goals timeline. |
 | `activity_log` | Lightweight history | Written **only by the database** (`log_activity` trigger). Clients can read it but can't write to it. |
 | `kb_pages` | Spot Base pages (Markdown) | **SPOT.md is derived from these pages**, not stored a second time. |
 | `finance_sources` | Source kind (`upload` / `demo`), last uploaded file name + configurable column **mapping** (`jsonb`) | |
@@ -29,6 +31,17 @@ This document answers the brief's "first task" list: schema, routes, components,
 `0002_tags_pins_mentions.sql` adds project `tags`, `note`, `cover` (banner) and `cover_position`; Library `pinned` (for everyone) and `pinned_by` (pin for me); `attachments.kb_page_id` (Spot Base brand assets); and the `notifications` table.
 
 **RLS:** `public.is_member()` (security definer) checks that `auth.uid()` has a profile. Every table gets one "members full access" policy. The exceptions: `profiles` allows select and update only, and `activity_log` allows select only. Storage policies apply the same rule to the private `attachments` bucket. The service-role key is never used by the app.
+
+### Reviews (migration 0011)
+
+`/reviews` has three tabs, with filters in the URL (`?months=`, `?who=`, `?tab=goals&quarter=`, `?tab=overview&range=&at=`):
+- **Month** (default; in a month's first week it opens on last month): revenue collected and burn, typed in on that month's `reviews` row and pre-filled from the finance sheet; one bar per person of completed tasks split Client / Studio / Personal (project type; no project = Studio; a task with two assignees gives each 0.5); Claude's report; the month's commitments. Several months can be selected: bars and money add up, and each month folds out below.
+- **Goals:** one quarter as a timeline, with quarter goals across the top and month goals under each month.
+- **Overview:** month / quarter / year. Money, project status, tasks per domain, people.
+
+**Claude's report:** `/api/reviews/report` takes a plain-text digest of the month (`lib/studio-review.ts → monthDigest`) and calls `claude-opus-5-5` (effort `medium`, server-side `fallbacks: "default"`). The report is saved as Markdown on `reviews.report_md`. Only signed-in editors can call it (demo mode: localhost only). Env: `ANTHROPIC_API_KEY`.
+
+**Domains** live in the `domains` setting. `projects.domain` is the primary domain and `tasks.domain` overrides it. A domain's colour follows its position, in an order validated for colour-blind separation.
 
 ## 2. Route structure
 

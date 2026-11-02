@@ -1,9 +1,10 @@
 import { format, startOfMonth, subMonths } from "date-fns";
-import type { Snapshot, Project, Task, Milestone, ProjectStatus, TaskStatus, TaskPriority, ProjectType } from "../types";
+import type { Snapshot, Project, Task, Milestone, ProjectStatus, TaskStatus, TaskPriority, ProjectType, Goal } from "../types";
 import { emptySnapshot } from "./adapter";
 import { addDaysISO, nowISO, todayISO, uid } from "../utils";
 import { DEMO_MAPPING } from "../finance/sample";
 import { DEFAULT_KB_PAGES } from "./kb-defaults";
+import { blankMonthReview, monthName, monthStartOf, quarterOfMonth, shiftMonth, shiftQuarter, WORK_TAGS, type WorkTag } from "../studio-review";
 
 /** Demo workspace — dates are relative to today so Attention/Overdue always have something to show. */
 export function buildSeed(): Snapshot {
@@ -366,5 +367,198 @@ export function buildSeed(): Snapshot {
       ...stamp,
     },
   ];
+  seedStudioReview(s, { alex: alex!, sam: sam!, jordan: jordan! }, { northwind, kestrel, mora, site, ops, typeface }, project);
   return s;
+}
+
+/**
+ * Six months of review history: domains, completed tasks across Client / Studio / Personal, money,
+ * commitments with results, goals for this quarter and last, and Claude reports for recent months.
+ */
+function seedStudioReview(
+  s: Snapshot,
+  people: Record<"alex" | "sam" | "jordan", { id: string; full_name: string }>,
+  p: Record<"northwind" | "kestrel" | "mora" | "site" | "ops" | "typeface", Project>,
+  project: (name: string, icon: string, type: ProjectType, status: ProjectStatus, opts?: Partial<Project>) => Project,
+) {
+  const { alex, sam, jordan } = people;
+  const stamp = { created_at: nowISO(), updated_at: nowISO() };
+  const iso = (date: string, hour = 10) => new Date(`${date}T${String(hour).padStart(2, "0")}:00:00`).toISOString();
+  const thisMonth = monthStartOf(new Date());
+  const lastMonth = shiftMonth(thisMonth, -1);
+
+  // Domains, each owned by one person.
+  const dom = { anim: uid(), ui: uid(), social: uid() };
+  s.settings.push({
+    id: uid(),
+    key: "domains",
+    value: {
+      items: [
+        { id: dom.anim, name: "Animation", color: "purple", owner_id: alex.id },
+        { id: dom.ui, name: "UI/UX", color: "green", owner_id: sam.id },
+        { id: dom.social, name: "Social media", color: "blue", owner_id: jordan.id },
+      ],
+    },
+    ...stamp,
+  });
+  p.northwind.domain = dom.ui;
+  p.kestrel.domain = dom.ui;
+  p.mora.domain = dom.anim;
+  p.site.domain = dom.ui;
+  p.ops.domain = dom.ui;
+  p.typeface.domain = dom.ui;
+
+  const old = iso(shiftMonth(thisMonth, -8), 9);
+  const studio = (name: string, icon: string, type: ProjectType, opts: Partial<Project>) =>
+    project(name, icon, type, "active", { creative_director_id: null, created_at: old, ...opts });
+  const instagram = studio("Instagram", "📸", "studio", { domain: dom.social, lead_id: jordan.id, description: "Studio Instagram: posts, reels and stories." });
+  const showreel = studio("Showreel 2026", "🎬", "studio", { domain: dom.anim, lead_id: alex.id });
+  const outreach = studio("Outreach", "✉️", "studio", { lead_id: jordan.id, description: "Cold outreach and follow-ups." });
+  const blender = studio("Blender course", "🧊", "personal", { domain: dom.anim, lead_id: alex.id });
+  const figma = studio("Figma variables course", "🧩", "personal", { domain: dom.ui, lead_id: sam.id });
+  const photo = studio("Photography practice", "📷", "personal", { domain: dom.social, lead_id: jordan.id });
+  // A client that showed up mid-month last month.
+  const halcyon = project("Halcyon launch film", "🌅", "client", "active", {
+    client: "Halcyon",
+    domain: dom.anim,
+    lead_id: alex.id,
+    start_date: addDaysISO(lastMonth, 9),
+    created_at: iso(addDaysISO(lastMonth, 9), 15),
+    description: "45-second launch film — came in on short notice.",
+  });
+  s.projects.push(instagram, showreel, outreach, blender, figma, photo, halcyon);
+
+  // How each person's month usually splits, and how far client work pushed it (index = months ago).
+  const base: Record<string, Record<WorkTag, number>> = {
+    [alex.id]: { client: 50, studio: 30, personal: 20 },
+    [sam.id]: { client: 55, studio: 30, personal: 15 },
+    [jordan.id]: { client: 40, studio: 45, personal: 15 },
+  };
+  const clientPush = [1, 1.4, 1.05, 0.95, 1.3, 1.1, 1];
+  const pools: Record<WorkTag, Record<string, Project[]>> = {
+    client: { [alex.id]: [p.mora, p.northwind], [sam.id]: [p.northwind, p.kestrel], [jordan.id]: [p.kestrel, p.mora] },
+    studio: { [alex.id]: [showreel, p.ops], [sam.id]: [p.site, p.ops], [jordan.id]: [instagram, outreach] },
+    personal: { [alex.id]: [blender], [sam.id]: [figma, p.typeface], [jordan.id]: [photo] },
+  };
+  const verbs = ["Draft", "Revise", "Review", "Polish", "Export", "Present", "Prep", "Finalise", "Sketch", "Test"];
+
+  for (let m = 6; m >= 1; m--) {
+    const start = shiftMonth(thisMonth, -m);
+    for (const id of [alex.id, sam.id, jordan.id]) {
+      const b = base[id]!;
+      // Last month the unplanned client (Halcyon) landed on Alex and Sam; Jordan kept the studio going.
+      const push = m === 1 && id === jordan.id ? 0.7 : clientPush[m]!;
+      const client = Math.min(85, b.client * push);
+      const rest = (100 - client) / (b.studio + b.personal);
+      const split: Record<WorkTag, number> = { client, studio: b.studio * rest, personal: b.personal * rest };
+      let n = 0;
+      for (const tag of WORK_TAGS) {
+        const count = Math.round((split[tag] / 100) * (9 + ((m + n) % 4)));
+        for (let i = 0; i < count; i++, n++) {
+          const pool = pools[tag][id]!;
+          const proj = m === 1 && tag === "client" && i % 2 === 0 && id !== jordan.id ? halcyon : pool[(i + m) % pool.length]!;
+          const day = addDaysISO(start, Math.min(26, 2 + n * 2 + (m % 3)));
+          s.tasks.push({
+            id: uid(),
+            project_id: proj.id,
+            milestone_id: null,
+            title: `${verbs[(n + m) % verbs.length]} — ${proj.name}`,
+            description: null,
+            assignee_id: id,
+            assignee_ids: [id],
+            status: "done",
+            priority: "medium",
+            due_date: day,
+            domain: null,
+            created_by: id,
+            created_at: iso(addDaysISO(day, -5)),
+            updated_at: iso(day, 17),
+            completed_at: iso(day, 17),
+          });
+        }
+      }
+    }
+  }
+
+  // Month rows: money for older months (newer ones come from the finance sheet), Claude's reports.
+  const monthRow = (month: string) => {
+    let r = s.reviews.find((x) => x.period === "month" && x.period_start === month);
+    if (!r) {
+      r = { id: uid(), ...blankMonthReview(month, alex.id), created_at: iso(month), updated_at: iso(month) };
+      s.reviews.push(r);
+    }
+    return r;
+  };
+  for (let m = 6; m >= 3; m--) Object.assign(monthRow(shiftMonth(thisMonth, -m)), { revenue: 21000 + m * 1300, burn: 13500 + (m % 3) * 900 });
+  const first = (x: { full_name: string }) => x.full_name.split(" ")[0];
+  Object.assign(monthRow(lastMonth), {
+    report_generated_at: iso(thisMonth, 11),
+    report_generated_by: alex.id,
+    report_md: `## In short
+${monthName(lastMonth)} was a client month. The Halcyon launch film arrived on the 10th and took most of ${first(alex)}'s and ${first(sam)}'s time; Northwind kept moving, and studio work slowed while it ran.
+
+## People
+### ${first(alex)}
+- Led the Halcyon film from kickoff to the first full cut, alongside Atelier Mora packaging rounds.
+- Mostly client work; the showreel and the Blender course got only a few small steps.
+
+### ${first(sam)}
+- Split between Northwind identity work and Halcyon support.
+- Kept the studio site going in small pieces; the case study didn't get started.
+
+### ${first(jordan)}
+- Carried most of the studio's own work: Instagram and outreach kept a steady rhythm.
+- Ran Kestrel logistics on the client side and kept up photography practice.
+
+## Commitments
+Client milestones and the Instagram plan landed. The showreel section and the site case study slipped because Halcyon took two weeks of the team's time.
+
+## Worth discussing
+- Halcyon showed up after the month was planned and pushed the studio work aside. Is there a rule for how much of a month an unplanned client can take?
+- ${first(jordan)} is holding up most of the studio's own work; spread it out, or make it explicitly theirs?`,
+  });
+
+  // Commitments: a few per month. Older months are reviewed; last month is half-reviewed (to try ticking).
+  const templates: [string, string, "studio" | "personal"][] = [
+    ["Ship this month's client milestones", sam.id, "studio"],
+    ["8 Instagram posts", jordan.id, "studio"],
+    ["Showreel: cut one new section", alex.id, "studio"],
+    ["Studio site: one case study", sam.id, "studio"],
+    ["Finish a Blender course module", alex.id, "personal"],
+  ];
+  const whys = ["Client work took over", "Underestimated how long it would take", "Halcyon film took two weeks of the team's time", "Waiting on feedback"];
+  for (let m = 6; m >= 0; m--) {
+    const month = shiftMonth(thisMonth, -m);
+    templates.slice(0, m === 0 ? 4 : 5).forEach(([title, owner, scope], i) => {
+      const reviewed = m >= 2 || (m === 1 && i < 2);
+      const done = reviewed && (i + m) % 3 !== 2;
+      s.commitments.push({
+        id: uid(),
+        month,
+        title,
+        owner_id: owner,
+        scope,
+        status: !reviewed ? null : done ? "done" : "not_done",
+        why: reviewed && !done ? whys[(i + m) % whys.length]! : null,
+        sort_order: i,
+        created_by: alex.id,
+        created_at: iso(addDaysISO(month, 1), 12),
+        updated_at: iso(addDaysISO(month, 1), 12),
+      });
+    });
+  }
+
+  // Quarter goals: this quarter and the last one. (Monthly goals are the months' commitments.)
+  const goal = (period: "month" | "quarter", period_start: string, title: string, owner: string, domain: string | null, status: Goal["status"], i: number) =>
+    s.goals.push({ id: uid(), period, period_start, title, owner_id: owner, domain, status, note: null, sort_order: i, created_by: alex.id, ...stamp });
+  const q = quarterOfMonth(thisMonth);
+  const lastQ = shiftQuarter(q, -1);
+  goal("quarter", q, "Launch studio site v2", sam.id, dom.ui, "open", 0);
+  goal("quarter", q, "Two animation portfolio pieces", alex.id, dom.anim, "open", 1);
+  goal("quarter", q, "30 Instagram posts", jordan.id, dom.social, "open", 2);
+  goal("quarter", q, "Three new client leads", jordan.id, null, "open", 3);
+  goal("quarter", lastQ, "Showreel 2026 first cut", alex.id, dom.anim, "missed", 0);
+  s.goals.at(-1)!.note = "Client work took most of the summer; moved to this quarter.";
+  goal("quarter", lastQ, "Northwind identity signed off", sam.id, dom.ui, "done", 1);
+  goal("quarter", lastQ, "Start a weekly Instagram rhythm", jordan.id, dom.social, "done", 2);
 }
