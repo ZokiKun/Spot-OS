@@ -14,6 +14,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    id: "2026-11-05",
+    date: "2026-11-05",
+    title: "Minimize a note",
+    items: [
+      {
+        title: "Fold long notes away",
+        body: "On Calendar → Today, press the arrow next to a note's title to minimize it to one line. Press it (or the line) again to open it. Each person's choice is kept on their own device.",
+      },
+    ],
+  },
+  {
     id: "2026-11-02-2",
     date: "2026-11-02",
     title: "Time spent: say where your month went",

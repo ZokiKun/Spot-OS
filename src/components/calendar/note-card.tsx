@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { CalendarPlus, Download, Ellipsis, FileCode, Printer, Trash2 } from "lucide-react";
+import { CalendarPlus, ChevronDown, Download, Ellipsis, FileCode, Printer, Trash2 } from "lucide-react";
 import type { CalendarNote } from "@/lib/types";
 import { useProfiles, useWorkspace } from "@/lib/store";
-import { useDebouncedSave } from "@/lib/hooks";
+import { useDebouncedSave, usePref } from "@/lib/hooks";
+import { plainText } from "@/lib/mentions";
 import { htmlToMarkdown } from "@/lib/markdown";
 import { googleCalendarLink } from "@/lib/calendar-export";
-import { downloadFile, formatLongDate, slugify, timeAgo } from "@/lib/utils";
+import { cn, downloadFile, formatLongDate, slugify, timeAgo } from "@/lib/utils";
 import { EditableText } from "@/components/ui/input";
 import { IconButton } from "@/components/ui/button";
 import { Popover, usePopover } from "@/components/ui/popover";
@@ -33,14 +34,25 @@ export function NoteCard({ note, focus }: { note: CalendarNote; focus?: boolean 
     void update("calendar_notes", note.id, { content_html, updated_by: me?.id ?? null }),
   );
   const filename = `${note.date}-${slugify(note.title || "note")}`;
+  // Minimized per device: just the title and a one-line preview, until you open it again.
+  const [collapsed, setCollapsed] = usePref(`note-collapsed:${note.id}`, false);
+  const preview = plainText(note.content_html).replace(/\s+/g, " ").trim();
 
   useEffect(() => {
     if (focus) ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [focus]);
 
   return (
-    <article ref={ref} className="scroll-mt-14 border-b border-line pb-8 pt-2 last:border-b-0">
+    <article ref={ref} className={cn("scroll-mt-14 border-b border-line pt-2 last:border-b-0", collapsed ? "pb-4" : "pb-8")}>
       <div className="flex items-start gap-2">
+        <IconButton
+          label={collapsed ? "Expand note" : "Minimize note"}
+          aria-expanded={!collapsed}
+          onClick={() => setCollapsed(collapsed ? undefined : true)}
+          className="-ml-1.5 mt-0.5 shrink-0"
+        >
+          <ChevronDown className={cn("size-4 transition-transform", collapsed && "-rotate-90")} />
+        </IconButton>
         <EditableText
           value={note.title}
           onCommit={(title) => void update("calendar_notes", note.id, { title, updated_by: me?.id ?? null })}
@@ -106,22 +118,31 @@ export function NoteCard({ note, focus }: { note: CalendarNote; focus?: boolean 
           </MenuList>
         </Popover>
       </div>
-      <div className="mb-3 mt-1 text-[12px] text-fg-3">
-        {people.get(note.created_by)?.full_name ?? "Someone"}
-        {note.updated_by && note.updated_at !== note.created_at && (
-          <> · edited by {people.get(note.updated_by)?.full_name ?? "someone"} {timeAgo(note.updated_at)}</>
-        )}
-      </div>
-      <RichEditor
-        value={note.content_html}
-        onChange={schedule}
-        onUploadImage={async (file) => (await upload(file, `calendar/${note.date}`)).url}
-        placeholder="What happened? What should we remember?"
-        className="min-h-[96px]"
-      />
-      <div className="mt-3">
-        <AttachmentList items={attachments} owner={{ note_id: note.id }} folder={`calendar/${note.date}`} compact {...NOTE_FILE_LIMIT} />
-      </div>
+      {collapsed ? (
+        <button type="button" onClick={() => setCollapsed(undefined)} className="mt-1 block w-full truncate text-left text-[13px] text-fg-3 hover:text-fg-2">
+          {preview || "Empty note"}
+          {attachments.length > 0 && ` · ${attachments.length} file${attachments.length === 1 ? "" : "s"}`}
+        </button>
+      ) : (
+        <>
+          <div className="mb-3 mt-1 text-[12px] text-fg-3">
+            {people.get(note.created_by)?.full_name ?? "Someone"}
+            {note.updated_by && note.updated_at !== note.created_at && (
+              <> · edited by {people.get(note.updated_by)?.full_name ?? "someone"} {timeAgo(note.updated_at)}</>
+            )}
+          </div>
+          <RichEditor
+            value={note.content_html}
+            onChange={schedule}
+            onUploadImage={async (file) => (await upload(file, `calendar/${note.date}`)).url}
+            placeholder="What happened? What should we remember?"
+            className="min-h-[96px]"
+          />
+          <div className="mt-3">
+            <AttachmentList items={attachments} owner={{ note_id: note.id }} folder={`calendar/${note.date}`} compact {...NOTE_FILE_LIMIT} />
+          </div>
+        </>
+      )}
     </article>
   );
 }
