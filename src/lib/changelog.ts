@@ -14,6 +14,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    id: "2026-11-06",
+    date: "2026-11-06",
+    title: "Fill in Time spent for a teammate",
+    items: [
+      {
+        title: "Fill in someone else's split",
+        body: "Reviews → Month → Time spent: next to a teammate's row, press \"Fill in for …\" (or \"Edit …'s\") to enter or fix their split for them.",
+      },
+    ],
+  },
+  {
     id: "2026-11-05-2",
     date: "2026-11-05",
     title: "Time spent saves properly",

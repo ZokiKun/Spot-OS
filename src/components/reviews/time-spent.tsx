@@ -29,12 +29,12 @@ export function TimeSpentSummary({ month, people }: { month: string; people: Pro
 
 /**
  * Reviews → Month → Time spent. Next to the task counts, each person says where their month actually
- * went: a split across projects (and other work) that adds up to 100%. Everyone sees everyone's; you
- * edit your own. Several months show each person's average over the months they filled in.
+ * went: a split across projects (and other work) that adds up to 100%. Everyone sees everyone's; anyone
+ * who can edit fills in their own, or a teammate's for them. Several months show each person's average over the months they filled in.
  */
 export function TimeSpent({ months, people, credits }: { months: string[]; people: Profile[]; credits: Credit[] }) {
   const { data, me, canEdit } = useWorkspace();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState<UUID | null>(null);
   const [thisMonth] = useState(() => monthStartOf(new Date()));
   const { tipRef, ...tip } = useChartTip();
   const single = months.length === 1;
@@ -87,15 +87,17 @@ export function TimeSpent({ months, people, credits }: { months: string[]; peopl
                   <span className={cn("min-w-0 flex-1 truncate text-[12px] tabular", total === 100 ? "text-fg-3" : "text-[var(--dot-orange)]")} title={total === 100 || !single ? status : undefined}>
                     {status}
                   </span>
-                  {mine && canEdit && single && !editing && (
-                    <Button size="sm" variant={total === 100 ? "ghost" : "primary"} onClick={() => setEditing(true)}>
-                      <Pencil className="size-3" /> {total ? "Edit yours" : "Fill in yours"}
+                  {canEdit && single && editing !== person.id && (
+                    <Button size="sm" variant={total === 100 || !mine ? "ghost" : "primary"} onClick={() => setEditing(person.id)}>
+                      <Pencil className="size-3" /> {mine ? (total ? "Edit yours" : "Fill in yours") : total ? `Edit ${name}'s` : `Fill in for ${name}`}
                     </Button>
                   )}
                 </span>
               </span>
             </div>
-            {mine && editing && single && <SplitEditor month={month} credits={credits.filter((c) => c.profileId === person.id)} onDone={() => setEditing(false)} />}
+            {editing === person.id && single && (
+              <SplitEditor month={month} person={person} credits={credits.filter((c) => c.profileId === person.id)} onDone={() => setEditing(null)} />
+            )}
           </div>
         );
       })}
@@ -127,15 +129,18 @@ function splitByTasks(credits: Credit[]): Item[] {
   return items.filter((i) => i.steps > 0).sort((a, b) => b.steps - a.steps).map((i) => ({ projectId: i.projectId, percent: i.steps * 5 }));
 }
 
-/** Your split for the month: a row per project with a slider and a number; saves only at exactly 100%. */
-function SplitEditor({ month, credits, onDone }: { month: string; credits: Credit[]; onDone: () => void }) {
+/** A person's split for the month (yours, or a teammate's): a row per project with a slider and a number; saves only at exactly 100%. */
+function SplitEditor({ month, person, credits, onDone }: { month: string; person: Profile; credits: Credit[]; onDone: () => void }) {
   const { data, me, create, update, remove } = useWorkspace();
   const toast = useToast();
   const { setAnchor, ...pop } = usePopover();
-  const saved = data.time_splits.filter((r) => r.month === month && r.profile_id === me?.id);
+  const mine = person.id === me?.id;
+  const name = person.full_name.split(" ")[0]!;
+  const whose = mine ? "your" : `${name}'s`;
+  const saved = data.time_splits.filter((r) => r.month === month && r.profile_id === person.id);
   const [items, setItems] = useState<Item[]>(() => {
-    if (saved.length) return timeSplitAcross(data, [month], me!.id).shares.map((s) => ({ projectId: s.projectId, percent: s.percent }));
-    // Start from the projects you finished tasks on this month, at 0%.
+    if (saved.length) return timeSplitAcross(data, [month], person.id).shares.map((s) => ({ projectId: s.projectId, percent: s.percent }));
+    // Start from the projects they finished tasks on this month, at 0%.
     return splitByTasks(credits).map((i) => ({ ...i, percent: 0 }));
   });
   const [busy, setBusy] = useState(false);
@@ -165,7 +170,7 @@ function SplitEditor({ month, credits, onDone }: { month: string; credits: Credi
       }
     }
     for (const [k, w] of want)
-      if (!kept.has(k)) ops.push(() => create("time_splits", { month, profile_id: me.id, project_id: w.projectId, percent: w.percent, created_by: me.id }));
+      if (!kept.has(k)) ops.push(() => create("time_splits", { month, profile_id: person.id, project_id: w.projectId, percent: w.percent, created_by: me.id }));
     // One at a time, stopping at the first failure: the store has already shown its toast, so a broken
     // save gives one error (not one per row) and the editor stays open with your numbers.
     let ok = true;
@@ -175,28 +180,30 @@ function SplitEditor({ month, credits, onDone }: { month: string; credits: Credi
     }
     setBusy(false);
     if (!ok) return;
-    toast.show({ title: `Your ${monthName(month)} is filled in`, tone: "success" });
+    toast.show({ title: `${mine ? "Your" : `${name}'s`} ${monthName(month)} is filled in`, tone: "success" });
     onDone();
   };
 
   return (
     <div className="mb-3 ml-[124px] mt-1 rounded-lg bg-subtle p-3 max-sm:ml-0 sm:ml-[152px]">
       <div className="mb-1 flex flex-wrap items-center gap-2">
-        <p className="text-[13px] text-fg-2">Where did your {monthName(month)} go? Give each project its share of your time, to 100%.</p>
+        <p className="text-[13px] text-fg-2">
+          Where did {whose} {monthName(month)} go? Give each project its share of {mine ? "your" : "their"} time, to 100%.
+        </p>
         {credits.length > 0 && (
-          <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setItems(splitByTasks(credits))} title="Fill in from how many tasks you finished on each project — then adjust">
-            <Wand2 className="size-3" /> Start from my tasks
+          <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setItems(splitByTasks(credits))} title={`Fill in from how many tasks ${mine ? "you" : name} finished on each project — then adjust`}>
+            <Wand2 className="size-3" /> Start from {mine ? "my" : `${name}'s`} tasks
           </Button>
         )}
       </div>
       <div className="divide-y divide-line">
         {items.map((i) => {
           const p = i.projectId ? projects.get(i.projectId) : undefined;
-          const name = p?.name ?? OTHER_WORK;
+          const label = p?.name ?? OTHER_WORK;
           return (
             <div key={keyOf(i.projectId)} className="flex items-center gap-2 py-1.5 sm:gap-3">
               <span className="min-w-0 flex-1 text-[14px]">
-                <ProjectLabel icon={p?.icon ?? "📋"} name={name} />
+                <ProjectLabel icon={p?.icon ?? "📋"} name={label} />
               </span>
               <input
                 type="range"
@@ -204,7 +211,7 @@ function SplitEditor({ month, credits, onDone }: { month: string; credits: Credi
                 max={100}
                 step={5}
                 value={i.percent}
-                aria-label={`${name}: share of your month`}
+                aria-label={`${label}: share of ${whose} month`}
                 onChange={(e) => set(i.projectId, Number(e.target.value))}
                 className="w-24 accent-[var(--accent)] sm:w-40"
               />
@@ -215,13 +222,13 @@ function SplitEditor({ month, credits, onDone }: { month: string; credits: Credi
                   min={0}
                   max={100}
                   value={i.percent}
-                  aria-label={`${name}: percent`}
+                  aria-label={`${label}: percent`}
                   onChange={(e) => set(i.projectId, Number(e.target.value))}
                   className="h-7 w-12 rounded-md bg-input px-1.5 text-right text-[13px] tabular shadow-[inset_0_0_0_1px_var(--border-strong)] outline-none focus:shadow-[inset_0_0_0_1px_var(--accent)]"
                 />
                 <span className="text-[13px] text-fg-3">%</span>
               </span>
-              <IconButton label={`Remove ${name}`} onClick={() => setItems((list) => list.filter((x) => x !== i))}>
+              <IconButton label={`Remove ${label}`} onClick={() => setItems((list) => list.filter((x) => x !== i))}>
                 <X className="size-3.5" />
               </IconButton>
             </div>
