@@ -16,11 +16,15 @@ export const CHANGELOG: Release[] = [
   {
     id: "2026-11-06",
     date: "2026-11-06",
-    title: "Fill in Time spent for a teammate",
+    title: "Time spent for teammates, new Commitments",
     items: [
       {
         title: "Fill in someone else's split",
         body: "Reviews → Month → Time spent: next to a teammate's row, press \"Fill in for …\" (or \"Edit …'s\") to enter or fix their split for them.",
+      },
+      {
+        title: "Commitments, redesigned",
+        body: "Reviews → Month → Commitments: a new month starts with three numbered slots — type one, press Enter, and you're straight into the next. Each commitment is its own row, with a strip on top showing how many are done.",
       },
     ],
   },
