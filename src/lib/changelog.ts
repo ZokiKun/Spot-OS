@@ -14,6 +14,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    id: "2026-11-05-2",
+    date: "2026-11-05",
+    title: "Time spent saves properly",
+    items: [
+      {
+        title: "Clearer when saving fails",
+        body: "Reviews → Month → Time spent: if your split can't be saved you now get one clear message and the editor stays open with your numbers, instead of a pile of errors.",
+      },
+    ],
+  },
+  {
     id: "2026-11-05",
     date: "2026-11-05",
     title: "Minimize a note",

@@ -84,7 +84,7 @@ export function TimeSpent({ months, people, credits }: { months: string[]; peopl
                   <span className={cn("w-10 shrink-0 text-right text-[13px] font-semibold tabular", total !== 100 && "text-fg-3")}>{total ? `${Math.round(total)}%` : "—"}</span>
                 </span>
                 <span className="mt-0.5 flex items-center gap-2">
-                  <span className={cn("min-w-0 flex-1 truncate text-[12px] tabular", total === 100 ? "text-fg-3" : "text-[var(--dot-orange)]")} title={status}>
+                  <span className={cn("min-w-0 flex-1 truncate text-[12px] tabular", total === 100 ? "text-fg-3" : "text-[var(--dot-orange)]")} title={total === 100 || !single ? status : undefined}>
                     {status}
                   </span>
                   {mine && canEdit && single && !editing && (
@@ -152,29 +152,31 @@ function SplitEditor({ month, credits, onDone }: { month: string; credits: Credi
   const save = async () => {
     if (!me || total !== 100) return;
     setBusy(true);
-    try {
-      const want = new Map(items.filter((i) => i.percent > 0).map((i) => [keyOf(i.projectId), i]));
-      const kept = new Set<string>();
-      const ops: Promise<unknown>[] = [];
-      for (const r of saved) {
-        const k = keyOf(r.project_id);
-        const w = want.get(k);
-        if (!w || kept.has(k)) ops.push(remove("time_splits", r.id));
-        else {
-          kept.add(k);
-          if (w.percent !== r.percent) ops.push(update("time_splits", r.id, { percent: w.percent }));
-        }
+    const want = new Map(items.filter((i) => i.percent > 0).map((i) => [keyOf(i.projectId), i]));
+    const kept = new Set<string>();
+    const ops: (() => Promise<unknown>)[] = [];
+    for (const r of saved) {
+      const k = keyOf(r.project_id);
+      const w = want.get(k);
+      if (!w || kept.has(k)) ops.push(() => remove("time_splits", r.id));
+      else {
+        kept.add(k);
+        if (w.percent !== r.percent) ops.push(() => update("time_splits", r.id, { percent: w.percent }));
       }
-      for (const [k, w] of want)
-        if (!kept.has(k)) ops.push(create("time_splits", { month, profile_id: me.id, project_id: w.projectId, percent: w.percent, created_by: me.id }));
-      await Promise.all(ops);
-      toast.show({ title: `Your ${monthName(month)} is filled in`, tone: "success" });
-      onDone();
-    } catch (err) {
-      toast.show({ title: "Couldn’t save your time split", description: err instanceof Error ? err.message : String(err), tone: "error" });
-    } finally {
-      setBusy(false);
     }
+    for (const [k, w] of want)
+      if (!kept.has(k)) ops.push(() => create("time_splits", { month, profile_id: me.id, project_id: w.projectId, percent: w.percent, created_by: me.id }));
+    // One at a time, stopping at the first failure: the store has already shown its toast, so a broken
+    // save gives one error (not one per row) and the editor stays open with your numbers.
+    let ok = true;
+    for (const op of ops) {
+      ok = (await op().catch(() => false)) !== false;
+      if (!ok) break;
+    }
+    setBusy(false);
+    if (!ok) return;
+    toast.show({ title: `Your ${monthName(month)} is filled in`, tone: "success" });
+    onDone();
   };
 
   return (

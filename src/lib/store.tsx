@@ -80,8 +80,9 @@ interface WorkspaceContextValue {
   /** False for view-only members: writes are refused (RLS refuses them too). */
   canEdit: boolean;
   create<T extends TableName>(table: T, row: NewRow<T>): Promise<Row<T>>;
-  update<T extends TableName>(table: T, id: UUID, patch: Partial<Row<T>>): Promise<void>;
-  remove(table: TableName, id: UUID): Promise<void>;
+  /** Resolves false when the write was refused or failed (a toast has already said why). */
+  update<T extends TableName>(table: T, id: UUID, patch: Partial<Row<T>>): Promise<boolean>;
+  remove(table: TableName, id: UUID): Promise<boolean>;
   upload(file: File, folder: string): Promise<{ path: string; url: string }>;
   signOut(): Promise<void>;
 }
@@ -195,17 +196,19 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const update = useCallback(
     async <T extends TableName>(table: T, id: UUID, patch: Partial<Row<T>>) => {
       const before = (dataRef.current[table] as Row<T>[]).find((r) => (r as { id: UUID }).id === id);
-      if (!before) return;
-      if (!allowed(table, id, patch as Record<string, unknown>)) return;
+      if (!before) return false;
+      if (!allowed(table, id, patch as Record<string, unknown>)) return false;
       const optimistic = { ...before, ...patch, updated_at: nowISO() } as Row<T>;
       dispatch({ type: "change", change: { type: "upsert", table, row: optimistic } });
       try {
         const saved = await getAdapter().update(table, id, patch);
         dispatch({ type: "change", change: { type: "upsert", table, row: saved } });
         notifyMentions(table, before, saved);
+        return true;
       } catch (err) {
         dispatch({ type: "change", change: { type: "upsert", table, row: before } });
         fail(err, "update");
+        return false;
       }
     },
     [fail, dataRef, notifyMentions, allowed],
@@ -213,14 +216,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const remove = useCallback(
     async (table: TableName, id: UUID) => {
-      if (!allowed(table, id)) return;
+      if (!allowed(table, id)) return false;
       const before = (dataRef.current[table] as Row<TableName>[]).find((r) => (r as { id: UUID }).id === id);
       dispatch({ type: "change", change: { type: "delete", table, id } });
       try {
         await getAdapter().remove(table, id);
+        return true;
       } catch (err) {
         if (before) dispatch({ type: "change", change: { type: "upsert", table, row: before } });
         fail(err, "delete");
+        return false;
       }
     },
     [fail, dataRef, allowed],

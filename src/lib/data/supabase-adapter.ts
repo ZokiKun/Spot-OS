@@ -13,6 +13,13 @@ const OPTIONAL_TABLES: TableName[] = ["milestones", "invoices", "commitments", "
 const MISSING_TABLE = ["42P01", "PGRST205"];
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365; // 1 year — see docs/ARCHITECTURE.md §6
 
+/** A write to a table from a migration that hasn't been run says so, instead of PostgREST's "schema cache" message. */
+function writeError(table: TableName, error: { code?: string; message: string }) {
+  if (error.code && MISSING_TABLE.includes(error.code))
+    return new Error(`The ${table} table isn't in the database yet — run the latest supabase/migrations in the Supabase SQL editor.`);
+  return new Error(error.message);
+}
+
 /**
  * Columns from newer migrations: if the database hasn't been migrated yet, PostgREST rejects the
  * write ("Could not find the 'x' column…", PGRST204). Drop that column and retry so the app keeps
@@ -78,11 +85,11 @@ export class SupabaseAdapter implements DataAdapter {
     // RLS lets you create a notification for someone else but not read it back.
     if (table === "notifications") {
       const { error } = await withoutMissingColumns(row as unknown as Record<string, unknown>, (v) => this.sb.from(table).insert(v));
-      if (error) throw new Error(error.message);
+      if (error) throw writeError(table, error);
       return row;
     }
     const { data, error } = await withoutMissingColumns(row as unknown as Record<string, unknown>, (v) => this.sb.from(table).insert(v).select().single());
-    if (error) throw new Error(error.message);
+    if (error) throw writeError(table, error);
     return data as Row<T>;
   }
 
@@ -94,13 +101,13 @@ export class SupabaseAdapter implements DataAdapter {
     const { data, error } = await withoutMissingColumns(rest, (v) =>
       Object.keys(v).length ? this.sb.from(table).update(v).eq("id", id).select().single() : this.sb.from(table).select("*").eq("id", id).single(),
     );
-    if (error) throw new Error(error.message);
+    if (error) throw writeError(table, error);
     return data as Row<T>;
   }
 
   async remove(table: TableName, id: UUID): Promise<void> {
     const { error } = await this.sb.from(table).delete().eq("id", id);
-    if (error) throw new Error(error.message);
+    if (error) throw writeError(table, error);
   }
 
   subscribe(onChange: (change: Change) => void) {
