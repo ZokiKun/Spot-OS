@@ -1,0 +1,40 @@
+#!/bin/sh
+# Blocks a push to main unless `npm run check` (route types, tsc, eslint)
+# passes on the exact commit being pushed. Pushing main deploys to production.
+# Installed into the shared .git/hooks by `npm run hooks:install`, so it runs
+# from every worktree. Skip in an emergency with `git push --no-verify`.
+
+zero=0000000000000000000000000000000000000000
+target=""
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ] && [ "$local_sha" != "$zero" ]; then
+    target="$local_sha"
+  fi
+done
+
+[ -z "$target" ] && exit 0
+
+if [ "$target" != "$(git rev-parse HEAD)" ]; then
+  echo "pre-push: you are pushing $(git rev-parse --short "$target") to main, but this worktree has $(git rev-parse --short HEAD) checked out."
+  echo "pre-push: push main from a worktree that has that commit checked out, so it can be checked."
+  exit 1
+fi
+
+if ! git diff --quiet HEAD --; then
+  echo "pre-push: uncommitted changes to tracked files; commit or discard them so the check runs on what is pushed."
+  exit 1
+fi
+
+echo "pre-push: checking $(git rev-parse --short HEAD) before it goes to main..."
+if grep -q '"check":' package.json; then
+  npm run --silent check
+else
+  npx --no-install next typegen && npx --no-install tsc --noEmit && npx --no-install eslint
+fi
+status=$?
+
+if [ $status -ne 0 ]; then
+  echo "pre-push: check failed; nothing was pushed to main."
+  exit 1
+fi

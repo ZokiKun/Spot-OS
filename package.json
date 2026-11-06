@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check": "next typegen && tsc --noEmit && eslint",
+    "hooks:install": "sh scripts/install-git-hooks.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

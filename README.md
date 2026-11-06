@@ -46,6 +46,11 @@ If you run Supabase, apply `supabase/migrations/0009_finance_upload.sql` first.
 2. Add the same environment variables (plus the optional Google ones).
 3. Add the production `/auth/callback` URL in Supabase (step 4 above).
 
+Pushing `main` deploys to production, so it is gated twice:
+
+- **Pre-push hook.** `npm run hooks:install` (once per clone) puts `scripts/git-hooks/pre-push` in the shared `.git/hooks`, so every worktree runs `npm run check` before anything is pushed to `main`. It refuses to push a commit other than the checked-out one, or with uncommitted changes, since it couldn't check what is actually pushed.
+- **CI + Vercel.** `.github/workflows/check.yml` runs `npm run check` on every push to `main` and on PRs. `vercel.json` sets the Ignored Build Step to `scripts/vercel-ignore-build.mjs`, which waits (up to 8 minutes) for that job on the same commit and skips the production build unless it passed. Preview builds are not gated. Optional: add a `GITHUB_TOKEN` (read-only, public repo) to Vercel's env to avoid GitHub's anonymous API rate limit.
+
 ## Scripts
 
 | Command | What it does |
@@ -53,3 +58,5 @@ If you run Supabase, apply `supabase/migrations/0009_finance_upload.sql` first.
 | `npm run dev` | Dev server |
 | `npm run build` | Production build (type-checks) |
 | `npm run lint` | ESLint (incl. React Compiler rules) |
+| `npm run check` | Route types, `tsc --noEmit` and ESLint; CI and the pre-push hook run this |
+| `npm run hooks:install` | Install the git hooks into the shared `.git/hooks` |
