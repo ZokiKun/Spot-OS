@@ -123,3 +123,11 @@ export function periodMetrics(data: Snapshot, start: string, end: string) {
     overdueTasks: data.tasks.filter((t) => isOpen(t) && t.due_date && t.due_date >= start && t.due_date < end && t.due_date < todayISO()).length,
   };
 }
+
+/** Setting a start date after the due date moves the due date along with it. */
+export const startPatch = (t: Pick<Task, "due_date">, start_date: string | null): Partial<Task> =>
+  start_date && t.due_date && t.due_date < start_date ? { start_date, due_date: start_date } : { start_date };
+
+/** Setting a due date before the start date pulls the start date back to it. */
+export const duePatch = (t: Pick<Task, "start_date">, due_date: string | null): Partial<Task> =>
+  due_date && t.start_date && t.start_date > due_date ? { due_date, start_date: due_date } : { due_date };

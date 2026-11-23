@@ -14,6 +14,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    id: "2026-11-23",
+    date: "2026-11-23",
+    title: "Start dates for tasks",
+    items: [
+      {
+        title: "Give a task a start date",
+        body: "Every task now has a Start date next to its Due date: in the task panel, as a column in task tables, and when you add a task. On the Gantt view a task's bar begins on its start date.",
+      },
+    ],
+  },
+  {
     id: "2026-11-06",
     date: "2026-11-06",
     title: "Time spent for teammates, new Commitments",

@@ -130,6 +130,8 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   due_date: ISODate | null;
+  /** When work on it starts (optional; the Gantt bar begins here). Migration 0017. */
+  start_date?: ISODate | null;
   /** The project's custom status this task is in (its id); `status` holds the matching built-in one. */
   custom_status?: string | null;
   /** Hand-set position inside its milestone (drag to reorder); null until dragged. Migration 0008. */

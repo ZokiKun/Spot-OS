@@ -392,8 +392,8 @@ export function TaskGantt({ groups }: { groups: GanttGroup[] }) {
   );
 }
 
-/** A bar starts when the task was created, never after its due date. */
+/** A bar starts on the task's start date (or, without one, when it was created), never after its due date. */
 function startOf(t: Task) {
-  const created = t.created_at.slice(0, 10);
-  return t.due_date && created > t.due_date ? t.due_date : created;
+  const start = t.start_date || t.created_at.slice(0, 10);
+  return t.due_date && start > t.due_date ? t.due_date : start;
 }

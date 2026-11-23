@@ -231,6 +231,7 @@ function QuickTaskDialog({ defaults, onClose }: { defaults: TaskDefaults; onClos
   });
   const [assignees, setAssignees] = useState<UUID[]>(defaults.assignee_ids ?? []);
   const [due, setDue] = useState<string | null>(defaults.due_date ?? null);
+  const [start, setStart] = useState<string | null>(null);
   const milestones = useMemo(() => sortMilestones(data.milestones.filter((m) => m.project_id === projectId)), [data.milestones, projectId]);
   const projects = useMemo(() => data.projects.filter((p) => p.status !== "archived"), [data.projects]);
 
@@ -248,6 +249,8 @@ function QuickTaskDialog({ defaults, onClose }: { defaults: TaskDefaults; onClos
         status: "todo",
         priority: "medium",
         due_date: due,
+        // Only sent when set, so adding a task works before migration 0017 is run.
+        ...(start ? { start_date: start } : {}),
         created_by: me?.id ?? null,
         completed_at: null,
       });
@@ -308,9 +311,27 @@ function QuickTaskDialog({ defaults, onClose }: { defaults: TaskDefaults; onClos
           <div className="-ml-1.5">
             <PeopleField variant="property" people={people.list} value={assignees} onChange={setAssignees} />
           </div>
+          <span className="text-fg-2">Start</span>
+          <div className="-ml-1.5">
+            <DateField
+              variant="property"
+              value={start}
+              onChange={(v) => {
+                setStart(v);
+                if (v && due && due < v) setDue(v);
+              }}
+            />
+          </div>
           <span className="text-fg-2">Due</span>
           <div className="-ml-1.5">
-            <DateField variant="property" value={due} onChange={setDue} />
+            <DateField
+              variant="property"
+              value={due}
+              onChange={(v) => {
+                setDue(v);
+                if (v && start && start > v) setStart(v);
+              }}
+            />
           </div>
         </div>
       </form>

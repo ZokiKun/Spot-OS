@@ -2,7 +2,7 @@ import type { Profile, Project, Task, TaskPriority, UUID } from "./types";
 import { statusOptions, taskStatusValue } from "./task-statuses";
 import { taskAssignees } from "./selectors";
 
-export type TaskSortKey = "manual" | "title" | "created" | "priority" | "assignees" | "due" | "status" | "project";
+export type TaskSortKey = "manual" | "title" | "created" | "priority" | "assignees" | "start" | "due" | "status" | "project";
 export interface TaskSort {
   by: TaskSortKey;
   /** false = the natural direction (oldest, most urgent, A→Z, soonest, first status). */
@@ -16,6 +16,7 @@ export const TASK_SORTS: { value: TaskSortKey; label: string; order?: [string, s
   { value: "created", label: "Date created", order: ["Oldest first", "Newest first"] },
   { value: "priority", label: "Priority", order: ["Urgent first", "Low first"] },
   { value: "assignees", label: "Assignee", order: ["A to Z", "Z to A"] },
+  { value: "start", label: "Start date", order: ["Soonest first", "Latest first"] },
   { value: "due", label: "Due date", order: ["Soonest first", "Latest first"] },
   { value: "status", label: "Status", order: ["Todo first", "Done first"] },
 ];
@@ -43,6 +44,8 @@ export function sortTasksBy(
         return t.created_at;
       case "priority":
         return PRIORITY_RANK[t.priority] ?? 9;
+      case "start":
+        return t.start_date ?? null;
       case "due":
         return t.due_date;
       case "status":

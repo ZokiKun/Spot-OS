@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState } from "react";
-import { CalendarDays, CircleDot, Flag, FolderKanban, GripVertical, Plus, Type, Users } from "lucide-react";
+import { CalendarClock, CalendarDays, CircleDot, Flag, FolderKanban, GripVertical, Plus, Type, Users } from "lucide-react";
 import type { Profile, Project, Task, UUID } from "@/lib/types";
 import { TASK_PRIORITIES } from "@/lib/constants";
 import { statusChange, statusOptions, taskStatusValue } from "@/lib/task-statuses";
@@ -10,7 +10,7 @@ import { cn, daysUntil, formatDay } from "@/lib/utils";
 import { AvatarStack } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/input";
 import { DateField, OptionField, PeopleField, ProjectField } from "@/components/ui/fields";
-import { assigneesPatch, taskAssignees } from "@/lib/selectors";
+import { assigneesPatch, duePatch, startPatch, taskAssignees } from "@/lib/selectors";
 import { EmptyState } from "@/components/ui/misc";
 import { statusPatch, useTaskPeek } from "./task-peek";
 import { useTaskSelection } from "./task-selection";
@@ -34,8 +34,8 @@ export interface TaskDnd {
 export const TaskDndContext = createContext<TaskDnd | null>(null);
 
 // The first, narrow column holds the select tick (several tasks → the bulk-edit bar).
-const COLS_WITH_PROJECT = "28px minmax(220px,1fr) 124px 150px 96px 92px 180px";
-const COLS = "28px minmax(200px,1fr) 124px 146px 92px 88px";
+const COLS_WITH_PROJECT = "28px minmax(220px,1fr) 124px 150px 96px 96px 92px 180px";
+const COLS = "28px minmax(200px,1fr) 124px 146px 92px 92px 88px";
 
 export function TaskTable({
   tasks,
@@ -91,6 +91,7 @@ export function TaskTable({
     { icon: <Type className="size-3.5" />, label: "Name", sort: "title" },
     { icon: <CircleDot className="size-3.5" />, label: "Status", sort: "status" },
     { icon: <Users className="size-3.5" />, label: "Assignees", sort: "assignees" },
+    { icon: <CalendarClock className="size-3.5" />, label: "Start", sort: "start" },
     { icon: <CalendarDays className="size-3.5" />, label: "Due", sort: "due" },
     { icon: <Flag className="size-3.5" />, label: "Priority", sort: "priority" },
     ...(showProject ? [{ icon: <FolderKanban className="size-3.5" />, label: "Project", sort: "project" as const }] : []),
@@ -98,7 +99,7 @@ export function TaskTable({
 
   return (
     <div className="-mx-2 overflow-x-auto px-2" {...tableDrag}>
-      <div className={cn("text-[14px]", showProject ? "min-w-[860px]" : "min-w-[660px]")}>
+      <div className={cn("text-[14px]", showProject ? "min-w-[956px]" : "min-w-[752px]")}>
         {showHeader ? (
           <div className="grid border-y border-line text-[13px] text-fg-2" style={{ gridTemplateColumns: cols }}>
             <div className="flex h-8 items-center justify-center">
@@ -208,7 +209,10 @@ export function TaskTable({
               <PeopleField people={people.list} value={taskAssignees(t)} onChange={(ids) => void update("tasks", t.id, assigneesPatch(ids))} />
             </Cell>
             <Cell>
-              <DateField value={t.due_date} highlightOverdue={t.status !== "done"} onChange={(due_date) => void update("tasks", t.id, { due_date })} />
+              <DateField value={t.start_date ?? null} onChange={(start_date) => void update("tasks", t.id, startPatch(t, start_date))} />
+            </Cell>
+            <Cell>
+              <DateField value={t.due_date} highlightOverdue={t.status !== "done"} onChange={(due_date) => void update("tasks", t.id, duePatch(t, due_date))} />
             </Cell>
             <Cell>
               <OptionField kind="select" options={TASK_PRIORITIES} value={t.priority} onChange={(priority) => void update("tasks", t.id, { priority })} />

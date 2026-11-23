@@ -14,7 +14,7 @@ This document answers the brief's "first task" list: schema, routes, components,
 | `projects` | Project, type, status, client, CD, lead, dates, description, **next_action**, `notes_html` | `type` / `status` are text + `check` (easier to evolve than PG enums). |
 | `milestones` | A project's timeline: ordered steps (`sort_order`), optional `due_date`; tasks point at one via `tasks.milestone_id` | A milestone is done when it has tasks and all are done. The project's **next step** is derived (`lib/milestones.ts`): the first unfinished milestone. `projects.next_action` is legacy and no longer edited. |
 | `project_members` | People associated with a project | `unique(project_id, profile_id)` |
-| `tasks` | Title, description (rich-text HTML since the editor switch; older rows may be plain text), assignee, status, priority, due date, project | `project_id` nullable (studio-level tasks such as invoicing). `completed_at` set on Done. `sort_order` (0008) is the hand-dragged position inside a milestone; null = not dragged yet (those follow, by due date). |
+| `tasks` | Title, description (rich-text HTML since the editor switch; older rows may be plain text), assignee, status, priority, start date (0017, optional), due date, project | `project_id` nullable (studio-level tasks such as invoicing). `completed_at` set on Done. `sort_order` (0008) is the hand-dragged position inside a milestone; null = not dragged yet (those follow, by due date). |
 | `calendar_notes` | Rich-text notes per date | Several notes per day. HTML from the editor. |
 | `attachments` | **Native uploads**: calendar, project and review files | One table with three nullable FKs + `check (num_nonnulls(...) = 1)`. Replaces `calendar_attachments` and `project_files`. |
 | `library_items` | Indexed links and docs (Drive, Docs, Sheets, PDFs, templates, URLs) | `project_id` nullable. This replaces `links`, `documents` **and** `project_links`. A project's Links tab is just a filtered view. |
@@ -98,7 +98,7 @@ src/
 
 **Custom task statuses** (0010): `projects.task_statuses` is a list of `{ id, label, color, base }`; `base` is the built-in status it counts as, so done/overdue/progress logic never changes. `tasks.custom_status` holds the chosen one (`lib/task-statuses.ts`). Ticking a checkbox resets it, and the task then shows its project's first status with that base.
 
-**Task views**: Tasks page — Table, Board (kanban, drag between columns), List, Grid, Gantt; a project's Timeline tab — Milestones, Board (its own statuses), List, Grid, Gantt (bars from creation to due date, grouped by milestone).
+**Task views**: Tasks page — Table, Board (kanban, drag between columns), List, Grid, Gantt; a project's Timeline tab — Milestones, Board (its own statuses), List, Grid, Gantt (bars from the start date — or creation, without one — to the due date, grouped by milestone).
 
 **Activity** (`/activity`): every logged change, grouped by day, filterable by kind, person and project. The `log_activity` trigger (0010) also records invoices, milestones, files/links and deletions (deleted rows keep their project's name in `meta`, without a project link so the entry survives the project).
 

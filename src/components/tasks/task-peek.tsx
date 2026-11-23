@@ -2,7 +2,7 @@
 
 import { createContext, Suspense, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { CalendarDays, CircleDot, Compass, Copy, Flag, FolderKanban, Milestone as MilestoneIcon, Trash2, Users, Clock } from "lucide-react";
+import { CalendarClock, CalendarDays, CircleDot, Compass, Copy, Flag, FolderKanban, Milestone as MilestoneIcon, Trash2, Users, Clock } from "lucide-react";
 import { useDomains } from "@/lib/domains";
 import { useWorkspace, useProfiles, type NewRow } from "@/lib/store";
 import { TASK_PRIORITIES } from "@/lib/constants";
@@ -15,7 +15,7 @@ import { SidePeek } from "@/components/ui/side-peek";
 import { EditableText } from "@/components/ui/input";
 import { RichEditor } from "@/components/editor/rich-editor";
 import { DateField, MilestoneField, OptionField, PeopleField, ProjectField, PropertyRow } from "@/components/ui/fields";
-import { assigneesPatch, taskAssignees } from "@/lib/selectors";
+import { assigneesPatch, duePatch, startPatch, taskAssignees } from "@/lib/selectors";
 import { sortMilestones } from "@/lib/milestones";
 import { IconButton } from "@/components/ui/button";
 import { AttachmentList, NOTE_FILE_LIMIT } from "@/components/attachments";
@@ -133,8 +133,11 @@ function TaskPeek({ taskId, onClose, onOpen }: { taskId: UUID | null; onClose: (
         <PropertyRow icon={<Users className="size-4" />} label="Assignees">
           <PeopleField variant="property" people={people.list} value={taskAssignees(task)} onChange={(ids) => set(assigneesPatch(ids))} />
         </PropertyRow>
+        <PropertyRow icon={<CalendarClock className="size-4" />} label="Start date">
+          <DateField variant="property" value={task.start_date ?? null} onChange={(start_date) => set(startPatch(task, start_date))} />
+        </PropertyRow>
         <PropertyRow icon={<CalendarDays className="size-4" />} label="Due date">
-          <DateField variant="property" value={task.due_date} highlightOverdue={task.status !== "done"} onChange={(due_date) => set({ due_date })} />
+          <DateField variant="property" value={task.due_date} highlightOverdue={task.status !== "done"} onChange={(due_date) => set(duePatch(task, due_date))} />
         </PropertyRow>
         <PropertyRow icon={<Flag className="size-4" />} label="Priority">
           <OptionField variant="property" kind="select" options={TASK_PRIORITIES} value={task.priority} onChange={(priority) => set({ priority })} />
