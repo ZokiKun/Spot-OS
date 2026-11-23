@@ -106,6 +106,8 @@ src/
 
 **Voice typing**: focusing any text field shows a mic at its edge (or Alt+V) — the Web Speech API types at the cursor (Chrome, Edge, Safari).
 
+**Stand-up** (`lib/standup.ts`): Calendar → Stand-up adds that day's note with one heading per person (Ayush, Zoki, Shah) and an empty checklist under each; a second press opens the existing one.
+
 **Shift+A** runs the current page's add action (`usePageAdd`): Projects → new project, Tasks and a project → new task (in its current milestone), Calendar → note, Library → link, Reviews → new review, Spot Base → page, Home → the Quick Add menu. Elsewhere it opens the Quick Add chooser. It's ignored while typing or with a dialog/menu open.
 
 **Shift+S** collapses/expands the desktop sidebar (same as ⌘\), or opens/closes the drawer on phones. Same guards as Shift+A.

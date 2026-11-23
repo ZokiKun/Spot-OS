@@ -16,8 +16,12 @@ export const CHANGELOG: Release[] = [
   {
     id: "2026-11-23",
     date: "2026-11-23",
-    title: "Start dates for tasks",
+    title: "Start dates for tasks, stand-up notes",
     items: [
+      {
+        title: "Stand-up template in Calendar",
+        body: "Calendar has a Stand-up button next to New note. It adds a note for that day with Ayush, Zoki and Shah as headings and a checklist under each to fill in. Press it again the same day and it opens the stand-up that's already there.",
+      },
       {
         title: "Give a task a start date",
         body: "Every task now has a Start date next to its Due date: in the task panel, as a column in task tables, and when you add a task. On the Gantt view a task's bar begins on its start date.",

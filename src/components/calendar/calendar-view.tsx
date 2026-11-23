@@ -4,11 +4,12 @@ import { useCallback, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { addMonths, addQuarters, addYears, format, startOfMonth, startOfQuarter, startOfYear } from "date-fns";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, Users } from "lucide-react";
 import type { CalendarNote, Project, Task } from "@/lib/types";
 import { useWorkspace } from "@/lib/store";
 import { usePageAdd } from "@/components/shell/quick-add";
 import { isOpen } from "@/lib/selectors";
+import { isStandup, standupHtml, STANDUP_TITLE } from "@/lib/standup";
 import { cn, formatLongDate, parseDate, todayISO, toISODate } from "@/lib/utils";
 import { Page } from "@/components/shell/page";
 import { Button, IconButton } from "@/components/ui/button";
@@ -120,6 +121,21 @@ export function CalendarView() {
   };
   usePageAdd("New note", () => void addNote());
 
+  // One stand-up per day: pressing it again takes you to the one that's already there.
+  const addStandup = async () => {
+    const existing = day.notes.find(isStandup);
+    const n =
+      existing ??
+      (await create("calendar_notes", {
+        date: selected,
+        title: STANDUP_TITLE,
+        content_html: standupHtml(),
+        created_by: me?.id ?? null,
+        updated_by: me?.id ?? null,
+      }));
+    router.replace(href({ note: n.id }), { scroll: false });
+  };
+
   return (
     <Page crumbs={[{ label: "Calendar", icon: <CalendarDays className="size-4" /> }]}>
       <div className={cn("grid grid-cols-1 gap-10", view === "month" ? "xl:grid-cols-[minmax(0,1.75fr)_minmax(420px,1fr)]" : "xl:grid-cols-[minmax(0,2.2fr)_minmax(340px,1fr)]")}>
@@ -213,9 +229,14 @@ export function CalendarView() {
               <div className="text-[12px] font-medium uppercase tracking-wide text-fg-3">{selected === todayISO() ? "Today" : format(parseDate(selected)!, "EEEE")}</div>
               <h2 className="text-[20px] font-semibold">{formatLongDate(selected)}</h2>
             </div>
-            <Button variant="primary" onClick={() => void addNote()}>
-              <Plus className="size-3.5" /> New note
-            </Button>
+            <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+              <Button variant="secondary" title="A note with Ayush, Zoki and Shah as headings, each with a checklist for today" onClick={() => void addStandup()}>
+                <Users className="size-3.5" /> Stand-up
+              </Button>
+              <Button variant="primary" onClick={() => void addNote()}>
+                <Plus className="size-3.5" /> New note
+              </Button>
+            </div>
           </div>
 
           {(day.deadlines.length > 0 || day.due.length > 0 || completed.length > 0) && (
@@ -250,9 +271,14 @@ export function CalendarView() {
               title="No notes for this day"
               description="Capture what happened — meetings, decisions, things to remember."
               action={
-                <Button onClick={() => void addNote()}>
-                  <Plus className="size-3.5" /> Add a note
-                </Button>
+                <div className="flex flex-wrap justify-center gap-1.5">
+                  <Button onClick={() => void addNote()}>
+                    <Plus className="size-3.5" /> Add a note
+                  </Button>
+                  <Button onClick={() => void addStandup()}>
+                    <Users className="size-3.5" /> Add stand-up
+                  </Button>
+                </div>
               }
             />
           ) : (
